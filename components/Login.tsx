@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
+import { User } from '../types';
 
 interface LoginProps {
-  onLogin: () => void;
+  onLogin: (user: User) => void;
 }
 
 export const Login: React.FC<LoginProps> = ({ onLogin }) => {
@@ -17,8 +18,28 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     // Simulate API call/delay
     setTimeout(() => {
       setIsLoading(false);
-      onLogin();
-    }, 1500);
+      
+      // MOCK AUTH LOGIC
+      let user: User;
+      
+      if (email.includes('dev') || email.includes('admin')) {
+        user = {
+            id: 'admin-1',
+            name: 'Dev Admin',
+            email: email,
+            role: 'ADMIN'
+        };
+      } else {
+        user = {
+            id: 'user-1',
+            name: 'Regular User',
+            email: email,
+            role: 'USER'
+        };
+      }
+
+      onLogin(user);
+    }, 1000);
   };
 
   return (
@@ -52,9 +73,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors outline-none text-gray-900 sm:text-sm"
-                placeholder="name@company.com"
+                placeholder="dev@novadesk.com or user@novadesk.com"
               />
             </div>
+             <p className="text-xs text-gray-400 mt-1">Tip: Use 'dev@...' for Admin access</p>
           </div>
 
           <div>
@@ -71,26 +93,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors outline-none text-gray-900 sm:text-sm"
                 placeholder="••••••••"
               />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-600">
-                Remember me
-              </label>
-            </div>
-
-            <div className="text-sm">
-              <a href="#" className="font-medium text-primary-600 hover:text-primary-500">
-                Forgot password?
-              </a>
             </div>
           </div>
 
@@ -112,32 +114,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             )}
           </button>
         </form>
-
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with</span>
-            </div>
-          </div>
-
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <button className="w-full inline-flex justify-center py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors">
-               <span className="sr-only">Sign in with Google</span>
-               <svg className="h-5 w-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 7.373-2.36 2.72-2.667 2.72-7.307 2.72-7.547 0-.347-.027-.56-.053-.773H12.48z" />
-               </svg>
-            </button>
-            <button className="w-full inline-flex justify-center py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors">
-              <span className="sr-only">Sign in with Microsoft</span>
-              <svg className="h-5 w-5" aria-hidden="true" fill="currentColor" viewBox="0 0 23 23">
-                  <path d="M0 0h11v11H0V0zm12 0h11v11H12V0zM0 12h11v11H0V12zm12 0h11v11H12V12z" />
-              </svg>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

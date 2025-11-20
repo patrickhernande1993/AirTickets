@@ -1,17 +1,38 @@
 import React from 'react';
-import { LayoutDashboard, PlusCircle, Settings, LifeBuoy } from 'lucide-react';
-import { ViewState } from '../types';
+import { LayoutDashboard, PlusCircle, Settings, LifeBuoy, Users, Ticket as TicketIcon, List } from 'lucide-react';
+import { ViewState, User, UserRole } from '../types';
 
 interface SidebarProps {
   currentView: ViewState;
   onChangeView: (view: ViewState) => void;
+  currentUser: User;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) => {
-  const navItems = [
-    { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'CREATE_TICKET', label: 'New Ticket', icon: PlusCircle },
-  ];
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, currentUser }) => {
+  
+  const getNavItems = () => {
+    const commonItems = [
+      { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutDashboard },
+    ];
+
+    if (currentUser.role === 'USER') {
+      return [
+        ...commonItems,
+        { id: 'MY_TICKETS', label: 'My Tickets', icon: List },
+        { id: 'CREATE_TICKET', label: 'New Ticket', icon: PlusCircle },
+      ];
+    }
+
+    // DEV / ADMIN Items
+    return [
+      ...commonItems,
+      { id: 'DASHBOARD', label: 'All Tickets', icon: TicketIcon }, // Admin sees all tickets in dashboard/list context
+      { id: 'CREATE_TICKET', label: 'New Ticket', icon: PlusCircle },
+      { id: 'USERS', label: 'User Management', icon: Users },
+    ];
+  };
+
+  const navItems = getNavItems();
 
   return (
     <div className="w-64 bg-white h-screen border-r border-gray-200 flex flex-col fixed left-0 top-0 z-10">
@@ -22,10 +43,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
         <span className="text-xl font-bold text-gray-800">NovaDesk</span>
       </div>
 
+      <div className="px-6 py-4">
+        <div className="bg-gray-50 rounded-lg p-3 flex items-center space-x-3 border border-gray-100">
+            <div className="h-8 w-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-xs">
+                {currentUser.name.charAt(0)}
+            </div>
+            <div className="overflow-hidden">
+                <p className="text-sm font-medium text-gray-900 truncate">{currentUser.name}</p>
+                <p className="text-xs text-gray-500 truncate capitalize">{currentUser.role === 'ADMIN' ? 'Developer' : 'User'}</p>
+            </div>
+        </div>
+      </div>
+
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = currentView === item.id || (item.id === 'DASHBOARD' && currentView === 'TICKET_DETAIL');
+            // Dashboard is active if showing dashboard or if showing ticket detail (contextually)
+            const isActive = currentView === item.id || 
+                             (item.id === 'DASHBOARD' && currentView === 'TICKET_DETAIL') ||
+                             (item.id === 'MY_TICKETS' && currentView === 'TICKET_DETAIL' && currentUser.role === 'USER');
             
             return (
                 <button

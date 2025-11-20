@@ -12,11 +12,22 @@ export enum TicketPriority {
   CRITICAL = 'CRITICAL'
 }
 
+export type UserRole = 'ADMIN' | 'USER';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  avatar?: string;
+}
+
 export interface Ticket {
   id: string;
   title: string;
   description: string;
-  requester: string;
+  requester: string; // Name of requester
+  requesterId: string; // Link to User ID
   priority: TicketPriority;
   status: TicketStatus;
   category: string;
@@ -32,4 +43,4 @@ export interface ITicketStats {
   resolved: number;
 }
 
-export type ViewState = 'DASHBOARD' | 'CREATE_TICKET' | 'TICKET_DETAIL';
+export type ViewState = 'DASHBOARD' | 'CREATE_TICKET' | 'TICKET_DETAIL' | 'MY_TICKETS' | 'USERS' | 'EDIT_TICKET';

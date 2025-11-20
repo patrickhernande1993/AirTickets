@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Ticket, TicketPriority, TicketStatus } from '../types';
 import { analyzeTicketContent } from '../services/geminiService';
 import { Sparkles, Loader2, ArrowLeft } from 'lucide-react';
@@ -6,9 +6,10 @@ import { Sparkles, Loader2, ArrowLeft } from 'lucide-react';
 interface TicketFormProps {
   onSave: (ticket: Omit<Ticket, 'id' | 'createdAt'>) => void;
   onCancel: () => void;
+  initialData?: Ticket; // Optional for Edit mode
 }
 
-export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel }) => {
+export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initialData }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [requester, setRequester] = useState('');
@@ -16,6 +17,17 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel }) => {
   const [category, setCategory] = useState('General');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialData) {
+        setTitle(initialData.title);
+        setDescription(initialData.description);
+        setRequester(initialData.requester);
+        setPriority(initialData.priority);
+        setCategory(initialData.category);
+        setAiSummary(initialData.aiAnalysis || null);
+    }
+  }, [initialData]);
 
   const handleAIAnalysis = async () => {
     if (!title || !description) return;
@@ -39,7 +51,8 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel }) => {
       requester,
       priority,
       category,
-      status: TicketStatus.OPEN,
+      status: initialData ? initialData.status : TicketStatus.OPEN,
+      requesterId: initialData ? initialData.requesterId : '', // Handled by parent for new tickets
       aiAnalysis: aiSummary || undefined
     });
   };
@@ -48,12 +61,12 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel }) => {
     <div className="max-w-3xl mx-auto">
       <button onClick={onCancel} className="flex items-center text-gray-500 hover:text-gray-700 mb-6">
         <ArrowLeft size={18} className="mr-2" />
-        Back to Dashboard
+        Back
       </button>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-primary-600 to-primary-700">
-          <h2 className="text-xl font-bold text-white">Create New Support Ticket</h2>
+          <h2 className="text-xl font-bold text-white">{initialData ? 'Edit Ticket' : 'Create New Support Ticket'}</h2>
           <p className="text-primary-100 text-sm mt-1">Describe the issue and let AI assist with classification.</p>
         </div>
 
@@ -68,6 +81,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel }) => {
                 onChange={(e) => setRequester(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
                 placeholder="e.g. John Doe"
+                disabled={!!initialData} // Disable changing requester on edit to prevent confusion
               />
             </div>
              <div>
@@ -171,7 +185,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel }) => {
               type="submit"
               className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium shadow-md transition-all transform hover:-translate-y-0.5"
             >
-              Create Ticket
+              {initialData ? 'Update Ticket' : 'Create Ticket'}
             </button>
           </div>
         </form>

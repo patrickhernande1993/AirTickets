@@ -1,21 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Ticket, TicketStatus } from '../types';
+import { Ticket, TicketStatus, User } from '../types';
 import { generateSolutionSuggestion } from '../services/geminiService';
-import { ArrowLeft, Bot, CheckCircle, Clock, User, Calendar, Tag, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Bot, CheckCircle, Clock, User as UserIcon, Calendar, Tag, AlertTriangle, Trash2, Edit } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface TicketDetailProps {
   ticket: Ticket;
+  currentUser: User;
   onBack: () => void;
   onUpdateStatus: (id: string, status: TicketStatus) => void;
+  onDelete: (id: string) => void;
+  onEdit: (ticket: Ticket) => void;
 }
 
-export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, onBack, onUpdateStatus }) => {
+export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser, onBack, onUpdateStatus, onDelete, onEdit }) => {
   const [solution, setSolution] = useState<string | null>(ticket.suggestedSolution || null);
   const [loadingSolution, setLoadingSolution] = useState(false);
 
+  const isAdmin = currentUser.role === 'ADMIN';
+  const isOwner = currentUser.id === ticket.requesterId;
+
   useEffect(() => {
-    // Auto-generate solution if not present
+    // Auto-generate solution if not present and user is Admin or ticket is not closed
+    // Only generate if we don't have one
     if (!solution && ticket.status !== TicketStatus.CLOSED) {
       setLoadingSolution(true);
       generateSolutionSuggestion(ticket.title, ticket.description, ticket.category)
@@ -30,7 +37,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, onBack, onUp
     <div className="max-w-4xl mx-auto space-y-6">
       <button onClick={onBack} className="flex items-center text-gray-500 hover:text-gray-700">
         <ArrowLeft size={18} className="mr-2" />
-        Back to Dashboard
+        Back to {isAdmin ? 'Dashboard' : 'My Tickets'}
       </button>
 
       {/* Header Card */}
@@ -47,22 +54,55 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, onBack, onUp
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900">{ticket.title}</h1>
             </div>
-            <div className="flex items-center space-x-2">
-                <select 
-                    value={ticket.status}
-                    onChange={(e) => onUpdateStatus(ticket.id, e.target.value as TicketStatus)}
-                    className="border border-gray-300 rounded-md text-sm py-1 px-3 focus:ring-2 focus:ring-primary-500 outline-none"
-                >
-                    {Object.values(TicketStatus).map(s => (
-                        <option key={s} value={s}>{s.replace('_', ' ')}</option>
-                    ))}
-                </select>
+            
+            <div className="flex items-center space-x-3">
+                {(isOwner || isAdmin) && (
+                     <button 
+                        onClick={() => onEdit(ticket)}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Edit Ticket"
+                     >
+                         <Edit size={20} />
+                     </button>
+                )}
+                
+                {(isOwner || isAdmin) && (
+                     <button 
+                        onClick={() => {
+                            if(window.confirm('Are you sure you want to delete this ticket?')) {
+                                onDelete(ticket.id);
+                            }
+                        }}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete Ticket"
+                     >
+                         <Trash2 size={20} />
+                     </button>
+                )}
+
+                {isAdmin ? (
+                    <select 
+                        value={ticket.status}
+                        onChange={(e) => onUpdateStatus(ticket.id, e.target.value as TicketStatus)}
+                        className="border border-gray-300 rounded-md text-sm py-1 px-3 focus:ring-2 focus:ring-primary-500 outline-none"
+                    >
+                        {Object.values(TicketStatus).map(s => (
+                            <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                        ))}
+                    </select>
+                ) : (
+                    <div className={`px-3 py-1 rounded-full text-sm font-medium border ${
+                        ticket.status === TicketStatus.RESOLVED ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800 border-gray-200'
+                    }`}>
+                        {ticket.status.replace('_', ' ')}
+                    </div>
+                )}
             </div>
         </div>
         
         <div className="mt-6 flex items-center space-x-6 text-sm text-gray-500 border-t border-gray-100 pt-4">
             <div className="flex items-center">
-                <User size={16} className="mr-2" />
+                <UserIcon size={16} className="mr-2" />
                 {ticket.requester}
             </div>
             <div className="flex items-center">
@@ -116,21 +156,27 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, onBack, onUp
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                 <h3 className="font-semibold text-gray-800 mb-4">Quick Actions</h3>
                 <div className="space-y-3">
-                    <button 
-                        onClick={() => onUpdateStatus(ticket.id, TicketStatus.RESOLVED)}
-                        className="w-full flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-                    >
-                        <CheckCircle size={16} className="mr-2" />
-                        Mark as Resolved
-                    </button>
-                     <button className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                    {isAdmin && (
+                        <button 
+                            onClick={() => onUpdateStatus(ticket.id, TicketStatus.RESOLVED)}
+                            className="w-full flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                        >
+                            <CheckCircle size={16} className="mr-2" />
+                            Mark as Resolved
+                        </button>
+                    )}
+                    
+                    <button className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
                         <Clock size={16} className="mr-2" />
-                        Snooze Ticket
+                        Add Reminder
                     </button>
-                    <button className="w-full flex items-center justify-center px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium">
-                        <AlertTriangle size={16} className="mr-2" />
-                        Escalate
-                    </button>
+                    
+                    {isAdmin && (
+                        <button className="w-full flex items-center justify-center px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium">
+                            <AlertTriangle size={16} className="mr-2" />
+                            Escalate
+                        </button>
+                    )}
                 </div>
             </div>
             
