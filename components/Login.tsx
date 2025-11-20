@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Mail, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
 interface LoginProps {
@@ -14,12 +14,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [fullName, setFullName] = useState(''); // Only for sign up
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
     setMessage(null);
+    setNeedsConfirmation(false);
     
     try {
         if (isSignUp) {
@@ -51,7 +53,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         });
                     } catch (err) {
                         // Ignore duplicate key errors, log others
-                        console.log("Profile creation handled or skipped (profile likely exists).");
+                        console.log("Criação de perfil manipulada ou ignorada (perfil provavelmente já existe).");
                     }
                  }, 500);
 
@@ -59,8 +61,9 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     // If Confirm Email is disabled, we get a session immediately
                     onLoginSuccess();
                 } else {
-                    setMessage('Account created! Please check your email to confirm.');
-                    setIsSignUp(false);
+                    setMessage('Conta criada! Por favor, verifique seu e-mail para confirmar.');
+                    setNeedsConfirmation(true);
+                    setIsSignUp(false); // Switch to login view so they can try to login after confirming
                 }
             }
         } else {
@@ -69,15 +72,38 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 password,
             });
 
-            if (signInError) throw signInError;
+            if (signInError) {
+                if (signInError.message.includes("Email not confirmed")) {
+                    setNeedsConfirmation(true);
+                }
+                throw signInError;
+            }
             onLoginSuccess();
         }
     } catch (err: any) {
         console.error(err);
-        setError(err.message || 'An error occurred');
+        setError(err.message || 'Ocorreu um erro inesperado.');
     } finally {
         setIsLoading(false);
     }
+  };
+
+  const handleResendConfirmation = async () => {
+      setIsLoading(true);
+      setError(null);
+      setMessage(null);
+      try {
+          const { error } = await supabase.auth.resend({
+              type: 'signup',
+              email: email,
+          });
+          if (error) throw error;
+          setMessage('E-mail de confirmação reenviado! Verifique sua caixa de spam.');
+      } catch (err: any) {
+          setError(err.message || 'Falha ao reenviar e-mail');
+      } finally {
+          setIsLoading(false);
+      }
   };
 
   return (
@@ -95,17 +121,29 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             N
           </div>
           <h2 className="text-2xl font-bold text-gray-900">
-              {isSignUp ? 'Create an Account' : 'Welcome back'}
+              {isSignUp ? 'Criar uma Conta' : 'Bem-vindo de volta'}
           </h2>
           <p className="text-gray-500 mt-2 text-sm">
-              {isSignUp ? 'Join NovaDesk AI to manage tickets' : 'Enter your credentials to access NovaDesk AI'}
+              {isSignUp ? 'Junte-se ao NovaDesk AI para gerenciar chamados' : 'Entre com suas credenciais para acessar o NovaDesk AI'}
           </p>
         </div>
 
         {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg flex items-start">
-                <AlertCircle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
-                {error}
+            <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg flex flex-col items-start">
+                <div className="flex items-center">
+                    <AlertCircle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
+                    {error === "Invalid login credentials" ? "Credenciais inválidas" : error}
+                </div>
+                {needsConfirmation && (
+                    <button 
+                        onClick={handleResendConfirmation}
+                        disabled={isLoading}
+                        className="mt-2 text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center underline"
+                    >
+                        <RefreshCw size={12} className={`mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+                        Reenviar E-mail de Confirmação
+                    </button>
+                )}
             </div>
         )}
 
@@ -118,20 +156,20 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         <form onSubmit={handleSubmit} className="space-y-5">
           {isSignUp && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Nome Completo</label>
                 <input
                     type="text"
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-gray-900 sm:text-sm"
-                    placeholder="John Doe"
+                    placeholder="João Silva"
                 />
               </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Endereço de E-mail</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Mail className="h-5 w-5 text-gray-400" />
@@ -142,13 +180,13 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors outline-none text-gray-900 sm:text-sm"
-                placeholder="name@company.com"
+                placeholder="nome@empresa.com"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Senha</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-5 w-5 text-gray-400" />
@@ -173,11 +211,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             {isLoading ? (
               <>
                 <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
-                Please wait...
+                Aguarde...
               </>
             ) : (
               <>
-                {isSignUp ? 'Create Account' : 'Sign in'}
+                {isSignUp ? 'Criar Conta' : 'Entrar'}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </>
             )}
@@ -186,12 +224,12 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
         <div className="mt-6 text-center">
             <p className="text-sm text-gray-500">
-                {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                {isSignUp ? 'Já tem uma conta?' : "Não tem uma conta?"}{' '}
                 <button 
                     onClick={() => { setIsSignUp(!isSignUp); setError(null); setMessage(null); }}
                     className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
                 >
-                    {isSignUp ? 'Sign in' : 'Sign up'}
+                    {isSignUp ? 'Entrar' : 'Cadastre-se'}
                 </button>
             </p>
         </div>

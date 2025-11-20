@@ -18,17 +18,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
     if (currentUser.role === 'USER') {
       return [
         ...commonItems,
-        { id: 'MY_TICKETS', label: 'My Tickets', icon: List },
-        { id: 'CREATE_TICKET', label: 'New Ticket', icon: PlusCircle },
+        { id: 'MY_TICKETS', label: 'Meus Chamados', icon: List },
+        { id: 'CREATE_TICKET', label: 'Novo Chamado', icon: PlusCircle },
       ];
     }
 
     // DEV / ADMIN Items
     return [
       ...commonItems,
-      { id: 'DASHBOARD', label: 'All Tickets', icon: TicketIcon }, // Admin sees all tickets in dashboard/list context
-      { id: 'CREATE_TICKET', label: 'New Ticket', icon: PlusCircle },
-      { id: 'USERS', label: 'User Management', icon: Users },
+      { id: 'DASHBOARD', label: 'Todos os Chamados', icon: TicketIcon }, // Admin sees all tickets in dashboard/list context
+      { id: 'CREATE_TICKET', label: 'Novo Chamado', icon: PlusCircle },
+      { id: 'USERS', label: 'Gestão de Usuários', icon: Users },
     ];
   };
 
@@ -46,11 +46,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
       <div className="px-6 py-4">
         <div className="bg-gray-50 rounded-lg p-3 flex items-center space-x-3 border border-gray-100">
             <div className="h-8 w-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-xs">
-                {currentUser.name.charAt(0)}
+                {currentUser.name.charAt(0).toUpperCase()}
             </div>
             <div className="overflow-hidden">
                 <p className="text-sm font-medium text-gray-900 truncate">{currentUser.name}</p>
-                <p className="text-xs text-gray-500 truncate capitalize">{currentUser.role === 'ADMIN' ? 'Developer' : 'User'}</p>
+                <p className="text-xs text-gray-500 truncate capitalize">{currentUser.role === 'ADMIN' ? 'Desenvolvedor/Admin' : 'Usuário'}</p>
             </div>
         </div>
       </div>
@@ -83,11 +83,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
       <div className="p-4 border-t border-gray-100 space-y-1">
         <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
           <Settings size={20} />
-          <span>Settings</span>
+          <span>Configurações</span>
         </button>
         <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
             <LifeBuoy size={20} />
-            <span>Help Center</span>
+            <span>Ajuda</span>
         </button>
       </div>
     </div>

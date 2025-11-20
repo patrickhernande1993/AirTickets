@@ -38,11 +38,31 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
     }
   }, [ticket.id]); 
 
+  const translatePriority = (p: string) => {
+    switch(p) {
+        case 'LOW': return 'Baixa';
+        case 'MEDIUM': return 'Média';
+        case 'HIGH': return 'Alta';
+        case 'CRITICAL': return 'Crítica';
+        default: return p;
+    }
+  };
+
+  const translateStatus = (s: string) => {
+      switch(s) {
+          case 'OPEN': return 'Aberto';
+          case 'IN_PROGRESS': return 'Em Progresso';
+          case 'RESOLVED': return 'Resolvido';
+          case 'CLOSED': return 'Fechado';
+          default: return s;
+      }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <button onClick={onBack} className="flex items-center text-gray-500 hover:text-gray-700">
         <ArrowLeft size={18} className="mr-2" />
-        Back to {isAdmin ? 'Dashboard' : 'My Tickets'}
+        Voltar para {isAdmin ? 'Dashboard' : 'Meus Chamados'}
       </button>
 
       {/* Header Card */}
@@ -57,7 +77,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                         ticket.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-blue-100 text-blue-800'
                     }`}>
-                        {ticket.priority} Priority
+                        Prioridade {translatePriority(ticket.priority)}
                     </span>
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900">{ticket.title}</h1>
@@ -68,7 +88,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                      <button 
                         onClick={() => onEdit(ticket)}
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Edit Ticket"
+                        title="Editar Chamado"
                      >
                          <Edit size={20} />
                      </button>
@@ -77,12 +97,12 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                 {(isOwner || isAdmin) && (
                      <button 
                         onClick={() => {
-                            if(window.confirm('Are you sure you want to delete this ticket?')) {
+                            if(window.confirm('Tem certeza que deseja excluir este chamado?')) {
                                 onDelete(ticket.id);
                             }
                         }}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete Ticket"
+                        title="Excluir Chamado"
                      >
                          <Trash2 size={20} />
                      </button>
@@ -95,14 +115,14 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                         className="border border-gray-300 rounded-md text-sm py-1 px-3 focus:ring-2 focus:ring-primary-500 outline-none"
                     >
                         {Object.values(TicketStatus).map(s => (
-                            <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                            <option key={s} value={s}>{translateStatus(s)}</option>
                         ))}
                     </select>
                 ) : (
                     <div className={`px-3 py-1 rounded-full text-sm font-medium border ${
                         ticket.status === TicketStatus.RESOLVED ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800 border-gray-200'
                     }`}>
-                        {ticket.status.replace('_', ' ')}
+                        {translateStatus(ticket.status)}
                     </div>
                 )}
             </div>
@@ -119,7 +139,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             </div>
             <div className="flex items-center">
                 <Calendar size={16} className="mr-2" />
-                {ticket.createdAt.toLocaleDateString()}
+                {ticket.createdAt.toLocaleDateString('pt-BR')}
             </div>
         </div>
       </div>
@@ -128,7 +148,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
         {/* Left: Description */}
         <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Description</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Descrição</h3>
                 <p className="text-gray-700 whitespace-pre-line leading-relaxed">
                     {ticket.description}
                 </p>
@@ -139,9 +159,9 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                 <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-4 border-b border-indigo-100 flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                         <Bot className="text-indigo-600" size={20} />
-                        <h3 className="font-semibold text-indigo-900">Gemini AI Suggested Solution</h3>
+                        <h3 className="font-semibold text-indigo-900">Solução Sugerida Gemini AI</h3>
                     </div>
-                    {loadingSolution && <span className="text-xs text-indigo-500 animate-pulse">Generating...</span>}
+                    {loadingSolution && <span className="text-xs text-indigo-500 animate-pulse">Gerando...</span>}
                 </div>
                 <div className="p-6 bg-white">
                     {loadingSolution ? (
@@ -152,7 +172,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                         </div>
                     ) : (
                         <div className="prose prose-indigo prose-sm max-w-none">
-                             <ReactMarkdown>{solution || "No solution available yet. Check back shortly."}</ReactMarkdown>
+                             <ReactMarkdown>{solution || "Nenhuma solução disponível ainda. Verifique em breve."}</ReactMarkdown>
                         </div>
                     )}
                 </div>
@@ -162,7 +182,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
         {/* Right: Sidebar Info */}
         <div className="space-y-6">
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                <h3 className="font-semibold text-gray-800 mb-4">Quick Actions</h3>
+                <h3 className="font-semibold text-gray-800 mb-4">Ações Rápidas</h3>
                 <div className="space-y-3">
                     {isAdmin && (
                         <button 
@@ -170,19 +190,19 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                             className="w-full flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
                         >
                             <CheckCircle size={16} className="mr-2" />
-                            Mark as Resolved
+                            Marcar como Resolvido
                         </button>
                     )}
                     
                     <button className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
                         <Clock size={16} className="mr-2" />
-                        Add Reminder
+                        Adicionar Lembrete
                     </button>
                     
                     {isAdmin && (
                         <button className="w-full flex items-center justify-center px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium">
                             <AlertTriangle size={16} className="mr-2" />
-                            Escalate
+                            Escalar
                         </button>
                     )}
                 </div>
@@ -190,7 +210,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             
              {ticket.aiAnalysis && (
                 <div className="bg-purple-50 rounded-xl border border-purple-100 p-6">
-                    <h3 className="font-semibold text-purple-900 mb-2 text-sm">AI Insight</h3>
+                    <h3 className="font-semibold text-purple-900 mb-2 text-sm">Insight da IA</h3>
                     <p className="text-sm text-purple-800 italic">
                         "{ticket.aiAnalysis}"
                     </p>

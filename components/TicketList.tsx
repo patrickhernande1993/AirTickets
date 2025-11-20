@@ -14,10 +14,10 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket 
   
   const stats = useMemo(() => {
     const priorityCounts = [
-      { name: 'Low', value: tickets.filter(t => t.priority === TicketPriority.LOW).length },
-      { name: 'Medium', value: tickets.filter(t => t.priority === TicketPriority.MEDIUM).length },
-      { name: 'High', value: tickets.filter(t => t.priority === TicketPriority.HIGH).length },
-      { name: 'Critical', value: tickets.filter(t => t.priority === TicketPriority.CRITICAL).length },
+      { name: 'Baixa', value: tickets.filter(t => t.priority === TicketPriority.LOW).length },
+      { name: 'Média', value: tickets.filter(t => t.priority === TicketPriority.MEDIUM).length },
+      { name: 'Alta', value: tickets.filter(t => t.priority === TicketPriority.HIGH).length },
+      { name: 'Crítica', value: tickets.filter(t => t.priority === TicketPriority.CRITICAL).length },
     ].filter(x => x.value > 0);
 
     return { priorityCounts };
@@ -33,6 +33,26 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket 
     }
   };
 
+  const translatePriority = (p: TicketPriority) => {
+    switch(p) {
+        case TicketPriority.LOW: return 'Baixa';
+        case TicketPriority.MEDIUM: return 'Média';
+        case TicketPriority.HIGH: return 'Alta';
+        case TicketPriority.CRITICAL: return 'Crítica';
+        default: return p;
+    }
+  };
+
+  const translateStatus = (s: TicketStatus) => {
+      switch(s) {
+          case TicketStatus.OPEN: return 'Aberto';
+          case TicketStatus.IN_PROGRESS: return 'Em Progresso';
+          case TicketStatus.RESOLVED: return 'Resolvido';
+          case TicketStatus.CLOSED: return 'Fechado';
+          default: return s;
+      }
+  };
+
   const getStatusIcon = (s: TicketStatus) => {
     switch(s) {
       case TicketStatus.RESOLVED: return <CheckCircle size={16} className="text-green-500" />;
@@ -46,17 +66,17 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket 
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-           <h3 className="text-gray-500 text-sm font-medium">Total Tickets</h3>
+           <h3 className="text-gray-500 text-sm font-medium">Total de Chamados</h3>
            <p className="text-3xl font-bold text-gray-900 mt-2">{tickets.length}</p>
         </div>
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-           <h3 className="text-gray-500 text-sm font-medium">Pending Critical</h3>
+           <h3 className="text-gray-500 text-sm font-medium">Pendentes Críticos</h3>
            <p className="text-3xl font-bold text-red-600 mt-2">
              {tickets.filter(t => t.priority === TicketPriority.CRITICAL && t.status !== TicketStatus.CLOSED).length}
            </p>
         </div>
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col">
-            <h3 className="text-gray-500 text-sm font-medium mb-2">Priority Distribution</h3>
+            <h3 className="text-gray-500 text-sm font-medium mb-2">Distribuição por Prioridade</h3>
             <div className="flex-1 min-h-[100px]">
                 <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -82,12 +102,12 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket 
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-          <h2 className="font-semibold text-gray-800">Recent Tickets</h2>
+          <h2 className="font-semibold text-gray-800">Chamados Recentes</h2>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <input 
                 type="text" 
-                placeholder="Search tickets..." 
+                placeholder="Buscar chamados..." 
                 className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
             />
           </div>
@@ -96,11 +116,11 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket 
           <table className="w-full text-left">
             <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
               <tr>
-                <th className="px-6 py-3 font-medium">Details</th>
-                <th className="px-6 py-3 font-medium">Category</th>
+                <th className="px-6 py-3 font-medium">Detalhes</th>
+                <th className="px-6 py-3 font-medium">Categoria</th>
                 <th className="px-6 py-3 font-medium">Status</th>
-                <th className="px-6 py-3 font-medium">Priority</th>
-                <th className="px-6 py-3 font-medium">Requester</th>
+                <th className="px-6 py-3 font-medium">Prioridade</th>
+                <th className="px-6 py-3 font-medium">Solicitante</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -122,12 +142,12 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket 
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-2">
                         {getStatusIcon(ticket.status)}
-                        <span className="text-sm text-gray-700 capitalize">{ticket.status.replace('_', ' ').toLowerCase()}</span>
+                        <span className="text-sm text-gray-700 capitalize">{translateStatus(ticket.status)}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(ticket.priority)}`}>
-                      {ticket.priority}
+                      {translatePriority(ticket.priority)}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">

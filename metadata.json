@@ -1,5 +1,5 @@
 {
-  "name": "NovaDesk AI - IT Support SaaS",
-  "description": "An intelligent IT ticket management SaaS platform powered by Gemini AI for automated triage, priority assessment, and solution suggestions.",
+  "name": "NovaDesk AI - Suporte de TI",
+  "description": "Uma plataforma inteligente de gestão de chamados de TI com IA Gemini para triagem automática, avaliação de prioridade e sugestões de solução.",
   "requestFramePermissions": []
 }

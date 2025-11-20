@@ -9,16 +9,16 @@ const ticketAnalysisSchema: Schema = {
   properties: {
     priority: {
       type: Type.STRING,
-      enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
-      description: "The estimated priority of the IT ticket based on urgency and impact.",
+      enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"], // Keep values in English for code compatibility
+      description: "A prioridade estimada do chamado de TI com base na urgência e impacto.",
     },
     category: {
       type: Type.STRING,
-      description: "A short category tag for the issue (e.g., Hardware, Software, Network, Access).",
+      description: "Uma categoria curta para o problema (ex: Hardware, Software, Rede, Acesso). Responda em Português.",
     },
     summary: {
       type: Type.STRING,
-      description: "A one-sentence technical summary of the issue.",
+      description: "Um resumo técnico de uma frase sobre o problema. Responda em Português.",
     },
   },
   required: ["priority", "category", "summary"],
@@ -32,11 +32,13 @@ export const analyzeTicketContent = async (title: string, description: string) =
 
   try {
     const prompt = `
-      Analyze the following IT support ticket request. 
-      Determine the priority level (LOW, MEDIUM, HIGH, CRITICAL) and assign a category.
+      Analise a seguinte solicitação de suporte de TI. 
+      Determine o nível de prioridade (LOW, MEDIUM, HIGH, CRITICAL) e atribua uma categoria.
       
-      Ticket Title: ${title}
-      Ticket Description: ${description}
+      Título do Chamado: ${title}
+      Descrição do Chamado: ${description}
+
+      IMPORTANTE: O resumo e a categoria devem ser em Português do Brasil.
     `;
 
     const response = await ai.models.generateContent({
@@ -59,27 +61,28 @@ export const analyzeTicketContent = async (title: string, description: string) =
 };
 
 export const generateSolutionSuggestion = async (title: string, description: string, category: string) => {
-    if (!apiKey) return "AI Service Unavailable (Missing API Key)";
+    if (!apiKey) return "Serviço de IA Indisponível (Falta API Key)";
 
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `
-                You are a senior IT Support Engineer. Provide a concise, step-by-step troubleshooting guide for the following issue.
-                Format the output as Markdown.
+                Você é um Engenheiro de Suporte de TI Sênior. Forneça um guia de solução passo a passo conciso para o seguinte problema.
+                Responda inteiramente em Português do Brasil.
+                Formate a saída como Markdown.
                 
-                Issue Category: ${category}
-                Title: ${title}
-                Description: ${description}
+                Categoria do Problema: ${category}
+                Título: ${title}
+                Descrição: ${description}
             `,
             config: {
-                thinkingConfig: { thinkingBudget: 1024 } // Enable some thinking for better troubleshooting steps
+                thinkingConfig: { thinkingBudget: 1024 }
             }
         });
         
-        return response.text || "No solution suggested.";
+        return response.text || "Nenhuma solução sugerida.";
     } catch (error) {
         console.error("Error generating solution:", error);
-        return "Failed to generate solution.";
+        return "Falha ao gerar solução.";
     }
 }

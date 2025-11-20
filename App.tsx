@@ -208,7 +208,7 @@ const App: React.FC = () => {
         }
     } catch (error) {
         console.error("Error saving ticket:", error);
-        alert("Failed to save ticket. Please try again.");
+        alert("Falha ao salvar chamado. Por favor, tente novamente.");
     }
   };
 
@@ -230,7 +230,7 @@ const App: React.FC = () => {
         }
       } catch (error) {
           console.error("Error deleting ticket:", error);
-          alert("Failed to delete ticket.");
+          alert("Falha ao excluir chamado.");
       }
   };
 
@@ -284,7 +284,7 @@ const App: React.FC = () => {
            <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} />
         );
       case 'USERS':
-        return currentUser.role === 'ADMIN' ? <UserManagement currentUser={currentUser} /> : <div>Access Denied</div>;
+        return currentUser.role === 'ADMIN' ? <UserManagement currentUser={currentUser} /> : <div>Acesso Negado</div>;
       case 'MY_TICKETS':
         return <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} />;
       case 'DASHBOARD':
@@ -313,12 +313,12 @@ const App: React.FC = () => {
           <header className="mb-8 flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {currentView === 'DASHBOARD' && (currentUser.role === 'ADMIN' ? 'Admin Dashboard' : 'My Dashboard')}
-                {currentView === 'MY_TICKETS' && 'My Tickets'}
-                {currentView === 'CREATE_TICKET' && 'New Ticket'}
-                {currentView === 'EDIT_TICKET' && 'Edit Ticket'}
-                {currentView === 'TICKET_DETAIL' && 'Ticket Details'}
-                {currentView === 'USERS' && 'User Management'}
+                {currentView === 'DASHBOARD' && (currentUser.role === 'ADMIN' ? 'Dashboard Admin' : 'Meu Dashboard')}
+                {currentView === 'MY_TICKETS' && 'Meus Chamados'}
+                {currentView === 'CREATE_TICKET' && 'Novo Chamado'}
+                {currentView === 'EDIT_TICKET' && 'Editar Chamado'}
+                {currentView === 'TICKET_DETAIL' && 'Detalhes do Chamado'}
+                {currentView === 'USERS' && 'Gestão de Usuários'}
               </h1>
             </div>
             <div className="flex items-center space-x-4">
@@ -326,10 +326,10 @@ const App: React.FC = () => {
                     onClick={handleLogout}
                     className="text-sm text-gray-500 hover:text-gray-700 underline"
                 >
-                    Log out
+                    Sair
                 </button>
                 <div className="h-10 w-10 rounded-full bg-gradient-to-r from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md">
-                    {currentUser.name.charAt(0)}
+                    {currentUser.name.charAt(0).toUpperCase()}
                 </div>
             </div>
           </header>
