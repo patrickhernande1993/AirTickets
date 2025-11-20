@@ -85,6 +85,17 @@ const App: React.FC = () => {
             throw error;
           }
 
+          // SPECIAL ADMIN OVERRIDE
+          // Automatically promote specific emails to ADMIN to bootstrap the system
+          const superAdmins = ['ti@grupoairslaid.com.br'];
+          if (superAdmins.includes(email) || email.startsWith('admin') || email.startsWith('dev')) {
+             if (data && data.role !== 'ADMIN') {
+                 console.log(`Promoting super user ${email} to ADMIN...`);
+                 await supabase.from('profiles').update({ role: 'ADMIN' }).eq('id', userId);
+                 data.role = 'ADMIN';
+             }
+          }
+
           if (data) {
             setCurrentUser({
                 id: data.id,
