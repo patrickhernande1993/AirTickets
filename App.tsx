@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { TicketList } from './components/TicketList';
 import { TicketForm } from './components/TicketForm';
 import { TicketDetail } from './components/TicketDetail';
+import { Login } from './components/Login';
 import { Ticket, ViewState, TicketStatus, TicketPriority } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -33,9 +34,14 @@ const INITIAL_TICKETS: Ticket[] = [
 ];
 
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [tickets, setTickets] = useState<Ticket[]>(INITIAL_TICKETS);
   const [currentView, setCurrentView] = useState<ViewState>('DASHBOARD');
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+  };
 
   const handleCreateTicket = (newTicketData: Omit<Ticket, 'id' | 'createdAt'>) => {
     const newTicket: Ticket = {
@@ -85,6 +91,10 @@ const App: React.FC = () => {
     }
   };
 
+  if (!isAuthenticated) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar currentView={currentView} onChangeView={setCurrentView} />
@@ -101,6 +111,17 @@ const App: React.FC = () => {
                 {currentView === 'DASHBOARD' && `Managing ${tickets.length} active support requests`}
                 {currentView === 'CREATE_TICKET' && 'Submit a new request for the IT department'}
               </p>
+            </div>
+            <div className="flex items-center space-x-4">
+                <button 
+                    onClick={() => setIsAuthenticated(false)}
+                    className="text-sm text-gray-500 hover:text-gray-700 underline"
+                >
+                    Log out
+                </button>
+                <div className="h-10 w-10 rounded-full bg-gradient-to-r from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md">
+                    JD
+                </div>
             </div>
           </header>
           {renderContent()}
