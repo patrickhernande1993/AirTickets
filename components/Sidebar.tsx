@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, PlusCircle, Ticket, Settings, LifeBuoy } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Settings, LifeBuoy } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface SidebarProps {

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Ticket, TicketPriority, TicketStatus } from '../types';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { AlertCircle, CheckCircle, Clock, Search } from 'lucide-react';
 
 interface TicketListProps {
@@ -69,7 +69,7 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket 
                     paddingAngle={5}
                     dataKey="value"
                     >
-                    {stats.priorityCounts.map((entry, index) => (
+                    {stats.priorityCounts.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                     </Pie>
