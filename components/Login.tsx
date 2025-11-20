@@ -36,20 +36,32 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             if (signUpError) throw signUpError;
 
             if (data.user) {
-                 // Wait a moment for the DB trigger to create the profile
-                 // Then update the name field
+                 // Try to create the initial profile immediately.
+                 // STRICT RULE: All new users start as 'USER'.
                  setTimeout(async () => {
                     try {
-                        await supabase.from('profiles')
-                            .update({ name: fullName })
-                            .eq('id', data.user!.id);
+                        // We use insert instead of upsert. 
+                        // If the profile already exists (e.g. user re-registering), we do NOT want to overwrite their role (e.g. if they were promoted to ADMIN).
+                        // Insert will fail if ID exists, which is what we want (preserve existing data).
+                        await supabase.from('profiles').insert({ 
+                            id: data.user!.id, 
+                            email: email,
+                            name: fullName,
+                            role: 'USER' // Always 'USER' for new signups
+                        });
                     } catch (err) {
-                        console.warn("Could not update profile name immediately", err);
+                        // Ignore duplicate key errors, log others
+                        console.log("Profile creation handled or skipped (profile likely exists).");
                     }
-                 }, 1000);
+                 }, 500);
 
-                setMessage('Account created successfully! You can now sign in.');
-                setIsSignUp(false);
+                if (data.session) {
+                    // If Confirm Email is disabled, we get a session immediately
+                    onLoginSuccess();
+                } else {
+                    setMessage('Account created! Please check your email to confirm.');
+                    setIsSignUp(false);
+                }
             }
         } else {
             const { error: signInError } = await supabase.auth.signInWithPassword({

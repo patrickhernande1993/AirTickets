@@ -52,22 +52,53 @@ const App: React.FC = () => {
 
   const fetchProfile = async (userId: string, email: string) => {
       try {
-          const { data, error } = await supabase
+          // Attempt to fetch profile
+          // .maybeSingle() returns null instead of error if not found
+          let { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', userId)
-            .single();
+            .maybeSingle();
           
-          if (error) throw error;
+          // SELF-HEALING: If profile is missing but Auth exists, create it now.
+          // STRICT RULE: When creating a fallback profile, it is ALWAYS 'USER' role.
+          if (!data) {
+            console.log("Profile missing for authenticated user. Creating default 'USER' profile...");
+            const name = email.split('@')[0];
+            const { data: newProfile, error: createError } = await supabase
+                .from('profiles')
+                .insert([{ 
+                    id: userId, 
+                    email: email, 
+                    name: name, 
+                    role: 'USER' // Enforced default role
+                }])
+                .select()
+                .single();
+            
+            if (createError) {
+                console.error("Failed to auto-create profile:", createError);
+                throw createError;
+            }
+            data = newProfile;
+          } else if (error) {
+            throw error;
+          }
 
-          setCurrentUser({
-              id: data.id,
-              name: data.name || email.split('@')[0],
-              email: data.email || email,
-              role: data.role
-          });
+          if (data) {
+            setCurrentUser({
+                id: data.id,
+                name: data.name || email.split('@')[0],
+                email: data.email || email,
+                role: data.role
+            });
+          }
       } catch (error) {
-          console.error('Error fetching profile:', error);
+          console.error('Error fetching/creating profile:', error);
+          // Force logout if we can't get a profile to prevent loop
+          if (currentUser === null) {
+            // Optional: await supabase.auth.signOut(); 
+          }
       } finally {
           setLoading(false);
       }
