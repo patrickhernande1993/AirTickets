@@ -3,6 +3,7 @@ import { Ticket, TicketStatus, User } from '../types';
 import { generateSolutionSuggestion } from '../services/geminiService';
 import { ArrowLeft, Bot, CheckCircle, Clock, User as UserIcon, Calendar, Tag, AlertTriangle, Trash2, Edit } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { supabase } from '../services/supabase';
 
 interface TicketDetailProps {
   ticket: Ticket;
@@ -21,17 +22,21 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
   const isOwner = currentUser.id === ticket.requesterId;
 
   useEffect(() => {
-    // Auto-generate solution if not present and user is Admin or ticket is not closed
-    // Only generate if we don't have one
+    // Generate solution if missing and user is admin/owner
     if (!solution && ticket.status !== TicketStatus.CLOSED) {
       setLoadingSolution(true);
       generateSolutionSuggestion(ticket.title, ticket.description, ticket.category)
-        .then(sol => {
+        .then(async (sol) => {
             setSolution(sol);
+            // Persist the solution to the DB so we don't regen every time
+            await supabase
+                .from('tickets')
+                .update({ suggested_solution: sol })
+                .eq('id', ticket.id);
         })
         .finally(() => setLoadingSolution(false));
     }
-  }, [ticket.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ticket.id]); 
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -47,7 +52,10 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                 <div className="flex items-center space-x-3 mb-2">
                     <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">#{ticket.id.slice(0, 8)}</span>
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        ticket.priority === 'CRITICAL' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                        ticket.priority === 'CRITICAL' ? 'bg-red-100 text-red-800' : 
+                        ticket.priority === 'HIGH' ? 'bg-orange-100 text-orange-800' :
+                        ticket.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-blue-100 text-blue-800'
                     }`}>
                         {ticket.priority} Priority
                     </span>
@@ -144,7 +152,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                         </div>
                     ) : (
                         <div className="prose prose-indigo prose-sm max-w-none">
-                             <ReactMarkdown>{solution || "No solution available."}</ReactMarkdown>
+                             <ReactMarkdown>{solution || "No solution available yet. Check back shortly."}</ReactMarkdown>
                         </div>
                     )}
                 </div>

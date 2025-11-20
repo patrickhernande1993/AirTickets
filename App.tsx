@@ -1,96 +1,172 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { TicketList } from './components/TicketList';
 import { TicketForm } from './components/TicketForm';
 import { TicketDetail } from './components/TicketDetail';
 import { Login } from './components/Login';
 import { UserManagement } from './components/UserManagement';
-import { Ticket, ViewState, TicketStatus, TicketPriority, User } from './types';
-import { v4 as uuidv4 } from 'uuid';
-
-// Mock initial data
-const INITIAL_TICKETS: Ticket[] = [
-  {
-    id: '550e8400-e29b-41d4-a716-446655440000',
-    title: 'VPN Connection Failing',
-    description: 'I cannot connect to the corporate VPN from home. Error 800 implies a network reachability issue.',
-    requester: 'Regular User',
-    requesterId: 'user-1',
-    priority: TicketPriority.HIGH,
-    status: TicketStatus.OPEN,
-    category: 'Network',
-    createdAt: new Date('2023-10-26'),
-    aiAnalysis: 'Network connectivity issue preventing remote access. High priority due to work blockage.',
-    suggestedSolution: '1. Check internet connection.\n2. Verify VPN endpoint address.\n3. Restart router.'
-  },
-  {
-    id: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
-    title: 'Request for new Monitor',
-    description: 'My secondary monitor is flickering constantly. I need a replacement.',
-    requester: 'Regular User',
-    requesterId: 'user-1',
-    priority: TicketPriority.LOW,
-    status: TicketStatus.IN_PROGRESS,
-    category: 'Hardware',
-    createdAt: new Date('2023-10-25'),
-  },
-  {
-    id: '7ca7b810-9dad-11d1-80b4-00c04fd430c9',
-    title: 'Server Downtime',
-    description: 'Production server API-01 is unreachable.',
-    requester: 'John Doe',
-    requesterId: 'user-2',
-    priority: TicketPriority.CRITICAL,
-    status: TicketStatus.OPEN,
-    category: 'Server',
-    createdAt: new Date('2023-10-27'),
-  }
-];
+import { Ticket, ViewState, TicketStatus, User } from './types';
+import { supabase } from './services/supabase';
+import { Loader2 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [tickets, setTickets] = useState<Ticket[]>(INITIAL_TICKETS);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [currentView, setCurrentView] = useState<ViewState>('DASHBOARD');
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleLogin = (user: User) => {
-    setCurrentUser(user);
+  // Check auth session on load
+  useEffect(() => {
+    checkUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session) {
+            fetchProfile(session.user.id, session.user.email!);
+        } else {
+            setCurrentUser(null);
+            setTickets([]);
+            setLoading(false);
+        }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Fetch tickets whenever user changes or view updates
+  useEffect(() => {
+      if (currentUser) {
+          fetchTickets();
+      }
+  }, [currentUser, currentView]);
+
+  const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+          await fetchProfile(session.user.id, session.user.email!);
+      } else {
+          setLoading(false);
+      }
   };
 
-  const handleLogout = () => {
-      setCurrentUser(null);
+  const fetchProfile = async (userId: string, email: string) => {
+      try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+          
+          if (error) throw error;
+
+          setCurrentUser({
+              id: data.id,
+              name: data.name || email.split('@')[0],
+              email: data.email || email,
+              role: data.role
+          });
+      } catch (error) {
+          console.error('Error fetching profile:', error);
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  const fetchTickets = async () => {
+      try {
+          // RLS policies handle security, so we can just select *
+          // But for performance/UI logic, we can add ordering
+          const { data, error } = await supabase
+            .from('tickets')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (error) throw error;
+
+          const formattedTickets: Ticket[] = data.map((t: any) => ({
+              id: t.id,
+              title: t.title,
+              description: t.description,
+              requester: t.requester_name,
+              requesterId: t.requester_id,
+              priority: t.priority,
+              status: t.status,
+              category: t.category,
+              createdAt: new Date(t.created_at),
+              aiAnalysis: t.ai_analysis,
+              suggestedSolution: t.suggested_solution
+          }));
+
+          setTickets(formattedTickets);
+      } catch (error) {
+          console.error('Error fetching tickets:', error);
+      }
+  };
+
+  const handleLogout = async () => {
+      await supabase.auth.signOut();
       setCurrentView('DASHBOARD');
   };
 
-  const handleCreateTicket = (newTicketData: Omit<Ticket, 'id' | 'createdAt'>) => {
-    if (ticketToEdit) {
-        // Update existing ticket
-        const updatedTickets = tickets.map(t => 
-            t.id === ticketToEdit.id ? { ...t, ...newTicketData } : t
-        );
-        setTickets(updatedTickets);
-        // If we are editing the currently viewed ticket (deep link scenario), update it
-        if(selectedTicket && selectedTicket.id === ticketToEdit.id) {
-            setSelectedTicket({ ...selectedTicket, ...newTicketData });
+  const handleCreateTicket = async (newTicketData: Omit<Ticket, 'id' | 'createdAt'>) => {
+    try {
+        if (ticketToEdit) {
+            // Update existing ticket
+            const { error } = await supabase
+                .from('tickets')
+                .update({
+                    title: newTicketData.title,
+                    description: newTicketData.description,
+                    priority: newTicketData.priority,
+                    category: newTicketData.category,
+                    status: newTicketData.status,
+                    ai_analysis: newTicketData.aiAnalysis
+                })
+                .eq('id', ticketToEdit.id);
+
+            if (error) throw error;
+            
+            // Optimistic update
+            const updatedTickets = tickets.map(t => 
+                t.id === ticketToEdit.id ? { ...t, ...newTicketData } : t
+            );
+            setTickets(updatedTickets);
+            if(selectedTicket && selectedTicket.id === ticketToEdit.id) {
+                setSelectedTicket({ ...selectedTicket, ...newTicketData });
+            }
+            setTicketToEdit(null);
+        } else {
+            // Create new ticket
+            const { data, error } = await supabase
+                .from('tickets')
+                .insert([{
+                    title: newTicketData.title,
+                    description: newTicketData.description,
+                    requester_name: currentUser?.name, // We store name for display simplicity
+                    requester_id: currentUser?.id,
+                    priority: newTicketData.priority,
+                    category: newTicketData.category,
+                    status: 'OPEN',
+                    ai_analysis: newTicketData.aiAnalysis
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+            
+            // Refresh list
+            await fetchTickets();
         }
-        setTicketToEdit(null);
-    } else {
-        // Create new ticket
-        const newTicket: Ticket = {
-          ...newTicketData,
-          id: uuidv4(),
-          createdAt: new Date(),
-          requesterId: currentUser?.id || 'unknown',
-          requester: currentUser?.name || 'Unknown'
-        };
-        setTickets([newTicket, ...tickets]);
-    }
-    
-    if (currentUser?.role === 'USER') {
-        setCurrentView('MY_TICKETS');
-    } else {
-        setCurrentView('DASHBOARD');
+        
+        if (currentUser?.role === 'USER') {
+            setCurrentView('MY_TICKETS');
+        } else {
+            setCurrentView('DASHBOARD');
+        }
+    } catch (error) {
+        console.error("Error saving ticket:", error);
+        alert("Failed to save ticket. Please try again.");
     }
   };
 
@@ -99,12 +175,20 @@ const App: React.FC = () => {
     setCurrentView('TICKET_DETAIL');
   };
 
-  const handleDeleteTicket = (id: string) => {
-      setTickets(tickets.filter(t => t.id !== id));
-      if (currentUser?.role === 'USER') {
-        setCurrentView('MY_TICKETS');
-      } else {
-        setCurrentView('DASHBOARD');
+  const handleDeleteTicket = async (id: string) => {
+      try {
+        const { error } = await supabase.from('tickets').delete().eq('id', id);
+        if (error) throw error;
+        
+        setTickets(tickets.filter(t => t.id !== id));
+        if (currentUser?.role === 'USER') {
+            setCurrentView('MY_TICKETS');
+        } else {
+            setCurrentView('DASHBOARD');
+        }
+      } catch (error) {
+          console.error("Error deleting ticket:", error);
+          alert("Failed to delete ticket.");
       }
   };
 
@@ -113,22 +197,23 @@ const App: React.FC = () => {
       setCurrentView('EDIT_TICKET');
   };
 
-  const handleUpdateStatus = (id: string, status: TicketStatus) => {
-    setTickets(prev => prev.map(t => t.id === id ? { ...t, status } : t));
-    if (selectedTicket && selectedTicket.id === id) {
-        setSelectedTicket({ ...selectedTicket, status });
+  const handleUpdateStatus = async (id: string, status: TicketStatus) => {
+    try {
+        const { error } = await supabase
+            .from('tickets')
+            .update({ status })
+            .eq('id', id);
+
+        if (error) throw error;
+
+        setTickets(prev => prev.map(t => t.id === id ? { ...t, status } : t));
+        if (selectedTicket && selectedTicket.id === id) {
+            setSelectedTicket({ ...selectedTicket, status });
+        }
+    } catch (error) {
+        console.error("Error updating status:", error);
     }
   };
-
-  // Determine which tickets to show based on view and role
-  const visibleTickets = useMemo(() => {
-      if (!currentUser) return [];
-      if (currentView === 'MY_TICKETS' || (currentUser.role === 'USER' && currentView === 'DASHBOARD')) {
-          return tickets.filter(t => t.requesterId === currentUser.id);
-      }
-      // Admin dashboard sees all
-      return tickets;
-  }, [tickets, currentUser, currentView]);
 
   const renderContent = () => {
     if (!currentUser) return null;
@@ -154,21 +239,28 @@ const App: React.FC = () => {
             onEdit={handleEditTicket}
           />
         ) : (
-           <TicketList tickets={visibleTickets} onSelectTicket={handleSelectTicket} />
+           <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} />
         );
       case 'USERS':
         return currentUser.role === 'ADMIN' ? <UserManagement currentUser={currentUser} /> : <div>Access Denied</div>;
       case 'MY_TICKETS':
-        return <TicketList tickets={visibleTickets} onSelectTicket={handleSelectTicket} />;
+        return <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} />;
       case 'DASHBOARD':
       default:
-        // Dashboard handles both "All Tickets" for Admin and "My Stats" for User via visibleTickets filter
-        return <TicketList tickets={visibleTickets} onSelectTicket={handleSelectTicket} />;
+        return <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} />;
     }
   };
 
+  if (loading) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50">
+              <Loader2 className="animate-spin text-primary-600" size={48} />
+          </div>
+      );
+  }
+
   if (!currentUser) {
-    return <Login onLogin={handleLogin} />;
+    return <Login onLoginSuccess={() => checkUser()} />;
   }
 
   return (
@@ -186,10 +278,6 @@ const App: React.FC = () => {
                 {currentView === 'TICKET_DETAIL' && 'Ticket Details'}
                 {currentView === 'USERS' && 'User Management'}
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                {(currentView === 'DASHBOARD' || currentView === 'MY_TICKETS') && `Viewing ${visibleTickets.length} active support requests`}
-                {currentView === 'USERS' && 'Manage system access and roles'}
-              </p>
             </div>
             <div className="flex items-center space-x-4">
                 <button 

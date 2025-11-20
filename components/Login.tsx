@@ -1,45 +1,71 @@
 import React, { useState } from 'react';
-import { Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
-import { User } from '../types';
+import { Lock, Mail, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { supabase } from '../services/supabase';
 
 interface LoginProps {
-  onLogin: (user: User) => void;
+  onLoginSuccess: () => void;
 }
 
-export const Login: React.FC<LoginProps> = ({ onLogin }) => {
+export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState(''); // Only for sign up
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
+    setMessage(null);
     
-    // Simulate API call/delay
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      // MOCK AUTH LOGIC
-      let user: User;
-      
-      if (email.includes('dev') || email.includes('admin')) {
-        user = {
-            id: 'admin-1',
-            name: 'Dev Admin',
-            email: email,
-            role: 'ADMIN'
-        };
-      } else {
-        user = {
-            id: 'user-1',
-            name: 'Regular User',
-            email: email,
-            role: 'USER'
-        };
-      }
+    try {
+        if (isSignUp) {
+            const { error: signUpError, data } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: fullName, // Store in metadata as backup
+                    }
+                }
+            });
 
-      onLogin(user);
-    }, 1000);
+            if (signUpError) throw signUpError;
+
+            if (data.user) {
+                 // Wait a moment for the DB trigger to create the profile
+                 // Then update the name field
+                 setTimeout(async () => {
+                    try {
+                        await supabase.from('profiles')
+                            .update({ name: fullName })
+                            .eq('id', data.user!.id);
+                    } catch (err) {
+                        console.warn("Could not update profile name immediately", err);
+                    }
+                 }, 1000);
+
+                setMessage('Account created successfully! You can now sign in.');
+                setIsSignUp(false);
+            }
+        } else {
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (signInError) throw signInError;
+            onLoginSuccess();
+        }
+    } catch (err: any) {
+        console.error(err);
+        setError(err.message || 'An error occurred');
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   return (
@@ -56,11 +82,42 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           <div className="w-12 h-12 bg-gradient-to-tr from-primary-600 to-primary-400 rounded-xl flex items-center justify-center text-white font-bold text-xl mx-auto mb-4 shadow-lg shadow-primary-500/30">
             N
           </div>
-          <h2 className="text-2xl font-bold text-gray-900">Welcome back</h2>
-          <p className="text-gray-500 mt-2 text-sm">Enter your credentials to access NovaDesk AI</p>
+          <h2 className="text-2xl font-bold text-gray-900">
+              {isSignUp ? 'Create an Account' : 'Welcome back'}
+          </h2>
+          <p className="text-gray-500 mt-2 text-sm">
+              {isSignUp ? 'Join NovaDesk AI to manage tickets' : 'Enter your credentials to access NovaDesk AI'}
+          </p>
         </div>
 
+        {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg flex items-start">
+                <AlertCircle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
+                {error}
+            </div>
+        )}
+
+        {message && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-100 text-green-600 text-sm rounded-lg">
+                {message}
+            </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-5">
+          {isSignUp && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+                <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-gray-900 sm:text-sm"
+                    placeholder="John Doe"
+                />
+              </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
             <div className="relative">
@@ -73,10 +130,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors outline-none text-gray-900 sm:text-sm"
-                placeholder="dev@novadesk.com or user@novadesk.com"
+                placeholder="name@company.com"
               />
             </div>
-             <p className="text-xs text-gray-400 mt-1">Tip: Use 'dev@...' for Admin access</p>
           </div>
 
           <div>
@@ -92,6 +148,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 onChange={(e) => setPassword(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors outline-none text-gray-900 sm:text-sm"
                 placeholder="••••••••"
+                minLength={6}
               />
             </div>
           </div>
@@ -104,16 +161,28 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             {isLoading ? (
               <>
                 <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
-                Signing in...
+                Please wait...
               </>
             ) : (
               <>
-                Sign in
+                {isSignUp ? 'Create Account' : 'Sign in'}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </>
             )}
           </button>
         </form>
+
+        <div className="mt-6 text-center">
+            <p className="text-sm text-gray-500">
+                {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                <button 
+                    onClick={() => { setIsSignUp(!isSignUp); setError(null); setMessage(null); }}
+                    className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
+                >
+                    {isSignUp ? 'Sign in' : 'Sign up'}
+                </button>
+            </p>
+        </div>
       </div>
     </div>
   );

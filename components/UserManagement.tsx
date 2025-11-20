@@ -1,48 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
-import { UserPlus, Search, Mail, Shield, Trash2, User as UserIcon } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
+import { UserPlus, Search, Mail, Shield, User as UserIcon, Loader2, Info } from 'lucide-react';
+import { supabase } from '../services/supabase';
 
 interface UserManagementProps {
-  currentUser: User; // To ensure current user doesn't delete themselves
+  currentUser: User;
 }
 
-// Mock Initial Users
-const INITIAL_USERS: User[] = [
-    { id: 'admin-1', name: 'Dev Admin', email: 'dev@novadesk.com', role: 'ADMIN' },
-    { id: 'user-1', name: 'Regular User', email: 'user@novadesk.com', role: 'USER' },
-    { id: 'user-2', name: 'John Doe', email: 'john@company.com', role: 'USER' }
-];
-
 export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
-  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   
-  // New User Form State
-  const [newName, setNewName] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const [newRole, setNewRole] = useState<UserRole>('USER');
+  // For this demo, we just simulate adding users to the list, 
+  // as creating Auth users requires server-side admin rights or sign-up flow.
+  // We will display an info message.
 
-  const handleAddUser = (e: React.FormEvent) => {
-      e.preventDefault();
-      const newUser: User = {
-          id: uuidv4(),
-          name: newName,
-          email: newEmail,
-          role: newRole
-      };
-      setUsers([...users, newUser]);
-      setShowModal(false);
-      setNewName('');
-      setNewEmail('');
+  useEffect(() => {
+      fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+      setIsLoading(true);
+      const { data, error } = await supabase.from('profiles').select('*');
+      if (error) {
+          console.error('Error fetching users:', error);
+      } else {
+          setUsers(data as User[]);
+      }
+      setIsLoading(false);
   };
 
-  const handleDeleteUser = (id: string) => {
-      if(id === currentUser.id) {
-          alert("You cannot delete yourself!");
-          return;
+  const toggleRole = async (user: User) => {
+      if (user.id === currentUser.id) return; // Prevent changing own role to avoid lockout
+
+      const newRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN';
+      
+      // Optimistic update
+      setUsers(users.map(u => u.id === user.id ? { ...u, role: newRole } : u));
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', user.id);
+
+      if (error) {
+          console.error('Error updating role', error);
+          fetchUsers(); // Revert on error
       }
-      setUsers(users.filter(u => u.id !== id));
   };
 
   return (
@@ -56,12 +61,16 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                 onClick={() => setShowModal(true)}
                 className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
             >
-                <UserPlus size={18} />
-                <span>Add User</span>
+                <Info size={18} />
+                <span>How to Add Users</span>
             </button>
         </div>
 
-        {/* User List */}
+        {isLoading ? (
+            <div className="flex justify-center p-12">
+                <Loader2 className="animate-spin text-gray-400" />
+            </div>
+        ) : (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
              <div className="p-4 border-b border-gray-200 flex items-center bg-gray-50">
                 <div className="relative w-full max-w-md">
@@ -110,11 +119,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                             </td>
                             <td className="px-6 py-4">
                                 <button 
-                                    onClick={() => handleDeleteUser(user.id)}
-                                    className="text-gray-400 hover:text-red-600 transition-colors p-1"
-                                    title="Delete User"
+                                    onClick={() => toggleRole(user)}
+                                    disabled={user.id === currentUser.id}
+                                    className={`text-xs font-medium px-3 py-1 rounded border transition-colors ${
+                                        user.id === currentUser.id 
+                                        ? 'opacity-50 cursor-not-allowed bg-gray-50 text-gray-400' 
+                                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                                    }`}
                                 >
-                                    <Trash2 size={18} />
+                                    {user.role === 'ADMIN' ? 'Demote to User' : 'Promote to Admin'}
                                 </button>
                             </td>
                         </tr>
@@ -122,60 +135,28 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                 </tbody>
             </table>
         </div>
+        )}
 
-        {/* Add User Modal */}
+        {/* Info Modal */}
         {showModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 m-4">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Add New User</h3>
-                    <form onSubmit={handleAddUser} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                            <input 
-                                required
-                                type="text" 
-                                value={newName}
-                                onChange={e => setNewName(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                            <input 
-                                required
-                                type="email" 
-                                value={newEmail}
-                                onChange={e => setNewEmail(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                            />
-                        </div>
-                        <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                             <select
-                                value={newRole}
-                                onChange={e => setNewRole(e.target.value as UserRole)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                             >
-                                 <option value="USER">User</option>
-                                 <option value="ADMIN">Developer / Admin</option>
-                             </select>
-                        </div>
-                        <div className="flex justify-end space-x-3 mt-6">
-                            <button 
-                                type="button"
-                                onClick={() => setShowModal(false)}
-                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                type="submit"
-                                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                            >
-                                Create User
-                            </button>
-                        </div>
-                    </form>
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">Adding New Users</h3>
+                    <p className="text-gray-600 mb-4">
+                        To add a new user to the system, simply ask them to <strong>Sign Up</strong> on the login page.
+                    </p>
+                    <p className="text-gray-600 mb-4">
+                        Once they sign up, they will appear in this list as a "Standard User". You can then promote them to "Admin" using the action buttons in the table.
+                    </p>
+                    <div className="flex justify-end mt-6">
+                        <button 
+                            type="button"
+                            onClick={() => setShowModal(false)}
+                            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                        >
+                            Got it
+                        </button>
+                    </div>
                 </div>
             </div>
         )}
