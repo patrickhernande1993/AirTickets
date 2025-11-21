@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { LayoutDashboard, Settings, LifeBuoy, Users, Ticket as TicketIcon, List, Bell } from 'lucide-react';
 import { ViewState, User } from '../types';
@@ -91,11 +92,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = currentView === item.id || 
-                             (item.id === 'DASHBOARD' && currentView === 'TICKET_DETAIL') ||
-                             (item.id === 'MY_TICKETS' && currentView === 'TICKET_DETAIL' && currentUser.role === 'USER');
             
-            // Deduplicate visual check
+            // Determine if this item is active
+            let isActive = currentView === item.id;
+
+            // Handle logic for Detail/Create/Edit views which are sub-views of the main lists
+            if (['TICKET_DETAIL', 'CREATE_TICKET', 'EDIT_TICKET'].includes(currentView)) {
+                 // For Admins, ticket details fall under "Todos os Chamados" (DASHBOARD id in this specific config)
+                 if (currentUser.role === 'ADMIN' && item.id === 'DASHBOARD') {
+                     isActive = true;
+                 }
+                 // For Users, ticket details fall under "Meus Chamados"
+                 if (currentUser.role === 'USER' && item.id === 'MY_TICKETS') {
+                     isActive = true;
+                 }
+            }
+            
+            // Deduplicate visual check for Admin (Hide the 'Dashboard' label item, show 'Todos os Chamados')
             if (item.id === 'DASHBOARD' && currentUser.role === 'ADMIN' && item.label === 'Dashboard') return null; 
 
             return (
