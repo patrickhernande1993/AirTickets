@@ -1,9 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Ticket, TicketStatus, User, Comment, AuditLog } from '../types';
-import { generateSolutionSuggestion } from '../services/geminiService';
-import { ArrowLeft, Bot, CheckCircle, Clock, User as UserIcon, Calendar, Tag, AlertTriangle, Trash2, Edit, Send, MessageSquare, FileText, Paperclip } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { ArrowLeft, CheckCircle, Clock, User as UserIcon, Calendar, Tag, AlertTriangle, Trash2, Edit, Send, MessageSquare, FileText, Paperclip } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
 interface TicketDetailProps {
@@ -16,9 +14,6 @@ interface TicketDetailProps {
 }
 
 export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser, onBack, onUpdateStatus, onDelete, onEdit }) => {
-  const [solution, setSolution] = useState<string | null>(ticket.suggestedSolution || null);
-  const [loadingSolution, setLoadingSolution] = useState(false);
-  
   // Comment State
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -32,23 +27,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
   const isOwner = currentUser.id === ticket.requesterId;
 
   useEffect(() => {
-    // Generate solution if missing and user is admin/owner
-    if (!solution && ticket.status !== TicketStatus.CLOSED) {
-      setLoadingSolution(true);
-      generateSolutionSuggestion(ticket.title, ticket.description, ticket.category)
-        .then(async (sol) => {
-            setSolution(sol);
-            // Persist the solution to the DB so we don't regen every time
-            await supabase
-                .from('tickets')
-                .update({ suggested_solution: sol })
-                .eq('id', ticket.id);
-        })
-        .finally(() => setLoadingSolution(false));
-    }
-  }, [ticket.id]); 
-
-  useEffect(() => {
       fetchComments();
       fetchLogs();
       
@@ -56,14 +34,11 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       const channel = supabase
         .channel(`comments:${ticket.id}`)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments', filter: `ticket_id=eq.${ticket.id}` }, (payload) => {
-            // We fetch to ensure we get the joined profile data, 
-            // but we might check if we already have this ID to avoid duplicating the optimistic one
-            // For simplicity, fetching is safer to sync state
             fetchComments(); 
         })
         .subscribe();
 
-      // Subscribe to logs (e.g. status changes made by others)
+      // Subscribe to logs
       const logsChannel = supabase
         .channel(`logs:${ticket.id}`)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs', filter: `ticket_id=eq.${ticket.id}` }, () => {
@@ -78,7 +53,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
   }, [ticket.id]);
 
   useEffect(() => {
-      // Scroll to bottom on comments change
       commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [comments]);
 
@@ -132,8 +106,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
       const commentText = newComment;
       
-      // 1. Optimistic Update (Instant Feedback)
-      // Create a temporary comment to show immediately
+      // Optimistic Update
       const tempId = `temp-${Date.now()}`;
       const optimisticComment: Comment = {
           id: tempId,
@@ -145,7 +118,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
           createdAt: new Date()
       };
 
-      // Update UI immediately
       setComments(prev => [...prev, optimisticComment]);
       setNewComment(''); 
 
@@ -158,9 +130,8 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
           if (error) throw error;
 
-          // Notify logic
+          // Notifications
           if (isAdmin) {
-             // Notify Requester
              if (ticket.requesterId !== currentUser.id) {
                  await supabase.from('notifications').insert({
                      user_id: ticket.requesterId,
@@ -170,7 +141,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                  });
              }
           } else {
-             // Notify Admins
              const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'ADMIN');
              if (admins) {
                  const notifications = admins.map(admin => ({
@@ -188,9 +158,8 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       } catch (error) {
           console.error("Error sending comment:", error);
           alert("Erro ao enviar mensagem");
-          // Rollback: Remove the optimistic comment if it failed
           setComments(prev => prev.filter(c => c.id !== tempId));
-          setNewComment(commentText); // Put text back in input
+          setNewComment(commentText); 
       }
   };
 
@@ -355,31 +324,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       {/* AI Analysis & Solution */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            {/* Suggested Solution */}
-            {(isAdmin || ticket.status !== TicketStatus.OPEN) && (
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-indigo-600"></div>
-                    <div className="flex items-center mb-4">
-                        <div className="bg-purple-100 p-2 rounded-lg mr-3">
-                            <Bot className="text-purple-600" size={24} />
-                        </div>
-                        <h2 className="text-lg font-bold text-gray-900">Sugestão de Solução (IA)</h2>
-                    </div>
-                    
-                    {loadingSolution ? (
-                         <div className="space-y-3 animate-pulse">
-                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                            <div className="h-4 bg-gray-200 rounded w-full"></div>
-                            <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                         </div>
-                    ) : (
-                        <div className="prose prose-sm prose-purple max-w-none text-gray-700">
-                           <ReactMarkdown>{solution || "Não foi possível gerar uma solução."}</ReactMarkdown>
-                        </div>
-                    )}
-                </div>
-            )}
-
             {/* Comments / Interactions */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
                 <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
