@@ -6,6 +6,7 @@ import { TicketDetail } from './components/TicketDetail';
 import { Login } from './components/Login';
 import { UserManagement } from './components/UserManagement';
 import { Notifications } from './components/Notifications';
+import { Dashboard } from './components/Dashboard';
 import { Ticket, ViewState, TicketStatus, User } from './types';
 import { supabase } from './services/supabase';
 import { Loader2 } from 'lucide-react';
@@ -388,7 +389,19 @@ const App: React.FC = () => {
         return <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} onCreateTicket={() => setCurrentView('CREATE_TICKET')} />;
       case 'DASHBOARD':
       default:
-        return <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} onCreateTicket={() => setCurrentView('CREATE_TICKET')} />;
+        // If User is ADMIN, show the new KPI Dashboard
+        if (currentUser.role === 'ADMIN') {
+            return <Dashboard tickets={tickets} />;
+        }
+        // If User is regular, show their own Dashboard (which is effectively My Tickets overview, or we can reuse Dashboard if they want stats)
+        // Assuming "Visão Geral" for User also wants stats but restricted?
+        // For now, keeping behavior consistent: Admin sees System Dashboard, User sees System Dashboard (filtered? no, usually users see their own stats).
+        // Let's assume Dashboard is global stats for Admin. For User, 'Visão Geral' might just be TicketList or a simplified Dashboard.
+        // Based on prompt "Visao Geral... cards...". I'll render Dashboard for both but maybe filter data if needed.
+        // For simplicity, passing all 'tickets' (which are already filtered by RLS in App fetchTickets? No, App fetches ALL for Admin, and RLS filters for User).
+        // Wait, App.tsx fetchTickets fetches ALL. If RLS is on, it returns only allowed tickets.
+        // So passing `tickets` is safe.
+        return <Dashboard tickets={tickets} />;
     }
   };
 
@@ -412,7 +425,7 @@ const App: React.FC = () => {
           <header className="mb-8 flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {currentView === 'DASHBOARD' && (currentUser.role === 'ADMIN' ? 'Dashboard Admin' : 'Meu Dashboard')}
+                {currentView === 'DASHBOARD' && (currentUser.role === 'ADMIN' ? 'Dashboard Geral' : 'Visão Geral')}
                 {currentView === 'MY_TICKETS' && 'Meus Chamados'}
                 {currentView === 'CREATE_TICKET' && 'Novo Chamado'}
                 {currentView === 'EDIT_TICKET' && 'Editar Chamado'}

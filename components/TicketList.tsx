@@ -1,6 +1,5 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Ticket, TicketPriority, TicketStatus } from '../types';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { AlertCircle, CheckCircle, Clock, Search, Plus } from 'lucide-react';
 
 interface TicketListProps {
@@ -9,21 +8,8 @@ interface TicketListProps {
   onCreateTicket: () => void;
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
-
 export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket, onCreateTicket }) => {
   
-  const stats = useMemo(() => {
-    const priorityCounts = [
-      { name: 'Baixa', value: tickets.filter(t => t.priority === TicketPriority.LOW).length },
-      { name: 'Média', value: tickets.filter(t => t.priority === TicketPriority.MEDIUM).length },
-      { name: 'Alta', value: tickets.filter(t => t.priority === TicketPriority.HIGH).length },
-      { name: 'Crítica', value: tickets.filter(t => t.priority === TicketPriority.CRITICAL).length },
-    ].filter(x => x.value > 0);
-
-    return { priorityCounts };
-  }, [tickets]);
-
   const getPriorityColor = (p: TicketPriority) => {
     switch(p) {
       case TicketPriority.CRITICAL: return 'bg-red-100 text-red-800 border-red-200';
@@ -65,6 +51,7 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
 
   return (
     <div className="space-y-6">
+      {/* Botão de criar chamado (Apenas aqui, não no Dashboard) */}
       <div className="flex justify-end">
           <button 
                 onClick={onCreateTicket}
@@ -73,42 +60,6 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                 <Plus size={20} />
                 <span>Abrir Novo Chamado</span>
           </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-           <h3 className="text-gray-500 text-sm font-medium">Total de Chamados</h3>
-           <p className="text-3xl font-bold text-gray-900 mt-2">{tickets.length}</p>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-           <h3 className="text-gray-500 text-sm font-medium">Pendentes Críticos</h3>
-           <p className="text-3xl font-bold text-red-600 mt-2">
-             {tickets.filter(t => t.priority === TicketPriority.CRITICAL && t.status !== TicketStatus.CLOSED).length}
-           </p>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col">
-            <h3 className="text-gray-500 text-sm font-medium mb-2">Distribuição por Prioridade</h3>
-            <div className="flex-1 min-h-[100px]">
-                <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                    <Pie
-                    data={stats.priorityCounts}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={25}
-                    outerRadius={40}
-                    paddingAngle={5}
-                    dataKey="value"
-                    >
-                    {stats.priorityCounts.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                    </Pie>
-                    <Tooltip />
-                </PieChart>
-                </ResponsiveContainer>
-            </div>
-        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
