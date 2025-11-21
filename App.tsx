@@ -247,7 +247,7 @@ const App: React.FC = () => {
         if (currentUser?.role === 'USER') {
             setCurrentView('MY_TICKETS');
         } else {
-            setCurrentView('DASHBOARD');
+            setCurrentView('ALL_TICKETS'); // Return to list view after edit/create
         }
     } catch (error) {
         console.error("Error saving ticket:", error);
@@ -302,7 +302,7 @@ const App: React.FC = () => {
         if (currentUser?.role === 'USER') {
             setCurrentView('MY_TICKETS');
         } else {
-            setCurrentView('DASHBOARD');
+            setCurrentView('ALL_TICKETS');
         }
       } catch (error) {
           console.error("Error deleting ticket:", error);
@@ -398,7 +398,7 @@ const App: React.FC = () => {
         return (
           <TicketForm 
             onSave={handleCreateTicket} 
-            onCancel={() => setCurrentView(currentUser.role === 'USER' ? 'MY_TICKETS' : 'DASHBOARD')} 
+            onCancel={() => setCurrentView(currentUser.role === 'USER' ? 'MY_TICKETS' : 'ALL_TICKETS')} 
             initialData={currentView === 'EDIT_TICKET' ? ticketToEdit || undefined : undefined}
             currentUser={currentUser}
           />
@@ -408,7 +408,7 @@ const App: React.FC = () => {
           <TicketDetail 
             ticket={selectedTicket}
             currentUser={currentUser}
-            onBack={() => setCurrentView(currentUser.role === 'USER' ? 'MY_TICKETS' : 'DASHBOARD')}
+            onBack={() => setCurrentView(currentUser.role === 'USER' ? 'MY_TICKETS' : 'ALL_TICKETS')}
             onUpdateStatus={handleUpdateStatus}
             onDelete={handleDeleteTicket}
             onEdit={handleEditTicket}
@@ -421,6 +421,7 @@ const App: React.FC = () => {
       case 'NOTIFICATIONS':
         return <Notifications currentUser={currentUser} onSelectNotification={handleSelectNotificationTicket} />;
       case 'MY_TICKETS':
+      case 'ALL_TICKETS':
         return <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} onCreateTicket={() => setCurrentView('CREATE_TICKET')} />;
       case 'DASHBOARD':
       default:
@@ -450,6 +451,7 @@ const App: React.FC = () => {
               <h1 className="text-2xl font-bold text-gray-900">
                 {currentView === 'DASHBOARD' && (currentUser.role === 'ADMIN' ? 'Dashboard Geral' : 'Visão Geral')}
                 {currentView === 'MY_TICKETS' && 'Meus Chamados'}
+                {currentView === 'ALL_TICKETS' && 'Todos os Chamados'}
                 {currentView === 'CREATE_TICKET' && 'Novo Chamado'}
                 {currentView === 'EDIT_TICKET' && 'Editar Chamado'}
                 {currentView === 'TICKET_DETAIL' && 'Detalhes do Chamado'}

@@ -80,4 +80,4 @@ export interface ITicketStats {
   resolved: number;
 }
 
-export type ViewState = 'DASHBOARD' | 'CREATE_TICKET' | 'TICKET_DETAIL' | 'MY_TICKETS' | 'USERS' | 'EDIT_TICKET' | 'NOTIFICATIONS';
+export type ViewState = 'DASHBOARD' | 'CREATE_TICKET' | 'TICKET_DETAIL' | 'MY_TICKETS' | 'ALL_TICKETS' | 'USERS' | 'EDIT_TICKET' | 'NOTIFICATIONS';

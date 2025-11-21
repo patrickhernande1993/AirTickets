@@ -10,6 +10,13 @@ interface SidebarProps {
   currentUser: User;
 }
 
+interface NavItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  badge?: number;
+}
+
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, currentUser }) => {
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -17,7 +24,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
     fetchUnreadNotifications();
     
     // Realtime subscription for notifications
-    // CHANGED: Listen to '*' events to catch UPDATES (is_read=true) and DELETES
     const channel = supabase
       .channel('public:notifications')
       .on('postgres_changes', { 
@@ -45,14 +51,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
     setUnreadCount(count || 0);
   };
 
-  const getNavItems = () => {
-    const commonItems = [
-      { id: 'DASHBOARD', label: currentUser.role === 'ADMIN' ? 'Dashboard' : 'Visão Geral', icon: LayoutDashboard },
+  const getNavItems = (): NavItem[] => {
+    // Common items for everyone (Notifications)
+    // Dashboard label changes based on role
+    const commonItems: NavItem[] = [
       { id: 'NOTIFICATIONS', label: 'Notificações', icon: Bell, badge: unreadCount },
     ];
 
     if (currentUser.role === 'USER') {
       return [
+        { id: 'DASHBOARD', label: 'Visão Geral', icon: LayoutDashboard }, // User Dashboard
         ...commonItems,
         { id: 'MY_TICKETS', label: 'Meus Chamados', icon: List },
       ];
@@ -60,8 +68,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
 
     // DEV / ADMIN Items
     return [
+      { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutDashboard }, // Admin Dashboard (Graphs)
       ...commonItems,
-      { id: 'DASHBOARD', label: 'Todos os Chamados', icon: TicketIcon },
+      { id: 'ALL_TICKETS', label: 'Todos os Chamados', icon: TicketIcon }, // Admin Ticket List
       { id: 'USERS', label: 'Gestão de Usuários', icon: Users },
     ];
   };
@@ -98,19 +107,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
 
             // Handle logic for Detail/Create/Edit views which are sub-views of the main lists
             if (['TICKET_DETAIL', 'CREATE_TICKET', 'EDIT_TICKET'].includes(currentView)) {
-                 // For Admins, ticket details fall under "Todos os Chamados" (DASHBOARD id in this specific config)
-                 if (currentUser.role === 'ADMIN' && item.id === 'DASHBOARD') {
+                 // For Admins, ticket details usually fall under "Todos os Chamados" context
+                 if (currentUser.role === 'ADMIN' && item.id === 'ALL_TICKETS') {
                      isActive = true;
                  }
-                 // For Users, ticket details fall under "Meus Chamados"
+                 // For Users, ticket details fall under "Meus Chamados" context
                  if (currentUser.role === 'USER' && item.id === 'MY_TICKETS') {
                      isActive = true;
                  }
             }
             
-            // Deduplicate visual check for Admin (Hide the 'Dashboard' label item, show 'Todos os Chamados')
-            if (item.id === 'DASHBOARD' && currentUser.role === 'ADMIN' && item.label === 'Dashboard') return null; 
-
             return (
                 <button
                 key={item.id + item.label}
