@@ -79,11 +79,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
 
   return (
     <div className="w-64 bg-white h-screen border-r border-gray-200 flex flex-col fixed left-0 top-0 z-10">
-      <div className="p-6 flex items-center space-x-2 border-b border-gray-100">
-        <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold">
-          N
-        </div>
-        <span className="text-xl font-bold text-gray-800">NovaDesk</span>
+      <div className="p-6 flex items-center justify-center border-b border-gray-100 h-20">
+          {/* LOGO REPLACEMENT */}
+          <img 
+            src="/logo.png" 
+            alt="NovaDesk" 
+            className="h-12 w-auto object-contain max-w-full"
+            onError={(e) => {
+                // Fallback if image not found
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+            }}
+          />
+          <div className="hidden flex items-center space-x-2">
+            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold">
+                N
+            </div>
+            <span className="text-xl font-bold text-gray-800">NovaDesk</span>
+          </div>
       </div>
 
       <div className="px-6 py-4">
