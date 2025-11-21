@@ -1,3 +1,4 @@
+
 export enum TicketStatus {
   OPEN = 'OPEN',
   IN_PROGRESS = 'IN_PROGRESS',
@@ -33,6 +34,8 @@ export interface Ticket {
   status: TicketStatus;
   category: string;
   createdAt: Date;
+  updatedAt?: Date; // Última atualização
+  resolvedAt?: Date; // Data de resolução
   aiAnalysis?: string;
   suggestedSolution?: string;
   attachments?: string[]; // URLs dos arquivos anexados

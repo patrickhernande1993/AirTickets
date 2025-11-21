@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { TicketList } from './components/TicketList';
@@ -148,6 +149,8 @@ const App: React.FC = () => {
               status: t.status,
               category: t.category,
               createdAt: new Date(t.created_at),
+              updatedAt: t.updated_at ? new Date(t.updated_at) : new Date(t.created_at), // Fallback to created
+              resolvedAt: t.resolved_at ? new Date(t.resolved_at) : undefined,
               aiAnalysis: t.ai_analysis,
               suggestedSolution: t.suggested_solution,
               attachments: t.attachments || []
@@ -275,6 +278,8 @@ const App: React.FC = () => {
                 status: data.status,
                 category: data.category,
                 createdAt: new Date(data.created_at),
+                updatedAt: data.updated_at ? new Date(data.updated_at) : new Date(data.created_at),
+                resolvedAt: data.resolved_at ? new Date(data.resolved_at) : undefined,
                 aiAnalysis: data.ai_analysis,
                 suggestedSolution: data.suggested_solution,
                 attachments: data.attachments || []
@@ -311,9 +316,20 @@ const App: React.FC = () => {
     if (!currentUser) return;
 
     try {
+        // Prepare update data
+        const updates: any = { status };
+        
+        // Logic for Resolved/Closed Date
+        if (status === TicketStatus.RESOLVED || status === TicketStatus.CLOSED) {
+            updates.resolved_at = new Date().toISOString();
+        } else {
+            // If reopening, maybe clear resolved_at? 
+            // updates.resolved_at = null; // Optional: Uncomment if reopening should clear the date
+        }
+
         const { error } = await supabase
             .from('tickets')
-            .update({ status })
+            .update(updates)
             .eq('id', id);
 
         if (error) throw error;
@@ -326,10 +342,26 @@ const App: React.FC = () => {
             details: `Status alterado para ${status}`
         });
 
-        // Update local state
-        setTickets(prev => prev.map(t => t.id === id ? { ...t, status } : t));
+        // Update local state immediately (Optimistic or Fetch)
+        setTickets(prev => prev.map(t => {
+            if (t.id === id) {
+                return {
+                    ...t,
+                    status,
+                    resolvedAt: updates.resolved_at ? new Date(updates.resolved_at) : t.resolvedAt,
+                    updatedAt: new Date() // Optimistic update for Last Update
+                };
+            }
+            return t;
+        }));
+
         if (selectedTicket && selectedTicket.id === id) {
-            const updatedTicket = { ...selectedTicket, status };
+            const updatedTicket = { 
+                ...selectedTicket, 
+                status,
+                resolvedAt: updates.resolved_at ? new Date(updates.resolved_at) : selectedTicket.resolvedAt,
+                updatedAt: new Date()
+            };
             setSelectedTicket(updatedTicket);
             
             // NOTIFICATION LOGIC: Notify the requester if status changes
