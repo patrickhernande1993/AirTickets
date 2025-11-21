@@ -41,12 +41,32 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
       }
   };
 
-  const getStatusIcon = (s: TicketStatus) => {
+  const getStatusBadge = (s: TicketStatus) => {
     switch(s) {
-      case TicketStatus.RESOLVED: return <CheckCircle size={14} className="text-green-500" />;
-      case TicketStatus.CLOSED: return <CheckCircle size={14} className="text-gray-400" />;
-      case TicketStatus.IN_PROGRESS: return <Clock size={14} className="text-blue-500" />;
-      default: return <AlertCircle size={14} className="text-yellow-500" />;
+      case TicketStatus.RESOLVED: 
+          return (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <CheckCircle size={12} className="mr-1" /> Resolvido
+            </span>
+          );
+      case TicketStatus.CLOSED: 
+          return (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                <CheckCircle size={12} className="mr-1" /> Fechado
+            </span>
+          );
+      case TicketStatus.IN_PROGRESS: 
+          return (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <Clock size={12} className="mr-1" /> Em Progresso
+            </span>
+          );
+      default: 
+          return (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                <AlertCircle size={12} className="mr-1" /> Aberto
+            </span>
+          );
     }
   };
 
@@ -94,6 +114,7 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Data Abertura</th>
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Data Resolução</th>
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Última At.</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap text-right">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -104,18 +125,14 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                     className="hover:bg-gray-50 cursor-pointer transition-colors group"
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center text-gray-500 font-mono text-xs">
-                        <Hash size={12} className="mr-1" />
-                        {ticket.id.slice(0, 8)}
+                    <div className="flex items-center text-gray-600 font-bold text-sm">
+                        <Hash size={12} className="mr-1 text-gray-400" />
+                        {ticket.ticketNumber}
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
                         <span className="font-medium text-gray-900 text-sm group-hover:text-primary-600 transition-colors">{ticket.title}</span>
-                        <div className="flex items-center mt-1 space-x-2">
-                             {getStatusIcon(ticket.status)}
-                             <span className="text-xs text-gray-500 capitalize">{translateStatus(ticket.status)}</span>
-                        </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -136,6 +153,9 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(ticket.updatedAt)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                      {getStatusBadge(ticket.status)}
                   </td>
                 </tr>
               ))}

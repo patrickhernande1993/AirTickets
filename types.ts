@@ -26,6 +26,7 @@ export interface User {
 
 export interface Ticket {
   id: string;
+  ticketNumber: number; // ID Sequencial (1, 2, 3...)
   title: string;
   description: string;
   requester: string; 
@@ -64,6 +65,7 @@ export interface Notification {
 export interface AuditLog {
   id: string;
   ticketId: string;
+  ticketNumber?: number; // Para exibição nos logs
   actorId: string;
   actorName?: string;
   action: string; // 'CREATED' | 'STATUS_CHANGE' | 'EDITED'

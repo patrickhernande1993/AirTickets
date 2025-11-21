@@ -141,6 +141,7 @@ const App: React.FC = () => {
 
           const formattedTickets: Ticket[] = data.map((t: any) => ({
               id: t.id,
+              ticketNumber: t.ticket_number || 0, // Map new column
               title: t.title,
               description: t.description,
               requester: t.requester_name,
@@ -167,7 +168,7 @@ const App: React.FC = () => {
       setCurrentView('DASHBOARD');
   };
 
-  const handleCreateTicket = async (newTicketData: Omit<Ticket, 'id' | 'createdAt'>) => {
+  const handleCreateTicket = async (newTicketData: Omit<Ticket, 'id' | 'createdAt' | 'ticketNumber'>) => {
     if (!currentUser) return;
 
     try {
@@ -199,6 +200,7 @@ const App: React.FC = () => {
             setTicketToEdit(null);
         } else {
             // Create new ticket
+            // ticket_number is generated automatically by Postgres
             const { data: newTicket, error } = await supabase
                 .from('tickets')
                 .insert([{
@@ -270,6 +272,7 @@ const App: React.FC = () => {
           if (data) {
              const formatted: Ticket = {
                 id: data.id,
+                ticketNumber: data.ticket_number,
                 title: data.title,
                 description: data.description,
                 requester: data.requester_name,

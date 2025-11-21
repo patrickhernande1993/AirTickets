@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Ticket, TicketStatus, User, Comment, AuditLog } from '../types';
 import { generateSolutionSuggestion } from '../services/geminiService';
@@ -243,7 +244,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
         <div className="flex justify-between items-start">
             <div>
                 <div className="flex items-center space-x-3 mb-2">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">#{ticket.id.slice(0, 8)}</span>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">#{ticket.ticketNumber}</span>
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                         ticket.priority === 'CRITICAL' ? 'bg-red-100 text-red-800' : 
                         ticket.priority === 'HIGH' ? 'bg-orange-100 text-orange-800' :

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { Ticket, TicketStatus, AuditLog, User } from '../types';
 import { supabase } from '../services/supabase';
@@ -17,9 +18,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser }) =>
   }, []);
 
   const fetchGlobalLogs = async () => {
+      // Join with tickets table to get ticket_number
       const { data } = await supabase
         .from('audit_logs')
-        .select('*, profiles(name)')
+        .select('*, profiles(name), tickets(ticket_number)')
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -27,6 +29,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser }) =>
           setLogs(data.map((l: any) => ({
             id: l.id,
             ticketId: l.ticket_id,
+            // Use the joined ticket number
+            ticketNumber: l.tickets?.ticket_number,
             actorId: l.actor_id,
             actorName: l.profiles?.name || 'Sistema',
             action: l.action,
@@ -88,97 +92,96 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser }) =>
   return (
     <div className="space-y-6">
       {/* Greeting Banner */}
-      <div className="bg-gradient-to-r from-primary-600 to-purple-600 rounded-xl p-8 text-white shadow-lg">
-        <div className="flex items-center space-x-4">
-            <div className="bg-white/20 p-3 rounded-full backdrop-blur-sm">
-                <UserIcon size={32} className="text-white" />
-            </div>
-            <div>
-                <h1 className="text-3xl font-bold">Olá, {currentUser.name}!</h1>
-                <p className="text-primary-100 mt-1 text-lg">
-                    Bem-vindo ao seu painel de controle. Aqui está o resumo das atividades recentes.
-                </p>
-            </div>
+      <div className="flex justify-between items-end">
+        <div>
+            <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Olá, {currentUser.name.split(' ')[0]}</h1>
+            <p className="text-sm text-gray-500 mt-1">Aqui está o resumo da operação hoje.</p>
+        </div>
+        <div className="text-sm text-gray-400">
+            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Total de Chamados</p>
-              <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</h3>
+      {/* Clean KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors">
+            <div className="flex justify-between items-start mb-4">
+                <div className="p-2 bg-gray-50 rounded-lg text-gray-600">
+                    <FileText size={20} />
+                </div>
             </div>
-            <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
-              <FileText size={24} />
-            </div>
-          </div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total de Chamados</p>
+            <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</h3>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Em Aberto</p>
-              <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.open}</h3>
+        <div className="bg-white p-5 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors">
+            <div className="flex justify-between items-start mb-4">
+                <div className="p-2 bg-yellow-50 rounded-lg text-yellow-600">
+                    <AlertCircle size={20} />
+                </div>
             </div>
-            <div className="p-3 bg-yellow-50 rounded-lg text-yellow-600">
-              <AlertCircle size={24} />
-            </div>
-          </div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Em Aberto</p>
+            <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.open}</h3>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Em Andamento</p>
-              <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.inProgress}</h3>
+        <div className="bg-white p-5 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors">
+            <div className="flex justify-between items-start mb-4">
+                <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                    <Clock size={20} />
+                </div>
             </div>
-            <div className="p-3 bg-indigo-50 rounded-lg text-indigo-600">
-              <Clock size={24} />
-            </div>
-          </div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Em Andamento</p>
+            <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.inProgress}</h3>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Resolvidos</p>
-              <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.resolved}</h3>
+        <div className="bg-white p-5 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors">
+            <div className="flex justify-between items-start mb-4">
+                <div className="p-2 bg-green-50 rounded-lg text-green-600">
+                    <CheckCircle size={20} />
+                </div>
             </div>
-            <div className="p-3 bg-green-50 rounded-lg text-green-600">
-              <CheckCircle size={24} />
-            </div>
-          </div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Resolvidos</p>
+            <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.resolved}</h3>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chart */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Volume de Chamados (Últimos 6 meses)</h3>
-          <div className="h-80">
-             <ResponsiveContainer width="100%" height="100%">
-               <BarChart data={chartData}>
-                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                 <XAxis dataKey="name" />
-                 <YAxis />
-                 <Tooltip 
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                 />
-                 <Legend />
-                 <Bar dataKey="Abertos" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                 <Bar dataKey="Resolvidos" fill="#22c55e" radius={[4, 4, 0, 0]} />
-               </BarChart>
-             </ResponsiveContainer>
-          </div>
+        <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-200">
+            <h3 className="text-base font-semibold text-gray-900 mb-6">Desempenho Mensal</h3>
+            <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                        <XAxis 
+                            dataKey="name" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fill: '#9ca3af', fontSize: 12 }} 
+                            dy={10}
+                        />
+                        <YAxis 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fill: '#9ca3af', fontSize: 12 }} 
+                        />
+                        <Tooltip 
+                            cursor={{ fill: '#f9fafb' }}
+                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                        <Bar name="Abertos" dataKey="Abertos" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={30} />
+                        <Bar name="Resolvidos" dataKey="Resolvidos" fill="#10b981" radius={[4, 4, 0, 0]} barSize={30} />
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
         </div>
 
         {/* Recent Activity Log */}
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-800 flex items-center">
-                  <Activity size={20} className="mr-2 text-primary-600" />
+                  <Activity size={20} className="mr-2 text-gray-400" />
                   Atividade Recente
               </h3>
           </div>
@@ -194,7 +197,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser }) =>
                              {log.action === 'EDITED' && <FileText size={16} className="text-orange-500" />}
                          </div>
                          <div>
-                             <p className="text-sm font-medium text-gray-900">{translateLogAction(log.action)}</p>
+                             <div className="flex items-baseline space-x-2">
+                                 <p className="text-sm font-medium text-gray-900">{translateLogAction(log.action)}</p>
+                                 {log.ticketNumber && (
+                                     <span className="text-xs text-gray-400">#{log.ticketNumber}</span>
+                                 )}
+                             </div>
                              <p className="text-xs text-gray-500">
                                  {log.details}
                              </p>

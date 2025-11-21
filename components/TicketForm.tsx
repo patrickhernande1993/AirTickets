@@ -6,7 +6,7 @@ import { supabase } from '../services/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 interface TicketFormProps {
-  onSave: (ticket: Omit<Ticket, 'id' | 'createdAt'>) => void;
+  onSave: (ticket: Omit<Ticket, 'id' | 'createdAt' | 'ticketNumber'>) => void;
   onCancel: () => void;
   initialData?: Ticket; // Optional for Edit mode
   currentUser: User; // Obrigatório para pegar o nome automaticamente
