@@ -55,7 +55,10 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       const channel = supabase
         .channel(`comments:${ticket.id}`)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments', filter: `ticket_id=eq.${ticket.id}` }, (payload) => {
-            fetchComments(); // Simple re-fetch for now to get joined profile data correctly
+            // We fetch to ensure we get the joined profile data, 
+            // but we might check if we already have this ID to avoid duplicating the optimistic one
+            // For simplicity, fetching is safer to sync state
+            fetchComments(); 
         })
         .subscribe();
 
@@ -126,10 +129,26 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       e.preventDefault();
       if (!newComment.trim()) return;
 
-      try {
-          const commentText = newComment;
-          setNewComment(''); // Optimistic clear
+      const commentText = newComment;
+      
+      // 1. Optimistic Update (Instant Feedback)
+      // Create a temporary comment to show immediately
+      const tempId = `temp-${Date.now()}`;
+      const optimisticComment: Comment = {
+          id: tempId,
+          ticketId: ticket.id,
+          userId: currentUser.id,
+          userName: currentUser.name,
+          userRole: currentUser.role,
+          content: commentText,
+          createdAt: new Date()
+      };
 
+      // Update UI immediately
+      setComments(prev => [...prev, optimisticComment]);
+      setNewComment(''); 
+
+      try {
           const { error } = await supabase.from('comments').insert({
               ticket_id: ticket.id,
               user_id: currentUser.id,
@@ -168,6 +187,9 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       } catch (error) {
           console.error("Error sending comment:", error);
           alert("Erro ao enviar mensagem");
+          // Rollback: Remove the optimistic comment if it failed
+          setComments(prev => prev.filter(c => c.id !== tempId));
+          setNewComment(commentText); // Put text back in input
       }
   };
 
