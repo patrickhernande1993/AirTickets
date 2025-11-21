@@ -53,24 +53,32 @@ const App: React.FC = () => {
 
   const fetchProfile = async (userId: string, email: string) => {
       try {
-          // Attempt to fetch profile
+          // 1. Get Auth Metadata to ensure we have the real name entered during sign up
+          const { data: authUser } = await supabase.auth.getUser();
+          const metaName = authUser.user?.user_metadata?.full_name;
+          
+          // Fallback name logic: Metadata > Email
+          const displayName = metaName || email.split('@')[0];
+
+          // 2. Attempt to fetch profile from DB
           let { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', userId)
             .maybeSingle();
           
-          // SELF-HEALING: If profile is missing but Auth exists, create it now.
+          // 3. SELF-HEALING: If profile is missing but Auth exists, create it now.
           if (!data) {
             console.log("Profile missing for authenticated user. Creating default 'USER' profile...");
-            const name = email.split('@')[0];
+            
             const { data: newProfile, error: createError } = await supabase
                 .from('profiles')
                 .insert([{ 
                     id: userId, 
                     email: email, 
-                    name: name, 
-                    role: 'USER' // Enforced default role
+                    name: displayName, // Uses the real name from registration if available
+                    role: 'USER', // Enforced default role
+                    is_active: true
                 }])
                 .select()
                 .single();
@@ -84,7 +92,17 @@ const App: React.FC = () => {
             throw error;
           }
 
-          // SPECIAL ADMIN OVERRIDE
+          // 4. Check for INACTIVE status
+          // Note: is_active defaults to true in DB, but might be false if changed by admin
+          if (data.is_active === false) {
+              alert("Sua conta foi desativada pelo administrador. Entre em contato com o suporte.");
+              await supabase.auth.signOut();
+              setCurrentUser(null);
+              setLoading(false);
+              return;
+          }
+
+          // 5. SPECIAL ADMIN OVERRIDE (Bootstrap)
           const superAdmins = ['ti@grupoairslaid.com.br'];
           if (superAdmins.includes(email) || email.startsWith('admin') || email.startsWith('dev')) {
              if (data && data.role !== 'ADMIN') {
@@ -97,9 +115,10 @@ const App: React.FC = () => {
           if (data) {
             setCurrentUser({
                 id: data.id,
-                name: data.name || email.split('@')[0],
+                name: data.name, // Use DB name (which we ensured matches metadata on creation)
                 email: data.email || email,
-                role: data.role
+                role: data.role,
+                isActive: data.is_active
             });
           }
       } catch (error) {

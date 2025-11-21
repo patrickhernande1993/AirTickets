@@ -20,14 +20,15 @@ export interface User {
   email: string;
   role: UserRole;
   avatar?: string;
+  isActive?: boolean; // Campo para controlar se o usuário está ativo ou bloqueado
 }
 
 export interface Ticket {
   id: string;
   title: string;
   description: string;
-  requester: string; // Name of requester
-  requesterId: string; // Link to User ID
+  requester: string; 
+  requesterId: string; 
   priority: TicketPriority;
   status: TicketStatus;
   category: string;
