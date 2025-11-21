@@ -56,6 +56,16 @@ export interface Notification {
   createdAt: Date;
 }
 
+export interface AuditLog {
+  id: string;
+  ticketId: string;
+  actorId: string;
+  actorName?: string;
+  action: string; // 'CREATED' | 'STATUS_CHANGE' | 'EDITED'
+  details?: string;
+  createdAt: Date;
+}
+
 export interface ITicketStats {
   total: number;
   open: number;

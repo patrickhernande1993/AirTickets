@@ -16,10 +16,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
     fetchUnreadNotifications();
     
     // Realtime subscription for notifications
+    // CHANGED: Listen to '*' events to catch UPDATES (is_read=true) and DELETES
     const channel = supabase
       .channel('public:notifications')
       .on('postgres_changes', { 
-        event: 'INSERT', 
+        event: '*', 
         schema: 'public', 
         table: 'notifications', 
         filter: `user_id=eq.${currentUser.id}` 
@@ -89,9 +90,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
 
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map((item) => {
-            // Remove duplicates if logic adds DASHBOARD twice (handled in getNavItems logic, but extra safety)
-            // Logic in getNavItems handles uniqueness based on role
-            
             const Icon = item.icon;
             const isActive = currentView === item.id || 
                              (item.id === 'DASHBOARD' && currentView === 'TICKET_DETAIL') ||

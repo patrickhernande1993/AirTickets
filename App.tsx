@@ -144,6 +144,8 @@ const App: React.FC = () => {
   };
 
   const handleCreateTicket = async (newTicketData: Omit<Ticket, 'id' | 'createdAt'>) => {
+    if (!currentUser) return;
+
     try {
         if (ticketToEdit) {
             // Update existing ticket
@@ -160,6 +162,14 @@ const App: React.FC = () => {
                 .eq('id', ticketToEdit.id);
 
             if (error) throw error;
+
+            // Audit Log for Edit
+            await supabase.from('audit_logs').insert({
+                ticket_id: ticketToEdit.id,
+                actor_id: currentUser.id,
+                action: 'EDITED',
+                details: 'Detalhes do chamado editados'
+            });
             
             setTicketToEdit(null);
         } else {
@@ -181,8 +191,16 @@ const App: React.FC = () => {
 
             if (error) throw error;
 
-            // NOTIFICATION LOGIC: Notify all Admins
             if (newTicket) {
+                // Audit Log for Creation
+                await supabase.from('audit_logs').insert({
+                    ticket_id: newTicket.id,
+                    actor_id: currentUser.id,
+                    action: 'CREATED',
+                    details: `Chamado criado com prioridade ${newTicketData.priority}`
+                });
+
+                // NOTIFICATION LOGIC: Notify all Admins
                 const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'ADMIN');
                 if (admins && admins.length > 0) {
                     const notifications = admins.map(admin => ({
@@ -266,6 +284,8 @@ const App: React.FC = () => {
   };
 
   const handleUpdateStatus = async (id: string, status: TicketStatus) => {
+    if (!currentUser) return;
+
     try {
         const { error } = await supabase
             .from('tickets')
@@ -274,6 +294,14 @@ const App: React.FC = () => {
 
         if (error) throw error;
 
+        // Audit Log for Status Change
+        await supabase.from('audit_logs').insert({
+            ticket_id: id,
+            actor_id: currentUser.id,
+            action: 'STATUS_CHANGE',
+            details: `Status alterado para ${status}`
+        });
+
         // Update local state
         setTickets(prev => prev.map(t => t.id === id ? { ...t, status } : t));
         if (selectedTicket && selectedTicket.id === id) {
@@ -281,16 +309,20 @@ const App: React.FC = () => {
             setSelectedTicket(updatedTicket);
             
             // NOTIFICATION LOGIC: Notify the requester if status changes
-            if (currentUser?.role === 'ADMIN') {
+            // If I am an admin changing a user's ticket
+            if (currentUser.role === 'ADMIN') {
                 const { data: profile } = await supabase.from('profiles').select('name').eq('id', currentUser.id).single();
                 const adminName = profile?.name || 'Admin';
                 
-                await supabase.from('notifications').insert({
-                    user_id: selectedTicket.requesterId,
-                    title: 'Status Atualizado',
-                    message: `Seu chamado "${selectedTicket.title}" mudou para ${status} por ${adminName}.`,
-                    ticket_id: id
-                });
+                // Don't notify if I am the requester too
+                if (selectedTicket.requesterId !== currentUser.id) {
+                    await supabase.from('notifications').insert({
+                        user_id: selectedTicket.requesterId,
+                        title: 'Status Atualizado',
+                        message: `Seu chamado "${selectedTicket.title}" mudou para ${status} por ${adminName}.`,
+                        ticket_id: id
+                    });
+                }
             }
         }
     } catch (error) {

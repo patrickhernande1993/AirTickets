@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Ticket, TicketStatus, User, Comment } from '../types';
+import { Ticket, TicketStatus, User, Comment, AuditLog } from '../types';
 import { generateSolutionSuggestion } from '../services/geminiService';
-import { ArrowLeft, Bot, CheckCircle, Clock, User as UserIcon, Calendar, Tag, AlertTriangle, Trash2, Edit, Send, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Bot, CheckCircle, Clock, User as UserIcon, Calendar, Tag, AlertTriangle, Trash2, Edit, Send, MessageSquare, FileText } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '../services/supabase';
 
@@ -23,6 +23,9 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(true);
   const commentsEndRef = useRef<HTMLDivElement>(null);
+
+  // Audit Logs State
+  const [logs, setLogs] = useState<AuditLog[]>([]);
 
   const isAdmin = currentUser.role === 'ADMIN';
   const isOwner = currentUser.id === ticket.requesterId;
@@ -46,6 +49,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
   useEffect(() => {
       fetchComments();
+      fetchLogs();
       
       // Subscribe to new comments
       const channel = supabase
@@ -55,8 +59,17 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
         })
         .subscribe();
 
+      // Subscribe to logs (e.g. status changes made by others)
+      const logsChannel = supabase
+        .channel(`logs:${ticket.id}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs', filter: `ticket_id=eq.${ticket.id}` }, () => {
+            fetchLogs();
+        })
+        .subscribe();
+
       return () => {
           supabase.removeChannel(channel);
+          supabase.removeChannel(logsChannel);
       }
   }, [ticket.id]);
 
@@ -89,6 +102,26 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       setLoadingComments(false);
   };
 
+  const fetchLogs = async () => {
+    const { data } = await supabase
+      .from('audit_logs')
+      .select('*, profiles(name)')
+      .eq('ticket_id', ticket.id)
+      .order('created_at', { ascending: false });
+    
+    if (data) {
+        setLogs(data.map((l: any) => ({
+            id: l.id,
+            ticketId: l.ticket_id,
+            actorId: l.actor_id,
+            actorName: l.profiles?.name || 'Sistema',
+            action: l.action,
+            details: l.details,
+            createdAt: new Date(l.created_at)
+        })));
+    }
+  };
+
   const handleSendComment = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!newComment.trim()) return;
@@ -105,9 +138,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
           if (error) throw error;
 
-          // Notify logic:
-          // If Admin writes -> Notify Requester
-          // If Requester writes -> Notify Admins
+          // Notify logic
           if (isAdmin) {
              // Notify Requester
              if (ticket.requesterId !== currentUser.id) {
@@ -120,7 +151,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
              }
           } else {
              // Notify Admins
-             // 1. Get all admins
              const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'ADMIN');
              if (admins) {
                  const notifications = admins.map(admin => ({
@@ -159,6 +189,24 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
           case 'CLOSED': return 'Fechado';
           default: return s;
       }
+  };
+
+  const getLogIcon = (action: string) => {
+      switch(action) {
+          case 'CREATED': return <CheckCircle size={14} className="text-green-600" />;
+          case 'STATUS_CHANGE': return <Clock size={14} className="text-blue-600" />;
+          case 'EDITED': return <Edit size={14} className="text-orange-600" />;
+          default: return <FileText size={14} className="text-gray-600" />;
+      }
+  };
+
+  const translateLogAction = (action: string) => {
+    switch(action) {
+        case 'CREATED': return 'Chamado Criado';
+        case 'STATUS_CHANGE': return 'Status Alterado';
+        case 'EDITED': return 'Chamado Editado';
+        default: return action;
+    }
   };
 
   return (
@@ -371,20 +419,45 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                  </div>
              )}
 
-             {/* Status Timeline (Mock) */}
+             {/* Real Audit History */}
              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                 <h3 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">Histórico</h3>
-                 <div className="space-y-4">
-                    <div className="flex gap-3">
-                        <div className="mt-1">
-                            <div className="h-2 w-2 rounded-full bg-primary-600 ring-4 ring-white"></div>
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-900">Chamado Criado</p>
-                            <p className="text-xs text-gray-500">{ticket.createdAt.toLocaleString('pt-BR')}</p>
-                        </div>
-                    </div>
-                    {/* We could add more dynamic timeline items here based on an audit log */}
+                 <h3 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">Histórico do Chamado</h3>
+                 <div className="space-y-6">
+                    {logs.length === 0 ? (
+                         <div className="flex items-center space-x-3 opacity-50">
+                             <div className="h-2 w-2 rounded-full bg-gray-400"></div>
+                             <div>
+                                 <p className="text-sm font-medium text-gray-900">Chamado Criado</p>
+                                 <p className="text-xs text-gray-500">{ticket.createdAt.toLocaleString('pt-BR')}</p>
+                             </div>
+                         </div>
+                    ) : (
+                        logs.map((log, index) => (
+                            <div key={log.id} className="relative flex gap-3">
+                                {/* Timeline line connector */}
+                                {index !== logs.length - 1 && (
+                                    <div className="absolute top-6 left-[5px] h-full w-[2px] bg-gray-100"></div>
+                                )}
+                                
+                                <div className="mt-1 flex-shrink-0">
+                                    <div className="bg-white relative z-10">
+                                        {getLogIcon(log.action)}
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-900">{translateLogAction(log.action)}</p>
+                                    <p className="text-xs text-gray-500 mb-1">
+                                        por <span className="font-medium text-gray-700">{log.actorName}</span> • {log.createdAt.toLocaleString('pt-BR')}
+                                    </p>
+                                    {log.details && (
+                                        <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded border border-gray-100 inline-block mt-1">
+                                            {log.details}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    )}
                  </div>
              </div>
           </div>
