@@ -1,6 +1,7 @@
-import React from 'react';
-import { LayoutDashboard, PlusCircle, Settings, LifeBuoy, Users, Ticket as TicketIcon, List } from 'lucide-react';
-import { ViewState, User, UserRole } from '../types';
+import React, { useEffect, useState } from 'react';
+import { LayoutDashboard, Settings, LifeBuoy, Users, Ticket as TicketIcon, List, Bell } from 'lucide-react';
+import { ViewState, User } from '../types';
+import { supabase } from '../services/supabase';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -9,25 +10,56 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, currentUser }) => {
-  
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    fetchUnreadNotifications();
+    
+    // Realtime subscription for notifications
+    const channel = supabase
+      .channel('public:notifications')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'notifications', 
+        filter: `user_id=eq.${currentUser.id}` 
+      }, () => {
+        fetchUnreadNotifications();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    }
+  }, [currentUser.id]);
+
+  const fetchUnreadNotifications = async () => {
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .eq('is_read', false);
+    
+    setUnreadCount(count || 0);
+  };
+
   const getNavItems = () => {
     const commonItems = [
-      { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'DASHBOARD', label: currentUser.role === 'ADMIN' ? 'Dashboard' : 'Visão Geral', icon: LayoutDashboard },
+      { id: 'NOTIFICATIONS', label: 'Notificações', icon: Bell, badge: unreadCount },
     ];
 
     if (currentUser.role === 'USER') {
       return [
         ...commonItems,
         { id: 'MY_TICKETS', label: 'Meus Chamados', icon: List },
-        { id: 'CREATE_TICKET', label: 'Novo Chamado', icon: PlusCircle },
       ];
     }
 
     // DEV / ADMIN Items
     return [
       ...commonItems,
-      { id: 'DASHBOARD', label: 'Todos os Chamados', icon: TicketIcon }, // Admin sees all tickets in dashboard/list context
-      { id: 'CREATE_TICKET', label: 'Novo Chamado', icon: PlusCircle },
+      { id: 'DASHBOARD', label: 'Todos os Chamados', icon: TicketIcon },
       { id: 'USERS', label: 'Gestão de Usuários', icon: Users },
     ];
   };
@@ -57,24 +89,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
 
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map((item) => {
+            // Remove duplicates if logic adds DASHBOARD twice (handled in getNavItems logic, but extra safety)
+            // Logic in getNavItems handles uniqueness based on role
+            
             const Icon = item.icon;
-            // Dashboard is active if showing dashboard or if showing ticket detail (contextually)
             const isActive = currentView === item.id || 
                              (item.id === 'DASHBOARD' && currentView === 'TICKET_DETAIL') ||
                              (item.id === 'MY_TICKETS' && currentView === 'TICKET_DETAIL' && currentUser.role === 'USER');
             
+            // Deduplicate visual check
+            if (item.id === 'DASHBOARD' && currentUser.role === 'ADMIN' && item.label === 'Dashboard') return null; 
+
             return (
                 <button
-                key={item.id}
+                key={item.id + item.label}
                 onClick={() => onChangeView(item.id as ViewState)}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
                     isActive
                     ? 'bg-primary-50 text-primary-700'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
                 >
-                <Icon size={20} />
-                <span>{item.label}</span>
+                  <div className="flex items-center space-x-3">
+                    <Icon size={20} />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.badge ? (
+                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                      {item.badge}
+                    </span>
+                  ) : null}
                 </button>
             );
         })}

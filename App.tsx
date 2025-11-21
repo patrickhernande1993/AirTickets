@@ -5,6 +5,7 @@ import { TicketForm } from './components/TicketForm';
 import { TicketDetail } from './components/TicketDetail';
 import { Login } from './components/Login';
 import { UserManagement } from './components/UserManagement';
+import { Notifications } from './components/Notifications';
 import { Ticket, ViewState, TicketStatus, User } from './types';
 import { supabase } from './services/supabase';
 import { Loader2 } from 'lucide-react';
@@ -53,7 +54,6 @@ const App: React.FC = () => {
   const fetchProfile = async (userId: string, email: string) => {
       try {
           // Attempt to fetch profile
-          // .maybeSingle() returns null instead of error if not found
           let { data, error } = await supabase
             .from('profiles')
             .select('*')
@@ -61,7 +61,6 @@ const App: React.FC = () => {
             .maybeSingle();
           
           // SELF-HEALING: If profile is missing but Auth exists, create it now.
-          // STRICT RULE: When creating a fallback profile, it is ALWAYS 'USER' role.
           if (!data) {
             console.log("Profile missing for authenticated user. Creating default 'USER' profile...");
             const name = email.split('@')[0];
@@ -86,7 +85,6 @@ const App: React.FC = () => {
           }
 
           // SPECIAL ADMIN OVERRIDE
-          // Automatically promote specific emails to ADMIN to bootstrap the system
           const superAdmins = ['ti@grupoairslaid.com.br'];
           if (superAdmins.includes(email) || email.startsWith('admin') || email.startsWith('dev')) {
              if (data && data.role !== 'ADMIN') {
@@ -106,10 +104,6 @@ const App: React.FC = () => {
           }
       } catch (error) {
           console.error('Error fetching/creating profile:', error);
-          // Force logout if we can't get a profile to prevent loop
-          if (currentUser === null) {
-            // Optional: await supabase.auth.signOut(); 
-          }
       } finally {
           setLoading(false);
       }
@@ -117,8 +111,6 @@ const App: React.FC = () => {
 
   const fetchTickets = async () => {
       try {
-          // RLS policies handle security, so we can just select *
-          // But for performance/UI logic, we can add ordering
           const { data, error } = await supabase
             .from('tickets')
             .select('*')
@@ -169,23 +161,15 @@ const App: React.FC = () => {
 
             if (error) throw error;
             
-            // Optimistic update
-            const updatedTickets = tickets.map(t => 
-                t.id === ticketToEdit.id ? { ...t, ...newTicketData } : t
-            );
-            setTickets(updatedTickets);
-            if(selectedTicket && selectedTicket.id === ticketToEdit.id) {
-                setSelectedTicket({ ...selectedTicket, ...newTicketData });
-            }
             setTicketToEdit(null);
         } else {
             // Create new ticket
-            const { data, error } = await supabase
+            const { data: newTicket, error } = await supabase
                 .from('tickets')
                 .insert([{
                     title: newTicketData.title,
                     description: newTicketData.description,
-                    requester_name: currentUser?.name, // We store name for display simplicity
+                    requester_name: currentUser?.name, 
                     requester_id: currentUser?.id,
                     priority: newTicketData.priority,
                     category: newTicketData.category,
@@ -196,10 +180,23 @@ const App: React.FC = () => {
                 .single();
 
             if (error) throw error;
-            
-            // Refresh list
-            await fetchTickets();
+
+            // NOTIFICATION LOGIC: Notify all Admins
+            if (newTicket) {
+                const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'ADMIN');
+                if (admins && admins.length > 0) {
+                    const notifications = admins.map(admin => ({
+                        user_id: admin.id,
+                        title: 'Novo Chamado Criado',
+                        message: `${currentUser?.name} abriu um novo chamado: ${newTicketData.title}`,
+                        ticket_id: newTicket.id
+                    }));
+                    await supabase.from('notifications').insert(notifications);
+                }
+            }
         }
+        
+        await fetchTickets(); // Refresh list
         
         if (currentUser?.role === 'USER') {
             setCurrentView('MY_TICKETS');
@@ -215,6 +212,35 @@ const App: React.FC = () => {
   const handleSelectTicket = (ticket: Ticket) => {
     setSelectedTicket(ticket);
     setCurrentView('TICKET_DETAIL');
+  };
+  
+  const handleSelectNotificationTicket = async (ticketId: string) => {
+      // Find the ticket in the current list or fetch it
+      const existing = tickets.find(t => t.id === ticketId);
+      if (existing) {
+          setSelectedTicket(existing);
+          setCurrentView('TICKET_DETAIL');
+      } else {
+          // Fallback fetch if not loaded
+          const { data } = await supabase.from('tickets').select('*').eq('id', ticketId).single();
+          if (data) {
+             const formatted: Ticket = {
+                id: data.id,
+                title: data.title,
+                description: data.description,
+                requester: data.requester_name,
+                requesterId: data.requester_id,
+                priority: data.priority,
+                status: data.status,
+                category: data.category,
+                createdAt: new Date(data.created_at),
+                aiAnalysis: data.ai_analysis,
+                suggestedSolution: data.suggested_solution
+             };
+             setSelectedTicket(formatted);
+             setCurrentView('TICKET_DETAIL');
+          }
+      }
   };
 
   const handleDeleteTicket = async (id: string) => {
@@ -248,9 +274,24 @@ const App: React.FC = () => {
 
         if (error) throw error;
 
+        // Update local state
         setTickets(prev => prev.map(t => t.id === id ? { ...t, status } : t));
         if (selectedTicket && selectedTicket.id === id) {
-            setSelectedTicket({ ...selectedTicket, status });
+            const updatedTicket = { ...selectedTicket, status };
+            setSelectedTicket(updatedTicket);
+            
+            // NOTIFICATION LOGIC: Notify the requester if status changes
+            if (currentUser?.role === 'ADMIN') {
+                const { data: profile } = await supabase.from('profiles').select('name').eq('id', currentUser.id).single();
+                const adminName = profile?.name || 'Admin';
+                
+                await supabase.from('notifications').insert({
+                    user_id: selectedTicket.requesterId,
+                    title: 'Status Atualizado',
+                    message: `Seu chamado "${selectedTicket.title}" mudou para ${status} por ${adminName}.`,
+                    ticket_id: id
+                });
+            }
         }
     } catch (error) {
         console.error("Error updating status:", error);
@@ -281,15 +322,17 @@ const App: React.FC = () => {
             onEdit={handleEditTicket}
           />
         ) : (
-           <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} />
+           <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} onCreateTicket={() => setCurrentView('CREATE_TICKET')} />
         );
       case 'USERS':
         return currentUser.role === 'ADMIN' ? <UserManagement currentUser={currentUser} /> : <div>Acesso Negado</div>;
+      case 'NOTIFICATIONS':
+        return <Notifications currentUser={currentUser} onSelectNotification={handleSelectNotificationTicket} />;
       case 'MY_TICKETS':
-        return <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} />;
+        return <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} onCreateTicket={() => setCurrentView('CREATE_TICKET')} />;
       case 'DASHBOARD':
       default:
-        return <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} />;
+        return <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} onCreateTicket={() => setCurrentView('CREATE_TICKET')} />;
     }
   };
 
@@ -319,6 +362,7 @@ const App: React.FC = () => {
                 {currentView === 'EDIT_TICKET' && 'Editar Chamado'}
                 {currentView === 'TICKET_DETAIL' && 'Detalhes do Chamado'}
                 {currentView === 'USERS' && 'Gestão de Usuários'}
+                {currentView === 'NOTIFICATIONS' && 'Central de Notificações'}
               </h1>
             </div>
             <div className="flex items-center space-x-4">

@@ -36,6 +36,26 @@ export interface Ticket {
   suggestedSolution?: string;
 }
 
+export interface Comment {
+  id: string;
+  ticketId: string;
+  userId: string;
+  userName: string;
+  userRole: UserRole;
+  content: string;
+  createdAt: Date;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  ticketId?: string;
+  createdAt: Date;
+}
+
 export interface ITicketStats {
   total: number;
   open: number;
@@ -43,4 +63,4 @@ export interface ITicketStats {
   resolved: number;
 }
 
-export type ViewState = 'DASHBOARD' | 'CREATE_TICKET' | 'TICKET_DETAIL' | 'MY_TICKETS' | 'USERS' | 'EDIT_TICKET';
+export type ViewState = 'DASHBOARD' | 'CREATE_TICKET' | 'TICKET_DETAIL' | 'MY_TICKETS' | 'USERS' | 'EDIT_TICKET' | 'NOTIFICATIONS';

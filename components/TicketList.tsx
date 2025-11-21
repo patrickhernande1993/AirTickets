@@ -1,16 +1,17 @@
 import React, { useMemo } from 'react';
 import { Ticket, TicketPriority, TicketStatus } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { AlertCircle, CheckCircle, Clock, Search } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Search, Plus } from 'lucide-react';
 
 interface TicketListProps {
   tickets: Ticket[];
   onSelectTicket: (ticket: Ticket) => void;
+  onCreateTicket: () => void;
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket }) => {
+export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket, onCreateTicket }) => {
   
   const stats = useMemo(() => {
     const priorityCounts = [
@@ -64,6 +65,16 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket 
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+          <button 
+                onClick={onCreateTicket}
+                className="flex items-center space-x-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all shadow-md hover:shadow-lg text-base font-semibold"
+            >
+                <Plus size={20} />
+                <span>Abrir Novo Chamado</span>
+          </button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
            <h3 className="text-gray-500 text-sm font-medium">Total de Chamados</h3>
@@ -101,15 +112,18 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket 
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-          <h2 className="font-semibold text-gray-800">Chamados Recentes</h2>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-            <input 
-                type="text" 
-                placeholder="Buscar chamados..." 
-                className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-            />
+        <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-center bg-gray-50 gap-4">
+          <h2 className="font-semibold text-gray-800">Lista de Chamados</h2>
+          
+          <div className="flex w-full sm:w-auto space-x-2">
+            <div className="relative flex-1 sm:flex-initial">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                <input 
+                    type="text" 
+                    placeholder="Buscar chamados..." 
+                    className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                />
+            </div>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -157,6 +171,11 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket 
               ))}
             </tbody>
           </table>
+          {tickets.length === 0 && (
+              <div className="p-8 text-center text-gray-500 text-sm">
+                  Nenhum chamado encontrado.
+              </div>
+          )}
         </div>
       </div>
     </div>
