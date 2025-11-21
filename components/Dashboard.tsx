@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Ticket, TicketStatus, AuditLog, User } from '../types';
 import { supabase } from '../services/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Activity, CheckCircle, Clock, AlertCircle, FileText, User as UserIcon } from 'lucide-react';
+import { Activity, CheckCircle, Clock, AlertCircle, FileText } from 'lucide-react';
 
 interface DashboardProps {
   tickets: Ticket[];
@@ -18,18 +18,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser }) =>
   }, []);
 
   const fetchGlobalLogs = async () => {
-      // Join with tickets table to get ticket_number
       const { data } = await supabase
         .from('audit_logs')
         .select('*, profiles(name), tickets(ticket_number)')
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(8);
 
       if (data) {
           setLogs(data.map((l: any) => ({
             id: l.id,
             ticketId: l.ticket_id,
-            // Use the joined ticket number
             ticketNumber: l.tickets?.ticket_number,
             actorId: l.actor_id,
             actorName: l.profiles?.name || 'Sistema',
@@ -53,7 +51,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser }) =>
       const data: any[] = [];
       const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
       
-      // Initialize
       const now = new Date();
       for (let i = 5; i >= 0; i--) {
           const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -82,16 +79,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser }) =>
 
   const translateLogAction = (action: string) => {
       switch(action) {
-          case 'CREATED': return 'Chamado Criado';
-          case 'STATUS_CHANGE': return 'Status Alterado';
+          case 'CREATED': return 'Criado';
+          case 'STATUS_CHANGE': return 'Status';
           case 'EDITED': return 'Editado';
           default: return action;
       }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Greeting Banner */}
+    <div className="space-y-8">
+      {/* Minimalist Greeting */}
       <div className="flex justify-between items-end">
         <div>
             <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Olá, {currentUser.name.split(' ')[0]}</h1>
@@ -177,43 +174,42 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser }) =>
             </div>
         </div>
 
-        {/* Recent Activity Log */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-800 flex items-center">
-                  <Activity size={20} className="mr-2 text-gray-400" />
-                  Atividade Recente
-              </h3>
-          </div>
-          <div className="overflow-y-auto max-h-[320px] pr-2 space-y-4">
-             {logs.length === 0 ? (
-                 <p className="text-gray-500 text-sm text-center py-4">Nenhuma atividade recente.</p>
-             ) : (
-                 logs.map(log => (
-                     <div key={log.id} className="flex gap-3 pb-3 border-b border-gray-50 last:border-0">
-                         <div className="mt-1 text-gray-400">
-                             {log.action === 'CREATED' && <CheckCircle size={16} className="text-green-500" />}
-                             {log.action === 'STATUS_CHANGE' && <Clock size={16} className="text-blue-500" />}
-                             {log.action === 'EDITED' && <FileText size={16} className="text-orange-500" />}
-                         </div>
-                         <div>
-                             <div className="flex items-baseline space-x-2">
-                                 <p className="text-sm font-medium text-gray-900">{translateLogAction(log.action)}</p>
-                                 {log.ticketNumber && (
-                                     <span className="text-xs text-gray-400">#{log.ticketNumber}</span>
-                                 )}
-                             </div>
-                             <p className="text-xs text-gray-500">
-                                 {log.details}
-                             </p>
-                             <p className="text-[10px] text-gray-400 mt-1">
-                                 {log.actorName} • {log.createdAt.toLocaleString('pt-BR')}
-                             </p>
-                         </div>
-                     </div>
-                 ))
-             )}
-          </div>
+        {/* Activity Log */}
+        <div className="bg-white p-6 rounded-xl border border-gray-200 flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+                <h3 className="text-base font-semibold text-gray-900">Atividade Recente</h3>
+                <Activity size={16} className="text-gray-400" />
+            </div>
+            
+            <div className="flex-1 overflow-y-auto pr-2 space-y-5 max-h-[300px]">
+                {logs.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-10">Nenhuma atividade recente.</p>
+                ) : (
+                    logs.map((log) => (
+                        <div key={log.id} className="flex items-start gap-3 group">
+                            <div className={`mt-0.5 h-2 w-2 rounded-full flex-shrink-0 ${
+                                log.action === 'CREATED' ? 'bg-green-500' :
+                                log.action === 'STATUS_CHANGE' ? 'bg-blue-500' :
+                                'bg-orange-500'
+                            }`} />
+                            
+                            <div className="flex-1 min-w-0">
+                                <div className="flex justify-between items-baseline mb-0.5">
+                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                        Chamado #{log.ticketNumber || log.ticketId.slice(0,4)}
+                                    </p>
+                                    <span className="text-[10px] text-gray-400 flex-shrink-0">
+                                        {log.createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-gray-500 mb-1">
+                                    <span className="capitalize text-gray-700 font-medium">{translateLogAction(log.action)}</span> por {log.actorName?.split(' ')[0] || 'Sistema'}
+                                </p>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
         </div>
       </div>
     </div>
