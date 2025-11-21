@@ -35,6 +35,7 @@ export interface Ticket {
   createdAt: Date;
   aiAnalysis?: string;
   suggestedSolution?: string;
+  attachments?: string[]; // URLs dos arquivos anexados
 }
 
 export interface Comment {

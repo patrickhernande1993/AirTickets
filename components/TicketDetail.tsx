@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Ticket, TicketStatus, User, Comment, AuditLog } from '../types';
 import { generateSolutionSuggestion } from '../services/geminiService';
-import { ArrowLeft, Bot, CheckCircle, Clock, User as UserIcon, Calendar, Tag, AlertTriangle, Trash2, Edit, Send, MessageSquare, FileText } from 'lucide-react';
+import { ArrowLeft, Bot, CheckCircle, Clock, User as UserIcon, Calendar, Tag, AlertTriangle, Trash2, Edit, Send, MessageSquare, FileText, Paperclip } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '../services/supabase';
 
@@ -304,6 +304,30 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             <h3 className="text-sm font-bold text-gray-900 mb-2">Descrição do Problema</h3>
             <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{ticket.description}</p>
         </div>
+
+        {/* Attachments View */}
+        {ticket.attachments && ticket.attachments.length > 0 && (
+            <div className="mt-4">
+                <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center">
+                    <Paperclip size={16} className="mr-1 text-gray-500" />
+                    Anexos
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                    {ticket.attachments.map((url, index) => (
+                        <a 
+                            key={index} 
+                            href={url} 
+                            target="_blank" 
+                            rel="noreferrer"
+                            className="flex items-center space-x-2 px-3 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-blue-50 hover:border-blue-200 transition-colors group"
+                        >
+                            <FileText size={16} className="text-gray-400 group-hover:text-blue-500" />
+                            <span className="text-sm text-gray-700 group-hover:text-blue-700">Anexo {index + 1}</span>
+                        </a>
+                    ))}
+                </div>
+            </div>
+        )}
 
         {isAdmin && (
             <div className="mt-6 flex items-center justify-end space-x-4 pt-4 border-t border-gray-100">

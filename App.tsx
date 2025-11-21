@@ -148,7 +148,8 @@ const App: React.FC = () => {
               category: t.category,
               createdAt: new Date(t.created_at),
               aiAnalysis: t.ai_analysis,
-              suggestedSolution: t.suggested_solution
+              suggestedSolution: t.suggested_solution,
+              attachments: t.attachments || []
           }));
 
           setTickets(formattedTickets);
@@ -176,7 +177,8 @@ const App: React.FC = () => {
                     priority: newTicketData.priority,
                     category: newTicketData.category,
                     status: newTicketData.status,
-                    ai_analysis: newTicketData.aiAnalysis
+                    ai_analysis: newTicketData.aiAnalysis,
+                    attachments: newTicketData.attachments
                 })
                 .eq('id', ticketToEdit.id);
 
@@ -203,7 +205,8 @@ const App: React.FC = () => {
                     priority: newTicketData.priority,
                     category: newTicketData.category,
                     status: 'OPEN',
-                    ai_analysis: newTicketData.aiAnalysis
+                    ai_analysis: newTicketData.aiAnalysis,
+                    attachments: newTicketData.attachments
                 }])
                 .select()
                 .single();
@@ -272,7 +275,8 @@ const App: React.FC = () => {
                 category: data.category,
                 createdAt: new Date(data.created_at),
                 aiAnalysis: data.ai_analysis,
-                suggestedSolution: data.suggested_solution
+                suggestedSolution: data.suggested_solution,
+                attachments: data.attachments || []
              };
              setSelectedTicket(formatted);
              setCurrentView('TICKET_DETAIL');
@@ -360,6 +364,7 @@ const App: React.FC = () => {
             onSave={handleCreateTicket} 
             onCancel={() => setCurrentView(currentUser.role === 'USER' ? 'MY_TICKETS' : 'DASHBOARD')} 
             initialData={currentView === 'EDIT_TICKET' ? ticketToEdit || undefined : undefined}
+            currentUser={currentUser}
           />
         );
       case 'TICKET_DETAIL':
