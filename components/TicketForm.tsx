@@ -68,7 +68,8 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
       setIsUploading(true);
       const file = e.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const fileName = `${uuidv4()}.${fileExt}`;
+      // Adiciona timestamp para evitar conflitos de nome
+      const fileName = `${Date.now()}_${uuidv4()}.${fileExt}`;
       const filePath = `${currentUser.id}/${fileName}`;
 
       try {
@@ -83,9 +84,10 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
           if (data) {
               setAttachments(prev => [...prev, data.publicUrl]);
           }
-      } catch (error) {
+      } catch (error: any) {
           console.error('Error uploading file:', error);
-          alert('Erro ao fazer upload do arquivo. Verifique se o Bucket "attachments" existe e é público.');
+          // Exibe a mensagem real do erro para facilitar o debug (ex: Policy violations)
+          alert(`Erro ao fazer upload: ${error.message || 'Verifique as permissões do Bucket.'}`);
       } finally {
           setIsUploading(false);
           // Reset input
