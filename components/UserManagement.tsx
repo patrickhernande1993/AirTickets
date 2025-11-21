@@ -77,18 +77,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
           if (error) throw error;
 
-          // Update local state
-          setUsers(prev => prev.map(u => u.id === selectedUser.id ? {
-              ...u,
-              name: editName,
-              role: editRole,
-              isActive: editIsActive
-          } : u));
+          // IMPORTANT: Refetch users from DB to ensure data was actually saved
+          // This handles cases where RLS might silently ignore the update
+          await fetchUsers();
 
           setIsEditModalOpen(false);
       } catch (error) {
           console.error("Error updating user:", error);
-          alert("Erro ao atualizar usuário.");
+          alert("Erro ao atualizar usuário. Verifique se você tem permissão para editar este perfil.");
       } finally {
           setIsSaving(false);
       }
