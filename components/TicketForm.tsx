@@ -45,21 +45,30 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
   }, [initialData]);
 
   const handleAIAnalysis = async () => {
-    if (!title || !description) return;
+    if (!title || !description) {
+        alert("Por favor, preencha o Assunto e a Descrição para que a IA possa analisar.");
+        return;
+    }
     
     setIsAnalyzing(true);
-    const result = await analyzeTicketContent(title, description);
-    setIsAnalyzing(false);
-
-    if (result) {
-      setPriority(result.priority);
-      // AI Category might not match our fixed list, so we try to match or keep 'Outro'
-      // Alternatively, we can append the AI suggestion to description or keep it as 'Outro'
-      // For now, we stick to the dropdown logic, but maybe switch if exact match found
-      if (CATEGORIES.includes(result.category)) {
-          setCategory(result.category);
-      }
-      setAiSummary(result.summary);
+    try {
+        const result = await analyzeTicketContent(title, description);
+        
+        if (result) {
+          setPriority(result.priority);
+          // AI Category might not match our fixed list, so we try to match or keep 'Outro'
+          if (CATEGORIES.includes(result.category)) {
+              setCategory(result.category);
+          }
+          setAiSummary(result.summary);
+        } else {
+            alert("Não foi possível classificar automaticamente. Verifique se a API Key está configurada e válida.");
+        }
+    } catch (error) {
+        console.error("AI Error:", error);
+        alert("Erro ao conectar com o serviço de IA.");
+    } finally {
+        setIsAnalyzing(false);
     }
   };
 

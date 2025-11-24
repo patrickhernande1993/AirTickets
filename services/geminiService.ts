@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { TicketPriority } from "../types";
 
@@ -26,7 +27,7 @@ const ticketAnalysisSchema: Schema = {
 
 export const analyzeTicketContent = async (title: string, description: string) => {
   if (!apiKey) {
-    console.warn("API Key is missing. Skipping AI analysis.");
+    console.error("API Key is missing in geminiService. Make sure API_KEY is set in .env and server restarted.");
     return null;
   }
 
