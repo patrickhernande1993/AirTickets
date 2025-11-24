@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { LayoutDashboard, Settings, LifeBuoy, Users, Ticket as TicketIcon, List, Bell } from 'lucide-react';
+import { LayoutDashboard, Users, Ticket as TicketIcon, List, Bell } from 'lucide-react';
 import { ViewState, User } from '../types';
 import { supabase } from '../services/supabase';
 
@@ -153,17 +153,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
             );
         })}
       </nav>
-
-      <div className="p-4 border-t border-gray-100 space-y-1">
-        <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
-          <Settings size={20} />
-          <span>Configurações</span>
-        </button>
-        <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
-            <LifeBuoy size={20} />
-            <span>Ajuda</span>
-        </button>
-      </div>
     </div>
   );
 };
