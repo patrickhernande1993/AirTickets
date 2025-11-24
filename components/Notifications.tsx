@@ -1,7 +1,8 @@
+
 import React, { useEffect, useState } from 'react';
 import { Notification, User } from '../types';
 import { supabase } from '../services/supabase';
-import { Bell, Check, Trash2, Loader2 } from 'lucide-react';
+import { Bell, Check, Trash2, Loader2, CheckCheck } from 'lucide-react';
 
 interface NotificationsProps {
   currentUser: User;
@@ -43,15 +44,52 @@ export const Notifications: React.FC<NotificationsProps> = ({ currentUser, onSel
   };
 
   const handleMarkAsRead = async (id: string) => {
-    // Optimistic
+    // 1. Optimistic Update (Update UI first)
+    const originalNotifications = [...notifications];
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+
+    // 2. DB Update
+    const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+
+    // 3. Rollback if error
+    if (error) {
+        console.error("Error marking as read:", error);
+        setNotifications(originalNotifications);
+        alert("Erro ao atualizar notificação. Verifique sua conexão.");
+    }
   };
 
   const handleDelete = async (id: string) => {
-    // Optimistic
+    // 1. Optimistic Update
+    const originalNotifications = [...notifications];
     setNotifications(prev => prev.filter(n => n.id !== id));
-    await supabase.from('notifications').delete().eq('id', id);
+
+    // 2. DB Update
+    const { error } = await supabase.from('notifications').delete().eq('id', id);
+
+    // 3. Rollback if error
+    if (error) {
+        console.error("Error deleting notification:", error);
+        setNotifications(originalNotifications);
+        alert("Erro ao excluir notificação. Tente novamente.");
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+      const originalNotifications = [...notifications];
+      
+      // Optimistic
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', currentUser.id);
+      
+      if (error) {
+          console.error("Error marking all as read:", error);
+          setNotifications(originalNotifications);
+      }
   };
 
   const handleNotificationClick = async (notification: Notification) => {
@@ -78,14 +116,12 @@ export const Notifications: React.FC<NotificationsProps> = ({ currentUser, onSel
           <Bell className="mr-2 text-primary-600" size={24} />
           Suas Notificações
         </h2>
-        {notifications.length > 0 && (
+        {notifications.length > 0 && notifications.some(n => !n.isRead) && (
             <button 
-                onClick={async () => {
-                    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-                    await supabase.from('notifications').update({ is_read: true }).eq('user_id', currentUser.id);
-                }}
-                className="text-sm text-primary-600 hover:underline"
+                onClick={handleMarkAllAsRead}
+                className="text-sm font-medium text-primary-600 hover:text-primary-800 hover:bg-primary-50 px-3 py-1.5 rounded-lg transition-colors flex items-center"
             >
+                <CheckCheck size={16} className="mr-1" />
                 Marcar todas como lidas
             </button>
         )}
@@ -104,41 +140,43 @@ export const Notifications: React.FC<NotificationsProps> = ({ currentUser, onSel
             {notifications.map((notification) => (
               <li 
                 key={notification.id} 
-                className={`p-4 hover:bg-gray-50 transition-colors ${!notification.isRead ? 'bg-blue-50/50' : ''}`}
+                className={`p-4 hover:bg-gray-50 transition-colors ${!notification.isRead ? 'bg-blue-50/40' : ''}`}
               >
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-4">
                   <div 
                     className="flex-1 cursor-pointer" 
                     onClick={() => handleNotificationClick(notification)}
                   >
-                    <div className="flex items-center mb-1">
+                    <div className="flex items-center mb-1 flex-wrap gap-2">
                         {!notification.isRead && (
-                            <span className="h-2 w-2 bg-blue-600 rounded-full mr-2"></span>
+                            <span className="h-2 w-2 bg-blue-600 rounded-full flex-shrink-0" title="Não lida"></span>
                         )}
                         <h4 className={`text-sm font-medium ${!notification.isRead ? 'text-blue-900' : 'text-gray-900'}`}>
                         {notification.title}
                         </h4>
-                        <span className="ml-auto text-xs text-gray-400">
+                        <span className="text-xs text-gray-400 ml-auto whitespace-nowrap">
                         {notification.createdAt.toLocaleString('pt-BR')}
                         </span>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                    <p className={`text-sm mt-1 ${!notification.isRead ? 'text-blue-800' : 'text-gray-600'}`}>
+                        {notification.message}
+                    </p>
                   </div>
                   
-                  <div className="ml-4 flex items-center space-x-2">
+                  <div className="flex items-center space-x-1 flex-shrink-0">
                     {!notification.isRead && (
                         <button 
-                            onClick={() => handleMarkAsRead(notification.id)}
-                            className="p-1 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-100"
+                            onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notification.id); }}
+                            className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-white transition-colors"
                             title="Marcar como lida"
                         >
                             <Check size={16} />
                         </button>
                     )}
                     <button 
-                        onClick={() => handleDelete(notification.id)}
-                        className="p-1 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-100"
-                        title="Excluir"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(notification.id); }}
+                        className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-white transition-colors"
+                        title="Excluir notificação"
                     >
                         <Trash2 size={16} />
                     </button>
