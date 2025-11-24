@@ -10,6 +10,7 @@ import { Notifications } from './components/Notifications';
 import { Dashboard } from './components/Dashboard';
 import { Ticket, ViewState, TicketStatus, User } from './types';
 import { supabase } from './services/supabase';
+import { sendNewTicketEmail, sendStatusUpdateEmail } from './services/emailService';
 import { Loader2 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -228,8 +229,8 @@ const App: React.FC = () => {
                     details: `Chamado criado com prioridade ${newTicketData.priority}`
                 });
 
-                // NOTIFICATION LOGIC: Notify all Admins
-                const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'ADMIN');
+                // NOTIFICATION LOGIC: Notify all Admins (System + Email)
+                const { data: admins } = await supabase.from('profiles').select('id, email, name').eq('role', 'ADMIN');
                 if (admins && admins.length > 0) {
                     const notifications = admins.map(admin => ({
                         user_id: admin.id,
@@ -238,6 +239,20 @@ const App: React.FC = () => {
                         ticket_id: newTicket.id
                     }));
                     await supabase.from('notifications').insert(notifications);
+
+                    // Send Email to Admins
+                    for (const admin of admins) {
+                        if (admin.email) {
+                            sendNewTicketEmail(
+                                admin.email,
+                                admin.name || 'Admin',
+                                newTicketData.title,
+                                currentUser.name,
+                                newTicketData.priority,
+                                newTicketData.description
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -325,9 +340,6 @@ const App: React.FC = () => {
         // Logic for Resolved/Closed Date
         if (status === TicketStatus.RESOLVED || status === TicketStatus.CLOSED) {
             updates.resolved_at = new Date().toISOString();
-        } else {
-            // If reopening, maybe clear resolved_at? 
-            // updates.resolved_at = null; // Optional: Uncomment if reopening should clear the date
         }
 
         const { error } = await supabase
@@ -375,12 +387,31 @@ const App: React.FC = () => {
                 
                 // Don't notify if I am the requester too
                 if (selectedTicket.requesterId !== currentUser.id) {
+                    // System Notification
                     await supabase.from('notifications').insert({
                         user_id: selectedTicket.requesterId,
                         title: 'Status Atualizado',
                         message: `Seu chamado "${selectedTicket.title}" mudou para ${status} por ${adminName}.`,
                         ticket_id: id
                     });
+
+                    // Email Notification
+                    // Fetch requester email
+                    const { data: requesterProfile } = await supabase
+                        .from('profiles')
+                        .select('email, name')
+                        .eq('id', selectedTicket.requesterId)
+                        .single();
+                    
+                    if (requesterProfile && requesterProfile.email) {
+                        sendStatusUpdateEmail(
+                            requesterProfile.email,
+                            requesterProfile.name,
+                            selectedTicket.title,
+                            status,
+                            adminName
+                        );
+                    }
                 }
             }
         }
