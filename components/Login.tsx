@@ -130,14 +130,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             }}
           />
           <div className="hidden w-12 h-12 bg-gradient-to-tr from-primary-600 to-primary-400 rounded-xl flex items-center justify-center text-white font-bold text-xl mx-auto mb-4 shadow-lg shadow-primary-500/30">
-            N
+            A
           </div>
 
           <h2 className="text-2xl font-bold text-gray-900">
               {isSignUp ? 'Criar uma Conta' : 'Bem-vindo de volta'}
           </h2>
           <p className="text-gray-500 mt-2 text-sm">
-              {isSignUp ? 'Junte-se ao NovaDesk AI para gerenciar chamados' : 'Entre com suas credenciais para acessar o NovaDesk AI'}
+              {isSignUp ? 'Junte-se ao AirService para gerenciar chamados' : 'Entre com suas credenciais para acessar o AirService'}
           </p>
         </div>
 

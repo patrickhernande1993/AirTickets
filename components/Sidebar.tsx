@@ -83,7 +83,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
           {/* LOGO REPLACEMENT */}
           <img 
             src="/logo.png" 
-            alt="NovaDesk" 
+            alt="AirService" 
             className="h-12 w-auto object-contain max-w-full"
             onError={(e) => {
                 // Fallback if image not found
@@ -93,9 +93,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
           />
           <div className="hidden flex items-center space-x-2">
             <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold">
-                N
+                A
             </div>
-            <span className="text-xl font-bold text-gray-800">NovaDesk</span>
+            <span className="text-xl font-bold text-gray-800">AirService</span>
           </div>
       </div>
 
