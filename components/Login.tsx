@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Lock, Mail, ArrowRight, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '../services/supabase';
+import { Logo } from './Logo';
 
 interface LoginProps {
   onLoginSuccess: () => void;
@@ -119,18 +120,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md z-10 border border-gray-100">
         <div className="text-center mb-8">
           {/* LOGO REPLACEMENT */}
-          <img 
-            src="/logo.png" 
-            alt="Logo" 
-            className="h-24 mx-auto mb-6 object-contain"
-            onError={(e) => {
-                // Fallback text if image fails
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.nextElementSibling?.classList.remove('hidden');
-            }}
-          />
-          <div className="hidden w-12 h-12 bg-gradient-to-tr from-primary-600 to-primary-400 rounded-xl flex items-center justify-center text-white font-bold text-xl mx-auto mb-4 shadow-lg shadow-primary-500/30">
-            A
+          <div className="flex justify-center mb-6">
+             <Logo className="h-24 w-auto" />
           </div>
 
           <h2 className="text-2xl font-bold text-gray-900">

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { LayoutDashboard, Users, Ticket as TicketIcon, List, Bell } from 'lucide-react';
 import { ViewState, User } from '../types';
 import { supabase } from '../services/supabase';
+import { Logo } from './Logo';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -80,22 +81,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
   return (
     <div className="w-64 bg-white h-screen border-r border-gray-200 flex flex-col fixed left-0 top-0 z-10">
       <div className="p-6 flex items-center justify-center border-b border-gray-100 h-20">
-          {/* LOGO REPLACEMENT */}
-          <img 
-            src="/logo.png" 
-            alt="AirService" 
-            className="h-12 w-auto object-contain max-w-full"
-            onError={(e) => {
-                // Fallback if image not found
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.nextElementSibling?.classList.remove('hidden');
-            }}
-          />
-          <div className="hidden flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold">
-                A
-            </div>
-            <span className="text-xl font-bold text-gray-800">AirService</span>
+          {/* LOGO COMPONENT */}
+          <div className="flex items-center space-x-2">
+             <Logo className="h-10 w-auto" />
+             <span className="text-xl font-bold text-gray-800 tracking-tight">AirService</span>
           </div>
       </div>
 
