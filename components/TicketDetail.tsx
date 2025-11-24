@@ -350,7 +350,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                                     <div className={`max-w-[80%] ${isMe ? 'order-1' : 'order-2'}`}>
                                         <div className={`flex items-center text-xs text-gray-500 mb-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
                                             <span className="font-medium mr-2">{comment.userName}</span>
-                                            {isStaff && <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-sm text-[10px] mr-2">STAFF</span>}
+                                            {isStaff && <span className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-sm text-[10px] mr-2">STAFF</span>}
                                             <span>{comment.createdAt.toLocaleString('pt-BR')}</span>
                                         </div>
                                         <div className={`p-3 rounded-2xl text-sm ${
@@ -400,11 +400,11 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
              {/* AI Analysis Card */}
              {ticket.aiAnalysis && (
                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                    <div className="flex items-center mb-3 text-purple-700">
+                    <div className="flex items-center mb-3 text-orange-700">
                         <AlertTriangle size={20} className="mr-2" />
                         <h3 className="font-bold text-sm uppercase tracking-wide">Análise de Risco</h3>
                     </div>
-                    <p className="text-gray-700 text-sm leading-relaxed bg-purple-50 p-3 rounded-lg border border-purple-100">
+                    <p className="text-gray-700 text-sm leading-relaxed bg-orange-50 p-3 rounded-lg border border-orange-100">
                         {ticket.aiAnalysis}
                     </p>
                  </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Ticket, TicketPriority, TicketStatus, User } from '../types';
 import { analyzeTicketContent } from '../services/geminiService';
@@ -193,7 +194,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
                     className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                         isAnalyzing || !description 
                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
+                        : 'bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200'
                     }`}
                 >
                     {isAnalyzing ? (
@@ -252,12 +253,12 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
           </div>
 
           {aiSummary && (
-            <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 flex items-start gap-3">
-                <Sparkles className="text-purple-600 mt-0.5 flex-shrink-0" size={18} />
+            <div className="bg-orange-50 border border-orange-100 rounded-lg p-4 flex items-start gap-3">
+                <Sparkles className="text-orange-600 mt-0.5 flex-shrink-0" size={18} />
                 <div>
-                    <h4 className="text-sm font-semibold text-purple-900">Análise da IA</h4>
-                    <p className="text-sm text-purple-800 mt-1">{aiSummary}</p>
-                    <p className="text-xs text-purple-600 mt-2">
+                    <h4 className="text-sm font-semibold text-orange-900">Análise da IA</h4>
+                    <p className="text-sm text-orange-800 mt-1">{aiSummary}</p>
+                    <p className="text-xs text-orange-600 mt-2">
                         Prioridade Sugerida: <span className="font-bold">{translatePriority(priority)}</span>
                     </p>
                 </div>

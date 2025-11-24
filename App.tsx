@@ -466,7 +466,7 @@ const App: React.FC = () => {
                 >
                     Sair
                 </button>
-                <div className="h-10 w-10 rounded-full bg-gradient-to-r from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-r from-primary-500 to-orange-600 flex items-center justify-center text-white font-bold shadow-md">
                     {currentUser.name.charAt(0).toUpperCase()}
                 </div>
             </div>
