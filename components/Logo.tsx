@@ -6,76 +6,13 @@ interface LogoProps {
 }
 
 export const Logo: React.FC<LogoProps> = ({ className }) => {
-  // Definição do Hexágono (Pointy topped)
-  // Pontos aproximados para um hexágono regular
-  const hexPoints = "50,0 93.3,25 93.3,75 50,100 6.7,75 6.7,25";
-  
-  // Cores extraídas visualmente da logo (Gradiente do vinho para o laranja)
-  const colors = [
-    "#7f1d1d", // Dark Red
-    "#991b1b", 
-    "#b91c1c", 
-    "#dc2626", 
-    "#ef4444", 
-    "#f87171", 
-    "#fb923c"  // Orange
-  ];
-
-  // Grid de posições para formar o cluster de 19 hexágonos
-  // Ajustado para caber em viewBox 0 0 400 400
-  // Colunas: 3, 4, 5, 4, 3
-  const hexRadius = 28;
-  const xStep = 44; // Distância horizontal
-  const yStep = 52; // Distância vertical
-
-  const grid = [
-    // Coluna 1 (Esquerda) - 3 hex
-    { x: 50, y: 100, c: colors[0] },
-    { x: 50, y: 200, c: colors[1] },
-    { x: 50, y: 300, c: colors[2] },
-    
-    // Coluna 2 - 4 hex
-    { x: 125, y: 50, c: colors[0] },
-    { x: 125, y: 150, c: colors[1] },
-    { x: 125, y: 250, c: colors[2] },
-    { x: 125, y: 350, c: colors[3] },
-
-    // Coluna 3 (Meio) - 5 hex
-    { x: 200, y: 0, c: colors[1] },
-    { x: 200, y: 100, c: colors[2] },
-    { x: 200, y: 200, c: colors[3] },
-    { x: 200, y: 300, c: colors[4] },
-    { x: 200, y: 400, c: colors[5] },
-
-    // Coluna 4 - 4 hex
-    { x: 275, y: 50, c: colors[2] },
-    { x: 275, y: 150, c: colors[3] },
-    { x: 275, y: 250, c: colors[4] },
-    { x: 275, y: 350, c: colors[5] },
-
-    // Coluna 5 (Direita) - 3 hex
-    { x: 350, y: 100, c: colors[4] },
-    { x: 350, y: 200, c: colors[5] },
-    { x: 350, y: 300, c: colors[6] },
-  ];
+  const logoSrc = "data:image/png;base64,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";
 
   return (
-    <svg 
-      viewBox="0 -30 400 460" 
-      fill="none" 
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-    >
-      <g>
-        {grid.map((h, i) => (
-          <polygon
-            key={i}
-            points={hexPoints}
-            fill={h.c}
-            transform={`translate(${h.x}, ${h.y}) scale(0.5)`}
-          />
-        ))}
-      </g>
-    </svg>
+    <img 
+      src={logoSrc} 
+      alt="AirService Logo" 
+      className={`object-contain ${className}`}
+    />
   );
 };

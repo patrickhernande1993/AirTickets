@@ -119,7 +119,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md z-10 border border-gray-100">
         <div className="text-center mb-8">
-          {/* LOGO REPLACEMENT */}
           <div className="flex justify-center mb-6">
              <Logo className="h-24 w-auto" />
           </div>
