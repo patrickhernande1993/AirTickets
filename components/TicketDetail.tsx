@@ -1,8 +1,11 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Ticket, TicketStatus, User, Comment, AuditLog } from '../types';
-import { ArrowLeft, CheckCircle, Clock, User as UserIcon, Calendar, Tag, AlertTriangle, Trash2, Edit, Send, MessageSquare, FileText, Paperclip } from 'lucide-react';
+import { Ticket, TicketStatus, User, Comment, AuditLog, GeminiInsightData } from '../types';
+import { ArrowLeft, CheckCircle, Clock, User as UserIcon, Calendar, Tag, Trash2, Edit, Send, MessageSquare, FileText, Paperclip } from 'lucide-react';
 import { supabase } from '../services/supabase';
+import { GeminiInsights } from './GeminiInsights';
+import { getGeminiInsights } from '../services/geminiService';
 
 interface TicketDetailProps {
   ticket: Ticket;
@@ -22,6 +25,11 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
   // Audit Logs State
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  
+  // Gemini Insights State
+  const [insights, setInsights] = useState<GeminiInsightData | null>(null);
+  const [loadingInsights, setLoadingInsights] = useState(true);
+
 
   const isAdmin = currentUser.role === 'ADMIN';
   const isOwner = currentUser.id === ticket.requesterId;
@@ -51,6 +59,20 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
           supabase.removeChannel(logsChannel);
       }
   }, [ticket.id]);
+  
+  // Fetch Gemini Insights
+  useEffect(() => {
+    if (isAdmin) {
+        setLoadingInsights(true);
+        getGeminiInsights(ticket.title, ticket.description)
+            .then(data => {
+                setInsights(data);
+            })
+            .finally(() => {
+                setLoadingInsights(false);
+            });
+    }
+  }, [ticket.id, ticket.title, ticket.description, isAdmin]);
 
   useEffect(() => {
       commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -97,6 +119,14 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             details: l.details,
             createdAt: new Date(l.created_at)
         })));
+    }
+  };
+  
+  const handleUseSuggestion = (suggestion: string) => {
+    setNewComment(prev => prev ? `${prev}\n${suggestion}` : suggestion);
+    const input = document.querySelector('input[placeholder="Escreva uma mensagem..."]');
+    if (input) {
+        (input as HTMLInputElement).focus();
     }
   };
 
@@ -397,17 +427,13 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
           </div>
 
           <div className="space-y-6">
-             {/* AI Analysis Card */}
-             {ticket.aiAnalysis && (
-                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                    <div className="flex items-center mb-3 text-orange-700">
-                        <AlertTriangle size={20} className="mr-2" />
-                        <h3 className="font-bold text-sm uppercase tracking-wide">Análise de Risco</h3>
-                    </div>
-                    <p className="text-gray-700 text-sm leading-relaxed bg-orange-50 p-3 rounded-lg border border-orange-100">
-                        {ticket.aiAnalysis}
-                    </p>
-                 </div>
+             {/* AI Insights Card */}
+             {isAdmin && (
+                <GeminiInsights
+                    loading={loadingInsights}
+                    insights={insights}
+                    onUseSuggestion={handleUseSuggestion}
+                />
              )}
 
              {/* Real Audit History */}

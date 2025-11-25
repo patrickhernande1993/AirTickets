@@ -1,6 +1,7 @@
 
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { TicketPriority } from "../types";
+import { TicketPriority, GeminiInsightData } from "../types";
 
 const apiKey = process.env.API_KEY || ''; 
 const ai = new GoogleGenAI({ apiKey });
@@ -23,6 +24,30 @@ const ticketAnalysisSchema: Schema = {
     },
   },
   required: ["priority", "category", "summary"],
+};
+
+const geminiInsightsSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    summary: {
+      type: Type.STRING,
+      description: "Um resumo conciso de uma frase sobre o problema do usuário, em Português.",
+    },
+    sentimentScore: {
+      type: Type.INTEGER,
+      description: "Um score de sentimento de 0 (muito negativo) a 100 (muito positivo) com base na linguagem do usuário.",
+    },
+    urgency: {
+      type: Type.STRING,
+      enum: ["Baixa", "Média", "Alta", "Crítica"],
+      description: "O nível de urgência percebido com base no impacto e no tom do usuário. Responda em Português.",
+    },
+    suggestedResponse: {
+      type: Type.STRING,
+      description: "Uma sugestão de primeira resposta completa e empática para o cliente, em tom profissional e prestativo, em Português do Brasil.",
+    },
+  },
+  required: ["summary", "sentimentScore", "urgency", "suggestedResponse"],
 };
 
 export const analyzeTicketContent = async (title: string, description: string) => {
@@ -61,29 +86,38 @@ export const analyzeTicketContent = async (title: string, description: string) =
   }
 };
 
-export const generateSolutionSuggestion = async (title: string, description: string, category: string) => {
-    if (!apiKey) return "Serviço de IA Indisponível (Falta API Key)";
+export const getGeminiInsights = async (title: string, description: string): Promise<GeminiInsightData | null> => {
+  if (!apiKey) {
+    console.error("API Key is missing in geminiService.");
+    return null;
+  }
 
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: `
-                Você é um Engenheiro de Suporte de TI Sênior. Forneça um guia de solução passo a passo conciso para o seguinte problema.
-                Responda inteiramente em Português do Brasil.
-                Formate a saída como Markdown.
-                
-                Categoria do Problema: ${category}
-                Título: ${title}
-                Descrição: ${description}
-            `,
-            config: {
-                thinkingConfig: { thinkingBudget: 1024 }
-            }
-        });
-        
-        return response.text || "Nenhuma solução sugerida.";
-    } catch (error) {
-        console.error("Error generating solution:", error);
-        return "Falha ao gerar solução.";
-    }
-}
+  try {
+    const prompt = `
+      Você é um analista de suporte de TI especialista em triagem de chamados. 
+      Analise o seguinte ticket e forneça insights em formato JSON.
+      
+      Título do Chamado: "${title}"
+      Descrição do Chamado: "${description}"
+
+      IMPORTANTE: Todas as respostas de texto (summary, urgency, suggestedResponse) devem ser em Português do Brasil.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: geminiInsightsSchema,
+      },
+    });
+
+    const jsonText = response.text;
+    if (!jsonText) return null;
+
+    return JSON.parse(jsonText) as GeminiInsightData;
+  } catch (error) {
+    console.error("Error getting Gemini insights:", error);
+    return null;
+  }
+};

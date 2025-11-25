@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { TicketList } from './components/TicketList';
@@ -153,7 +154,6 @@ const App: React.FC = () => {
               updatedAt: t.updated_at ? new Date(t.updated_at) : new Date(t.created_at), // Fallback to created
               resolvedAt: t.resolved_at ? new Date(t.resolved_at) : undefined,
               aiAnalysis: t.ai_analysis,
-              suggestedSolution: t.suggested_solution,
               attachments: t.attachments || []
           }));
 
@@ -284,7 +284,6 @@ const App: React.FC = () => {
                 updatedAt: data.updated_at ? new Date(data.updated_at) : new Date(data.created_at),
                 resolvedAt: data.resolved_at ? new Date(data.resolved_at) : undefined,
                 aiAnalysis: data.ai_analysis,
-                suggestedSolution: data.suggested_solution,
                 attachments: data.attachments || []
              };
              setSelectedTicket(formatted);

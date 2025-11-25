@@ -1,4 +1,5 @@
 
+
 export enum TicketStatus {
   OPEN = 'OPEN',
   IN_PROGRESS = 'IN_PROGRESS',
@@ -14,6 +15,13 @@ export enum TicketPriority {
 }
 
 export type UserRole = 'ADMIN' | 'USER';
+
+export interface GeminiInsightData {
+  summary: string;
+  sentimentScore: number;
+  urgency: string;
+  suggestedResponse: string;
+}
 
 export interface User {
   id: string;
@@ -38,7 +46,6 @@ export interface Ticket {
   updatedAt?: Date; // Última atualização
   resolvedAt?: Date; // Data de resolução
   aiAnalysis?: string;
-  suggestedSolution?: string;
   attachments?: string[]; // URLs dos arquivos anexados
 }
 
