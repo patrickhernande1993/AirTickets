@@ -1,6 +1,5 @@
 
 
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Ticket, TicketStatus, User, Comment, AuditLog, GeminiInsightData } from '../types';
 import { ArrowLeft, CheckCircle, Clock, User as UserIcon, Calendar, Tag, Trash2, Edit, Send, MessageSquare, FileText, Paperclip } from 'lucide-react';
@@ -26,11 +25,12 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
   // Audit Logs State
   const [logs, setLogs] = useState<AuditLog[]>([]);
-
+  
   // Gemini Insights State
   const [insights, setInsights] = useState<GeminiInsightData | null>(null);
-  const [loadingInsights, setLoadingInsights] = useState(true);
-  
+  const [loadingInsights, setLoadingInsights] = useState(false);
+
+
   const isAdmin = currentUser.role === 'ADMIN';
   const isOwner = currentUser.id === ticket.requesterId;
 
@@ -60,29 +60,19 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       }
   }, [ticket.id]);
   
-  // Effect to fetch Gemini Insights
+  // Fetch Gemini Insights
   useEffect(() => {
-    const fetchInsights = async () => {
-      if (isAdmin) {
+    if (isAdmin) {
         setLoadingInsights(true);
-        setInsights(null); // Clear previous insights when ticket changes
-        try {
-            const result = await getGeminiInsights(ticket.title, ticket.description);
-            setInsights(result);
-        } catch (e) {
-            console.error("Failed to fetch insights", e);
-            setInsights(null);
-        } finally {
-            setLoadingInsights(false);
-        }
-      } else {
-          setLoadingInsights(false);
-      }
-    };
-    
-    fetchInsights();
+        getGeminiInsights(ticket.title, ticket.description)
+            .then(data => {
+                setInsights(data);
+            })
+            .finally(() => {
+                setLoadingInsights(false);
+            });
+    }
   }, [ticket.id, ticket.title, ticket.description, isAdmin]);
-
 
   useEffect(() => {
       commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -132,6 +122,14 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
     }
   };
   
+  const handleUseSuggestion = (suggestion: string) => {
+    setNewComment(prev => prev ? `${prev}\n${suggestion}` : suggestion);
+    const input = document.querySelector('input[placeholder="Escreva uma mensagem..."]');
+    if (input) {
+        (input as HTMLInputElement).focus();
+    }
+  };
+
   const handleSendComment = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!newComment.trim()) return;
@@ -193,10 +191,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
           setComments(prev => prev.filter(c => c.id !== tempId));
           setNewComment(commentText); 
       }
-  };
-
-  const handleUseSuggestion = (suggestion: string) => {
-    setNewComment(suggestion);
   };
 
   const translatePriority = (p: string) => {
@@ -357,6 +351,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
         )}
       </div>
 
+      {/* AI Analysis & Solution */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             {/* Comments / Interactions */}
@@ -380,37 +375,28 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                         comments.map((comment) => {
                             const isMe = comment.userId === currentUser.id;
                             const isStaff = comment.userRole === 'ADMIN';
-                            
-                            // Staff messages are red, like user's own messages.
-                            const bubbleClasses = isMe || isStaff 
-                                ? 'bg-primary-600 text-white' 
-                                : 'bg-white border border-gray-200 text-gray-800 shadow-sm';
-                            
-                            // Different rounding for sent vs received
-                            const bubbleRounding = isMe ? 'rounded-tr-none' : 'rounded-tl-none';
-
-                            // Different avatar color
-                            const avatarClasses = isMe || isStaff ? 'bg-primary-400' : 'bg-gray-400';
-
                             return (
                                 <div key={comment.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                    <div className="flex items-end gap-2">
-                                        {/* Bubble Container */}
-                                        <div className="max-w-[80%]">
-                                            <div className={`flex items-center text-xs text-gray-500 mb-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                                <span className="font-medium mr-2">{comment.userName}</span>
-                                                {isStaff && <span className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-sm text-[10px] mr-2">STAFF</span>}
-                                                <span>{comment.createdAt.toLocaleString('pt-BR')}</span>
-                                            </div>
-                                            <div className={`p-3 rounded-2xl text-sm ${bubbleClasses} ${bubbleRounding}`}>
-                                                {comment.content}
-                                            </div>
+                                    <div className={`max-w-[80%] ${isMe ? 'order-1' : 'order-2'}`}>
+                                        <div className={`flex items-center text-xs text-gray-500 mb-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                            <span className="font-medium mr-2">{comment.userName}</span>
+                                            {isStaff && <span className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-sm text-[10px] mr-2">STAFF</span>}
+                                            <span>{comment.createdAt.toLocaleString('pt-BR')}</span>
                                         </div>
-
-                                        {/* Avatar */}
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${avatarClasses}`}>
-                                            {comment.userName.charAt(0).toUpperCase()}
+                                        <div className={`p-3 rounded-2xl text-sm ${
+                                            isMe 
+                                            ? 'bg-primary-600 text-white rounded-tr-none' 
+                                            : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none shadow-sm'
+                                        }`}>
+                                            {comment.content}
                                         </div>
+                                    </div>
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-5 ${
+                                        isMe 
+                                        ? 'bg-primary-400 order-2 ml-2' 
+                                        : 'bg-gray-400 order-1 mr-2'
+                                    }`}>
+                                        {comment.userName.charAt(0).toUpperCase()}
                                     </div>
                                 </div>
                             );
@@ -441,13 +427,15 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
           </div>
 
           <div className="space-y-6">
+             {/* AI Insights Card */}
              {isAdmin && (
-              <GeminiInsights
-                insights={insights}
-                loading={loadingInsights}
-                onUseSuggestion={handleUseSuggestion}
-              />
-            )}
+                <GeminiInsights
+                    loading={loadingInsights}
+                    insights={insights}
+                    onUseSuggestion={handleUseSuggestion}
+                />
+             )}
+
              {/* Real Audit History */}
              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                  <h3 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">Histórico do Chamado</h3>

@@ -1,6 +1,5 @@
 
 
-
 export enum TicketStatus {
   OPEN = 'OPEN',
   IN_PROGRESS = 'IN_PROGRESS',
@@ -16,6 +15,13 @@ export enum TicketPriority {
 }
 
 export type UserRole = 'ADMIN' | 'USER';
+
+export interface GeminiInsightData {
+  summary: string;
+  sentimentScore: number;
+  urgency: string;
+  suggestedResponse: string;
+}
 
 export interface User {
   id: string;
@@ -72,14 +78,6 @@ export interface AuditLog {
   action: string; // 'CREATED' | 'STATUS_CHANGE' | 'EDITED'
   details?: string;
   createdAt: Date;
-}
-
-// FIX: Added GeminiInsightData interface to resolve import error.
-export interface GeminiInsightData {
-  summary: string;
-  sentimentScore: number;
-  urgency: string;
-  suggestedResponse: string;
 }
 
 export interface ITicketStats {
