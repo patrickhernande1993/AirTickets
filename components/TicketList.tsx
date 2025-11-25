@@ -110,25 +110,25 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
     switch(s) {
       case TicketStatus.RESOLVED: 
           return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 whitespace-nowrap">
                 <CheckCircle size={12} className="mr-1" /> Resolvido
             </span>
           );
       case TicketStatus.CLOSED: 
           return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 whitespace-nowrap">
                 <CheckCircle size={12} className="mr-1" /> Fechado
             </span>
           );
       case TicketStatus.IN_PROGRESS: 
           return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 whitespace-nowrap">
                 <Clock size={12} className="mr-1" /> Em Progresso
             </span>
           );
       default: 
           return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 whitespace-nowrap">
                 <AlertCircle size={12} className="mr-1" /> Aberto
             </span>
           );
