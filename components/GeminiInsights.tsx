@@ -64,7 +64,7 @@ export const GeminiInsights: React.FC<GeminiInsightsProps> = ({ insights, loadin
             </div>
             <div className="p-5 space-y-4">
                 <div>
-                    <h4 className="text-xs font-semibold uppercase text-gray-500 mb-1">Resumo</h4>
+                    <h4 className="text-xs font-semibold uppercase text-gray-500 mb-1">RESUMO</h4>
                     <p className="text-gray-800 text-sm p-3 bg-gray-50 rounded-lg border border-gray-100">
                         {insights.summary}
                     </p>
@@ -72,20 +72,20 @@ export const GeminiInsights: React.FC<GeminiInsightsProps> = ({ insights, loadin
 
                 <div className="grid grid-cols-2 gap-4">
                     <div className={`p-3 rounded-lg ${sentiment.bgColor}`}>
-                        <h4 className="text-xs font-semibold uppercase text-gray-500 mb-1">Sentimento</h4>
+                        <h4 className="text-xs font-semibold uppercase text-gray-500 mb-1">SENTIMENTO</h4>
                         <p className={`text-sm font-bold ${sentiment.color}`}>
                             {sentiment.label} ({insights.sentimentScore}/100)
                         </p>
                     </div>
                      <div className="bg-gray-100 p-3 rounded-lg">
-                        <h4 className="text-xs font-semibold uppercase text-gray-500 mb-1">Urgência</h4>
+                        <h4 className="text-xs font-semibold uppercase text-gray-500 mb-1">URGÊNCIA</h4>
                         <p className="text-sm font-bold text-gray-800">{insights.urgency}</p>
                     </div>
                 </div>
 
                 <div>
                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="text-xs font-semibold uppercase text-gray-500">Sugestão de Resposta</h4>
+                        <h4 className="text-xs font-semibold uppercase text-gray-500">SUGESTÃO DE RESPOSTA</h4>
                         <button 
                             onClick={() => onUseSuggestion(insights.suggestedResponse)}
                             className="flex items-center text-xs font-medium text-primary-600 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 px-2 py-1 rounded-md transition-colors"

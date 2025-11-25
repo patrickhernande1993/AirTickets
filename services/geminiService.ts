@@ -31,7 +31,7 @@ const geminiInsightsSchema: Schema = {
   properties: {
     summary: {
       type: Type.STRING,
-      description: "Um resumo conciso de uma frase sobre o problema do usuário, em Português.",
+      description: "Um resumo conciso de uma frase sobre o problema do usuário, em Português. Se o ticket não tiver informações suficientes, informe que o ticket não contém informações suficientes para identificar o problema.",
     },
     sentimentScore: {
       type: Type.INTEGER,
@@ -44,7 +44,7 @@ const geminiInsightsSchema: Schema = {
     },
     suggestedResponse: {
       type: Type.STRING,
-      description: "Uma sugestão de primeira resposta completa e empática para o cliente, em tom profissional e prestativo, em Português do Brasil.",
+      description: "Uma sugestão de primeira resposta completa e empática para o cliente, em tom profissional e prestativo, em Português do Brasil. Se o ticket não tiver informações suficientes, peça mais detalhes ao usuário.",
     },
   },
   required: ["summary", "sentimentScore", "urgency", "suggestedResponse"],

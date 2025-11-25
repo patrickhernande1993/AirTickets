@@ -28,7 +28,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
   
   // Gemini Insights State
   const [insights, setInsights] = useState<GeminiInsightData | null>(null);
-  const [loadingInsights, setLoadingInsights] = useState(true);
+  const [loadingInsights, setLoadingInsights] = useState(false);
 
 
   const isAdmin = currentUser.role === 'ADMIN';
