@@ -122,7 +122,7 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
           );
       case TicketStatus.IN_PROGRESS: 
           return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
                 <Clock size={12} className="mr-1" /> Em Progresso
             </span>
           );
