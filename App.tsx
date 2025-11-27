@@ -443,7 +443,8 @@ const App: React.FC = () => {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar currentView={currentView} onChangeView={setCurrentView} currentUser={currentUser} />
       <main className="flex-1 ml-64 p-8 overflow-y-auto h-screen">
-        <div className="max-w-6xl mx-auto">
+        {/* Changed from max-w-6xl mx-auto to w-[95%] mx-auto to stretch the grid */}
+        <div className="w-[95%] mx-auto">
           <header className="mb-8 flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">

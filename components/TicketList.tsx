@@ -305,7 +305,7 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                             <td className="px-6 py-4">
                                 <div>
                                     <p className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">{ticket.title}</p>
-                                    <p className="text-xs text-gray-500 truncate max-w-[200px]">{ticket.description}</p>
+                                    <p className="text-xs text-gray-500 truncate max-w-[500px]">{ticket.description}</p>
                                 </div>
                             </td>
                              <td className="px-6 py-4">
