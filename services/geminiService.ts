@@ -1,12 +1,16 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { TicketPriority, GeminiInsightData } from "../types";
 
-const apiKey = process.env.API_KEY || '';
-// Validação básica para garantir que a chave parece uma chave do Google (começa com AIza)
-const isValidApiKey = apiKey.startsWith('AIza');
+// Acesso seguro à chave da API. 
+// O Vite substituirá 'process.env.API_KEY' pelo valor definido no vite.config.ts.
+// @ts-ignore
+const apiKey = process.env.API_KEY as string;
 
-const ai = new GoogleGenAI({ apiKey });
+// Validação básica para garantir que a chave parece uma chave do Google (começa com AIza)
+const isValidApiKey = apiKey && apiKey.length > 0 && apiKey.startsWith('AIza');
+
+// Só inicializa o cliente se a chave for válida para evitar erros de crash imediato
+const ai = isValidApiKey ? new GoogleGenAI({ apiKey }) : null;
 
 // Schemas definidos como objetos simples para evitar conflitos de tipagem
 const ticketAnalysisSchema = {
@@ -54,8 +58,8 @@ const geminiInsightsSchema = {
 };
 
 export const analyzeTicketContent = async (title: string, description: string) => {
-  if (!isValidApiKey) {
-    console.error("API Key inválida ou ausente. Verifique seu arquivo .env. A chave deve começar com 'AIza'.");
+  if (!ai || !isValidApiKey) {
+    console.warn("API Key inválida ou ausente. A IA não será utilizada.");
     return null;
   }
 
@@ -90,8 +94,8 @@ export const analyzeTicketContent = async (title: string, description: string) =
 };
 
 export const getGeminiInsights = async (title: string, description: string): Promise<GeminiInsightData | null> => {
-  if (!isValidApiKey) {
-    console.error("API Key inválida ou ausente. Verifique seu arquivo .env.");
+  if (!ai || !isValidApiKey) {
+    console.warn("API Key inválida ou ausente. Insights não disponíveis.");
     return null;
   }
 

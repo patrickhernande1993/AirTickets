@@ -3,15 +3,15 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
-  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
-  const env = loadEnv(mode, (process as any).cwd(), '');
+  // Carrega as variáveis de ambiente baseadas no modo atual
+  const env = loadEnv(mode, process.cwd(), '');
 
   return {
     plugins: [react()],
     define: {
-      // Polyfill process.env.API_KEY for the GenAI SDK usage
-      'process.env.API_KEY': JSON.stringify(env.API_KEY)
+      // Substitui process.env.API_KEY pelo valor da string da chave ou uma string vazia.
+      // Isso evita que o código quebre se a chave não existir.
+      'process.env.API_KEY': JSON.stringify(env.API_KEY || ""),
     },
     server: {
       port: 3000
