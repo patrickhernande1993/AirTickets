@@ -272,6 +272,9 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                         <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('title')}>
                             <div className="flex items-center">Assunto <SortIcon field="title" /></div>
                         </th>
+                        <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('requester')}>
+                            <div className="flex items-center">Solicitante <SortIcon field="requester" /></div>
+                        </th>
                         <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('category')}>
                             <div className="flex items-center">Categoria <SortIcon field="category" /></div>
                         </th>
@@ -305,8 +308,12 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                             <td className="px-6 py-4">
                                 <div>
                                     <p className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">{ticket.title}</p>
-                                    <p className="text-xs text-gray-500 truncate max-w-[500px]">{ticket.description}</p>
+                                    {/* Largura reduzida para 300px para acomodar a nova coluna e evitar rolagem excessiva */}
+                                    <p className="text-xs text-gray-500 truncate max-w-[300px]">{ticket.description}</p>
                                 </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-700 font-medium">
+                                {ticket.requester}
                             </td>
                              <td className="px-6 py-4">
                                 <span className="px-2 py-1 bg-gray-100 rounded text-xs font-medium text-gray-600 border border-gray-200">
