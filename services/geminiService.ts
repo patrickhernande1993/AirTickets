@@ -1,17 +1,37 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { TicketPriority, GeminiInsightData } from "../types";
 
-// Acesso seguro à chave API injetada pelo Vite.
-// O 'define' no vite.config.ts substitui 'process.env.API_KEY' pelo valor da string.
-// Adicionamos uma verificação de segurança para evitar ReferenceError no navegador.
-const apiKey = (typeof process !== 'undefined' && process.env && process.env.API_KEY) ? process.env.API_KEY : '';
+// Lógica robusta para recuperar a API Key
+let recoveredKey = '';
+
+// 1. Tenta via injeção do Vite (process.env.API_KEY definido no vite.config.ts)
+try {
+    // @ts-ignore
+    if (typeof process !== 'undefined' && process.env?.API_KEY) {
+        // @ts-ignore
+        recoveredKey = process.env.API_KEY;
+    }
+} catch (e) { /* ignorar erro de acesso */ }
+
+// 2. Tenta via padrão nativo do Vite (import.meta.env) - Funciona bem no Vercel para vars VITE_
+if (!recoveredKey) {
+    try {
+        // @ts-ignore
+        if (import.meta.env?.VITE_GEMINI_API_KEY) {
+            // @ts-ignore
+            recoveredKey = import.meta.env.VITE_GEMINI_API_KEY;
+        }
+    } catch (e) { /* ignorar erro */ }
+}
+
+const apiKey = recoveredKey;
 
 // É seguro inicializar o cliente mesmo sem a chave no momento da definição,
 // pois o erro será tratado na chamada da função.
 const ai = new GoogleGenAI({ apiKey });
 
 // Validação simples
-const isValidApiKey = typeof apiKey === 'string' && apiKey.startsWith('AIza');
+const isValidApiKey = typeof apiKey === 'string' && apiKey.length > 10;
 
 const ticketAnalysisSchema = {
   type: Type.OBJECT,
