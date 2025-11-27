@@ -1,10 +1,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { TicketPriority, GeminiInsightData } from "../types";
 
-// Acesso seguro à chave da API. 
-// O Vite substituirá 'process.env.API_KEY' pelo valor definido no vite.config.ts.
-// @ts-ignore
-const apiKey = process.env.API_KEY as string;
+// Declaração da constante global injetada pelo Vite (vite.config.ts)
+declare const __APP_GEMINI_KEY__: string;
+
+// Acesso seguro: se a constante não for definida (ex: teste unitário), usa string vazia
+const apiKey = typeof __APP_GEMINI_KEY__ !== 'undefined' ? __APP_GEMINI_KEY__ : '';
 
 // Validação básica para garantir que a chave parece uma chave do Google (começa com AIza)
 const isValidApiKey = apiKey && apiKey.length > 0 && apiKey.startsWith('AIza');
@@ -59,7 +60,7 @@ const geminiInsightsSchema = {
 
 export const analyzeTicketContent = async (title: string, description: string) => {
   if (!ai || !isValidApiKey) {
-    console.warn("API Key inválida ou ausente. A IA não será utilizada.");
+    console.warn("API Key inválida ou ausente. A IA não será utilizada. Verifique se __APP_GEMINI_KEY__ foi injetada corretamente.");
     return null;
   }
 
