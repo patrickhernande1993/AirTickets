@@ -1,21 +1,15 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { TicketPriority, GeminiInsightData } from "../types";
 
-// Declaração do process para satisfazer o TypeScript caso não esteja definido globalmente
-declare const process: { env: { API_KEY: string } };
-
-// Acesso direto via process.env.API_KEY conforme guidelines
-// O valor é injetado pelo Vite via define no vite.config.ts
+// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
 const apiKey = process.env.API_KEY || '';
 
-// Validação básica para garantir que a chave parece uma chave do Google (começa com AIza)
-const isValidApiKey = apiKey && apiKey.length > 0 && apiKey.startsWith('AIza');
+// É seguro inicializar o cliente. O erro ocorrerá na chamada da API, que é protegida.
+const ai = new GoogleGenAI({ apiKey });
 
-// Só inicializa o cliente se a chave for válida para evitar erros de crash imediato
-// Guidelines: Always use const ai = new GoogleGenAI({apiKey: process.env.API_KEY});
-const ai = isValidApiKey ? new GoogleGenAI({ apiKey: process.env.API_KEY }) : null;
+// Validação para garantir que a chave parece uma chave do Google (começa com AIza)
+const isValidApiKey = apiKey.startsWith('AIza');
 
-// Schemas definidos como objetos simples para evitar conflitos de tipagem
 const ticketAnalysisSchema = {
   type: Type.OBJECT,
   properties: {
@@ -61,8 +55,8 @@ const geminiInsightsSchema = {
 };
 
 export const analyzeTicketContent = async (title: string, description: string) => {
-  if (!ai || !isValidApiKey) {
-    console.warn("API Key inválida ou ausente. A IA não será utilizada. Verifique se a API Key está configurada no .env.");
+  if (!isValidApiKey) {
+    console.error("API Key inválida ou ausente. A IA não será utilizada. Verifique se a variável API_KEY está configurada no .env e se o servidor foi reiniciado.");
     return null;
   }
 
@@ -97,8 +91,8 @@ export const analyzeTicketContent = async (title: string, description: string) =
 };
 
 export const getGeminiInsights = async (title: string, description: string): Promise<GeminiInsightData | null> => {
-  if (!ai || !isValidApiKey) {
-    console.warn("API Key inválida ou ausente. Insights não disponíveis.");
+  if (!isValidApiKey) {
+    console.error("API Key inválida ou ausente. Insights não disponíveis. Verifique se a variável API_KEY está configurada no .env e se o servidor foi reiniciado.");
     return null;
   }
 
