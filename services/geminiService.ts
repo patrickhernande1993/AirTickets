@@ -1,15 +1,20 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { TicketPriority, GeminiInsightData } from "../types";
 
-const apiKey = process.env.API_KEY || ''; 
+const apiKey = process.env.API_KEY || '';
+// Validação básica para garantir que a chave parece uma chave do Google (começa com AIza)
+const isValidApiKey = apiKey.startsWith('AIza');
+
 const ai = new GoogleGenAI({ apiKey });
 
+// Schemas definidos como objetos simples para evitar conflitos de tipagem
 const ticketAnalysisSchema = {
   type: Type.OBJECT,
   properties: {
     priority: {
       type: Type.STRING,
-      enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"], 
+      enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
       description: "A prioridade estimada do chamado de TI com base na urgência e impacto.",
     },
     category: {
@@ -48,21 +53,11 @@ const geminiInsightsSchema = {
   required: ["summary", "sentimentScore", "urgency", "suggestedResponse"],
 };
 
-// Função auxiliar para validar a chave
-const isApiKeyValid = () => {
-  if (!apiKey) {
-    console.error("Gemini Error: API Key não encontrada. Verifique seu arquivo .env.");
-    return false;
-  }
-  if (!apiKey.startsWith("AIza")) {
-    console.error("Gemini Error: API Key parece inválida ou corrompida (deve começar com 'AIza'). Verifique a codificação do arquivo .env.");
-    return false;
-  }
-  return true;
-};
-
 export const analyzeTicketContent = async (title: string, description: string) => {
-  if (!isApiKeyValid()) return null;
+  if (!isValidApiKey) {
+    console.error("API Key inválida ou ausente. Verifique seu arquivo .env. A chave deve começar com 'AIza'.");
+    return null;
+  }
 
   try {
     const prompt = `
@@ -95,7 +90,10 @@ export const analyzeTicketContent = async (title: string, description: string) =
 };
 
 export const getGeminiInsights = async (title: string, description: string): Promise<GeminiInsightData | null> => {
-  if (!isApiKeyValid()) return null;
+  if (!isValidApiKey) {
+    console.error("API Key inválida ou ausente. Verifique seu arquivo .env.");
+    return null;
+  }
 
   try {
     const prompt = `

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Ticket, TicketPriority, TicketStatus, User } from '../types';
 import { analyzeTicketContent } from '../services/geminiService';
-import { Sparkles, Loader2, ArrowLeft, Paperclip, X, FileText, AlertCircle } from 'lucide-react';
+import { Sparkles, Loader2, ArrowLeft, Paperclip, X, FileText, AlertTriangle } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -46,14 +46,13 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
   }, [initialData]);
 
   const handleAIAnalysis = async () => {
+    setAiError(null);
     if (!title || !description) {
-        setAiError("Preencha Assunto e Descrição para analisar.");
+        setAiError("Por favor, preencha o Assunto e a Descrição para que a IA possa analisar.");
         return;
     }
     
     setIsAnalyzing(true);
-    setAiError(null);
-
     try {
         const result = await analyzeTicketContent(title, description);
         
@@ -65,11 +64,11 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
           }
           setAiSummary(result.summary);
         } else {
-            setAiError("Falha ao classificar. Verifique se a API Key no .env é válida.");
+            setAiError("Não foi possível classificar. Verifique se a API Key no arquivo .env está correta.");
         }
     } catch (error) {
         console.error("AI Error:", error);
-        setAiError("Erro de conexão com o serviço de IA.");
+        setAiError("Erro de conexão com o serviço de IA. Tente novamente mais tarde.");
     } finally {
         setIsAnalyzing(false);
     }
@@ -99,7 +98,6 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
           }
       } catch (error: any) {
           console.error('Error uploading file:', error);
-          // Exibe a mensagem real do erro para facilitar o debug (ex: Policy violations)
           alert(`Erro ao fazer upload: ${error.message || 'Verifique as permissões do Bucket.'}`);
       } finally {
           setIsUploading(false);
@@ -193,15 +191,12 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
               required
               rows={5}
               value={description}
-              onChange={(e) => {
-                  setDescription(e.target.value);
-                  if (aiError) setAiError(null);
-              }}
+              onChange={(e) => setDescription(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all resize-none"
               placeholder="Descreva o problema em detalhes..."
             />
             
-            <div className="absolute bottom-3 right-3 flex flex-col items-end">
+            <div className="absolute bottom-3 right-3">
                 <button
                     type="button"
                     onClick={handleAIAnalysis}
@@ -224,17 +219,15 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
                         </>
                     )}
                 </button>
-                
-                {aiError && (
-                    <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded-lg text-xs text-red-600 shadow-sm animate-in fade-in slide-in-from-top-1 max-w-[250px]">
-                        <div className="flex items-start">
-                            <AlertCircle size={14} className="mr-1.5 mt-0.5 flex-shrink-0" />
-                            <span>{aiError}</span>
-                        </div>
-                    </div>
-                )}
             </div>
           </div>
+          
+          {aiError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-3">
+                  <AlertTriangle className="text-red-500 mt-0.5 flex-shrink-0" size={16} />
+                  <p className="text-sm text-red-700">{aiError}</p>
+              </div>
+          )}
 
           {/* Attachments Section */}
           <div>
