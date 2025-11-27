@@ -1,6 +1,5 @@
 
-
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { TicketList } from './components/TicketList';
 import { TicketForm } from './components/TicketForm';
@@ -424,7 +423,7 @@ const App: React.FC = () => {
         return <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} onCreateTicket={() => setCurrentView('CREATE_TICKET')} />;
       case 'DASHBOARD':
       default:
-        return <Dashboard tickets={tickets} currentUser={currentUser} />;
+        return <Dashboard tickets={tickets} currentUser={currentUser} onCreateTicket={() => setCurrentView('CREATE_TICKET')} />;
     }
   };
 
@@ -448,7 +447,7 @@ const App: React.FC = () => {
           <header className="mb-8 flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {currentView === 'DASHBOARD' && (currentUser.role === 'ADMIN' ? 'Dashboard Geral' : 'Visão Geral')}
+                {currentView === 'DASHBOARD' && (currentUser.role === 'ADMIN' ? 'Visão Geral' : 'Dashboard')}
                 {currentView === 'MY_TICKETS' && 'Meus Chamados'}
                 {currentView === 'ALL_TICKETS' && 'Todos os Chamados'}
                 {currentView === 'CREATE_TICKET' && 'Novo Chamado'}
