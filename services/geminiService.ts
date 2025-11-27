@@ -1,15 +1,17 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { TicketPriority, GeminiInsightData } from "../types";
 
-// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
-// O valor é injetado pelo Vite durante o build (ver vite.config.ts)
-const apiKey = process.env.API_KEY || '';
+// Acesso seguro à chave API injetada pelo Vite.
+// O 'define' no vite.config.ts substitui 'process.env.API_KEY' pelo valor da string.
+// Adicionamos uma verificação de segurança para evitar ReferenceError no navegador.
+const apiKey = (typeof process !== 'undefined' && process.env && process.env.API_KEY) ? process.env.API_KEY : '';
 
-// É seguro inicializar o cliente. O erro ocorrerá na chamada da API, que é protegida.
+// É seguro inicializar o cliente mesmo sem a chave no momento da definição,
+// pois o erro será tratado na chamada da função.
 const ai = new GoogleGenAI({ apiKey });
 
-// Validação para garantir que a chave parece uma chave do Google (começa com AIza)
-const isValidApiKey = apiKey && apiKey.startsWith('AIza');
+// Validação simples
+const isValidApiKey = typeof apiKey === 'string' && apiKey.startsWith('AIza');
 
 const ticketAnalysisSchema = {
   type: Type.OBJECT,
@@ -58,7 +60,7 @@ const geminiInsightsSchema = {
 export const analyzeTicketContent = async (title: string, description: string) => {
   if (!isValidApiKey) {
     console.error("ERRO CRÍTICO: API Key inválida ou ausente.");
-    console.error("Se você está no Vercel, vá em Settings > Environment Variables e adicione VITE_GEMINI_API_KEY.");
+    console.warn("Dica: Se estiver no Vercel, adicione VITE_GEMINI_API_KEY nas Environment Variables e faça Redeploy.");
     return null;
   }
 
