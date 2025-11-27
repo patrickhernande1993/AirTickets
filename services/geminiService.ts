@@ -9,7 +9,7 @@ const ticketAnalysisSchema = {
   properties: {
     priority: {
       type: Type.STRING,
-      enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"], // Keep values in English for code compatibility
+      enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"], 
       description: "A prioridade estimada do chamado de TI com base na urgência e impacto.",
     },
     category: {
@@ -48,11 +48,21 @@ const geminiInsightsSchema = {
   required: ["summary", "sentimentScore", "urgency", "suggestedResponse"],
 };
 
-export const analyzeTicketContent = async (title: string, description: string) => {
+// Função auxiliar para validar a chave
+const isApiKeyValid = () => {
   if (!apiKey) {
-    console.error("API Key is missing in geminiService. Make sure API_KEY is set in .env and server restarted.");
-    return null;
+    console.error("Gemini Error: API Key não encontrada. Verifique seu arquivo .env.");
+    return false;
   }
+  if (!apiKey.startsWith("AIza")) {
+    console.error("Gemini Error: API Key parece inválida ou corrompida (deve começar com 'AIza'). Verifique a codificação do arquivo .env.");
+    return false;
+  }
+  return true;
+};
+
+export const analyzeTicketContent = async (title: string, description: string) => {
+  if (!isApiKeyValid()) return null;
 
   try {
     const prompt = `
@@ -85,10 +95,7 @@ export const analyzeTicketContent = async (title: string, description: string) =
 };
 
 export const getGeminiInsights = async (title: string, description: string): Promise<GeminiInsightData | null> => {
-  if (!apiKey) {
-    console.error("API Key is missing in geminiService.");
-    return null;
-  }
+  if (!isApiKeyValid()) return null;
 
   try {
     const prompt = `
