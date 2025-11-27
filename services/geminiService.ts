@@ -1,9 +1,12 @@
-import { GoogleGenAI, Type } from "@google/genai";
+
+
+import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { TicketPriority, GeminiInsightData } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = process.env.API_KEY || ''; 
+const ai = new GoogleGenAI({ apiKey });
 
-const ticketAnalysisSchema = {
+const ticketAnalysisSchema: Schema = {
   type: Type.OBJECT,
   properties: {
     priority: {
@@ -23,7 +26,7 @@ const ticketAnalysisSchema = {
   required: ["priority", "category", "summary"],
 };
 
-const geminiInsightsSchema = {
+const geminiInsightsSchema: Schema = {
   type: Type.OBJECT,
   properties: {
     summary: {
@@ -48,6 +51,11 @@ const geminiInsightsSchema = {
 };
 
 export const analyzeTicketContent = async (title: string, description: string) => {
+  if (!apiKey) {
+    console.error("API Key is missing in geminiService. Make sure API_KEY is set in .env and server restarted.");
+    return null;
+  }
+
   try {
     const prompt = `
       Analise a seguinte solicitação de suporte de TI. 
@@ -79,6 +87,11 @@ export const analyzeTicketContent = async (title: string, description: string) =
 };
 
 export const getGeminiInsights = async (title: string, description: string): Promise<GeminiInsightData | null> => {
+  if (!apiKey) {
+    console.error("API Key is missing in geminiService.");
+    return null;
+  }
+
   try {
     const prompt = `
       Você é um analista de suporte de TI especialista em triagem de chamados. 
