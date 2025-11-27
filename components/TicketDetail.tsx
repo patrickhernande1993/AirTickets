@@ -135,6 +135,20 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       if (!newComment.trim()) return;
 
       const commentText = newComment;
+      
+      // Optimistic Update
+      const tempId = `temp-${Date.now()}`;
+      const optimisticComment: Comment = {
+          id: tempId,
+          ticketId: ticket.id,
+          userId: currentUser.id,
+          userName: currentUser.name,
+          userRole: currentUser.role,
+          content: commentText,
+          createdAt: new Date()
+      };
+
+      setComments(prev => [...prev, optimisticComment]);
       setNewComment(''); 
 
       try {
@@ -145,46 +159,36 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
           });
 
           if (error) throw error;
-          
-          // Re-fetch comments to show the new one from DB
-          await fetchComments();
 
-          // --- EMAIL NOTIFICATION LOGIC ---
-          // Notify requester if an admin comments on their ticket
-          if (isAdmin && ticket.requesterId !== currentUser.id) {
-              const { data: requesterProfile } = await supabase
-                .from('profiles')
-                .select('email')
-                .eq('id', ticket.requesterId)
-                .single();
-            
-              if (requesterProfile?.email) {
-                  const subject = `Nova resposta no seu chamado #${ticket.ticketNumber}: ${ticket.title}`;
-                  const htmlBody = `
-                      <h1>Olá, ${ticket.requester}!</h1>
-                      <p>Você recebeu uma nova resposta no seu chamado <strong>"${ticket.title}"</strong>.</p>
-                      <hr/>
-                      <p><strong>${currentUser.name}</strong> disse:</p>
-                      <p><em>${commentText.replace(/\n/g, '<br>')}</em></p>
-                      <hr/>
-                      <p>Você pode visualizar o chamado e responder clicando no link abaixo:</p>
-                      <a href="${window.location.href}">Ver Chamado</a>
-                      <br/><p>Atenciosamente,<br/>Equipe de Suporte AirService</p>
-                  `;
-
-                  // Invoke the Edge Function
-                  const { error: funcError } = await supabase.functions.invoke('send-email', {
-                      body: { to: requesterProfile.email, subject, htmlBody }
-                  });
-                  if (funcError) {
-                      console.error("Failed to send comment email:", funcError);
-                  }
-              }
+          // Notifications
+          if (isAdmin) {
+             if (ticket.requesterId !== currentUser.id) {
+                 await supabase.from('notifications').insert({
+                     user_id: ticket.requesterId,
+                     title: 'Nova interação no chamado',
+                     message: `${currentUser.name} comentou: ${commentText.substring(0, 50)}...`,
+                     ticket_id: ticket.id
+                 });
+             }
+          } else {
+             const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'ADMIN');
+             if (admins) {
+                 const notifications = admins.map(admin => ({
+                     user_id: admin.id,
+                     title: `Nova interação de ${currentUser.name}`,
+                     message: `No chamado "${ticket.title}": ${commentText.substring(0, 50)}...`,
+                     ticket_id: ticket.id
+                 }));
+                 if (notifications.length > 0) {
+                    await supabase.from('notifications').insert(notifications);
+                 }
+             }
           }
 
       } catch (error) {
           console.error("Error sending comment:", error);
           alert("Erro ao enviar mensagem");
+          setComments(prev => prev.filter(c => c.id !== tempId));
           setNewComment(commentText); 
       }
   };
