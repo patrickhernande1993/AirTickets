@@ -135,20 +135,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       if (!newComment.trim()) return;
 
       const commentText = newComment;
-      
-      // Optimistic Update
-      const tempId = `temp-${Date.now()}`;
-      const optimisticComment: Comment = {
-          id: tempId,
-          ticketId: ticket.id,
-          userId: currentUser.id,
-          userName: currentUser.name,
-          userRole: currentUser.role,
-          content: commentText,
-          createdAt: new Date()
-      };
-
-      setComments(prev => [...prev, optimisticComment]);
       setNewComment(''); 
 
       try {
@@ -159,36 +145,13 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
           });
 
           if (error) throw error;
-
-          // Notifications
-          if (isAdmin) {
-             if (ticket.requesterId !== currentUser.id) {
-                 await supabase.from('notifications').insert({
-                     user_id: ticket.requesterId,
-                     title: 'Nova interação no chamado',
-                     message: `${currentUser.name} comentou: ${commentText.substring(0, 50)}...`,
-                     ticket_id: ticket.id
-                 });
-             }
-          } else {
-             const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'ADMIN');
-             if (admins) {
-                 const notifications = admins.map(admin => ({
-                     user_id: admin.id,
-                     title: `Nova interação de ${currentUser.name}`,
-                     message: `No chamado "${ticket.title}": ${commentText.substring(0, 50)}...`,
-                     ticket_id: ticket.id
-                 }));
-                 if (notifications.length > 0) {
-                    await supabase.from('notifications').insert(notifications);
-                 }
-             }
-          }
+          
+          // Re-fetch comments to show the new one from DB
+          await fetchComments();
 
       } catch (error) {
           console.error("Error sending comment:", error);
           alert("Erro ao enviar mensagem");
-          setComments(prev => prev.filter(c => c.id !== tempId));
           setNewComment(commentText); 
       }
   };
