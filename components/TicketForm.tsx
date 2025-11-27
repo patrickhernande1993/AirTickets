@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Ticket, TicketPriority, TicketStatus, User } from '../types';
 import { analyzeTicketContent } from '../services/geminiService';
-import { Sparkles, Loader2, ArrowLeft, Paperclip, X, FileText } from 'lucide-react';
+import { Sparkles, Loader2, ArrowLeft, Paperclip, X, FileText, AlertCircle } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -28,6 +28,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   
   // Attachments State
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -46,11 +47,13 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
 
   const handleAIAnalysis = async () => {
     if (!title || !description) {
-        alert("Por favor, preencha o Assunto e a Descrição para que a IA possa analisar.");
+        setAiError("Preencha Assunto e Descrição para analisar.");
         return;
     }
     
     setIsAnalyzing(true);
+    setAiError(null);
+
     try {
         const result = await analyzeTicketContent(title, description);
         
@@ -62,11 +65,11 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
           }
           setAiSummary(result.summary);
         } else {
-            alert("Não foi possível classificar automaticamente. Verifique se a API Key está configurada e válida.");
+            setAiError("Falha ao classificar. Verifique se a API Key no .env é válida.");
         }
     } catch (error) {
         console.error("AI Error:", error);
-        alert("Erro ao conectar com o serviço de IA.");
+        setAiError("Erro de conexão com o serviço de IA.");
     } finally {
         setIsAnalyzing(false);
     }
@@ -190,12 +193,15 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
               required
               rows={5}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                  setDescription(e.target.value);
+                  if (aiError) setAiError(null);
+              }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all resize-none"
               placeholder="Descreva o problema em detalhes..."
             />
             
-            <div className="absolute bottom-3 right-3">
+            <div className="absolute bottom-3 right-3 flex flex-col items-end">
                 <button
                     type="button"
                     onClick={handleAIAnalysis}
@@ -218,6 +224,15 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
                         </>
                     )}
                 </button>
+                
+                {aiError && (
+                    <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded-lg text-xs text-red-600 shadow-sm animate-in fade-in slide-in-from-top-1 max-w-[250px]">
+                        <div className="flex items-start">
+                            <AlertCircle size={14} className="mr-1.5 mt-0.5 flex-shrink-0" />
+                            <span>{aiError}</span>
+                        </div>
+                    </div>
+                )}
             </div>
           </div>
 
