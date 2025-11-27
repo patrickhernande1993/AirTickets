@@ -9,9 +9,9 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
-      // Substitui process.env.API_KEY pelo valor da string da chave ou uma string vazia.
-      // Isso evita que o código quebre se a chave não existir.
-      'process.env.API_KEY': JSON.stringify(env.API_KEY || ""),
+      // Agora aceita tanto GEMINI_API_KEY quanto API_KEY.
+      // Substitui process.env.API_KEY pelo valor encontrado.
+      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || env.API_KEY || ""),
     },
     server: {
       port: 3000
