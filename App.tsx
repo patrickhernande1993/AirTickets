@@ -132,25 +132,27 @@ const App: React.FC = () => {
 
   const fetchTickets = async () => {
       try {
+          // Alterado para fazer JOIN com a tabela profiles e pegar o nome atualizado
           const { data, error } = await supabase
             .from('tickets')
-            .select('*')
+            .select('*, profiles:requester_id(name)')
             .order('created_at', { ascending: false });
 
           if (error) throw error;
 
           const formattedTickets: Ticket[] = data.map((t: any) => ({
               id: t.id,
-              ticketNumber: t.ticket_number || 0, // Map new column
+              ticketNumber: t.ticket_number || 0,
               title: t.title,
               description: t.description,
-              requester: t.requester_name,
+              // Usa o nome do perfil (atualizado) se existir, senão usa o nome gravado no ticket (backup)
+              requester: t.profiles?.name || t.requester_name,
               requesterId: t.requester_id,
               priority: t.priority,
               status: t.status,
               category: t.category,
               createdAt: new Date(t.created_at),
-              updatedAt: t.updated_at ? new Date(t.updated_at) : new Date(t.created_at), // Fallback to created
+              updatedAt: t.updated_at ? new Date(t.updated_at) : new Date(t.created_at),
               resolvedAt: t.resolved_at ? new Date(t.resolved_at) : undefined,
               aiAnalysis: t.ai_analysis,
               attachments: t.attachments || []
@@ -267,14 +269,14 @@ const App: React.FC = () => {
           setCurrentView('TICKET_DETAIL');
       } else {
           // Fallback fetch if not loaded
-          const { data } = await supabase.from('tickets').select('*').eq('id', ticketId).single();
+          const { data } = await supabase.from('tickets').select('*, profiles:requester_id(name)').eq('id', ticketId).single();
           if (data) {
              const formatted: Ticket = {
                 id: data.id,
                 ticketNumber: data.ticket_number,
                 title: data.title,
                 description: data.description,
-                requester: data.requester_name,
+                requester: data.profiles?.name || data.requester_name,
                 requesterId: data.requester_id,
                 priority: data.priority,
                 status: data.status,
