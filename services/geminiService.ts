@@ -1,12 +1,10 @@
-
-
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { TicketPriority, GeminiInsightData } from "../types";
 
 const apiKey = process.env.API_KEY || ''; 
 const ai = new GoogleGenAI({ apiKey });
 
-const ticketAnalysisSchema: Schema = {
+const ticketAnalysisSchema = {
   type: Type.OBJECT,
   properties: {
     priority: {
@@ -26,7 +24,7 @@ const ticketAnalysisSchema: Schema = {
   required: ["priority", "category", "summary"],
 };
 
-const geminiInsightsSchema: Schema = {
+const geminiInsightsSchema = {
   type: Type.OBJECT,
   properties: {
     summary: {
