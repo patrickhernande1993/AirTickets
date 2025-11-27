@@ -317,6 +317,10 @@ const App: React.FC = () => {
   const handleUpdateStatus = async (id: string, status: TicketStatus) => {
     if (!currentUser) return;
 
+    const ticketToUpdate = tickets.find(t => t.id === id);
+    if (!ticketToUpdate) return;
+
+
     try {
         // Prepare update data
         const updates: any = { status };
@@ -345,7 +349,7 @@ const App: React.FC = () => {
         });
 
         // Update local state immediately (Optimistic or Fetch)
-        setTickets(prev => prev.map(t => {
+        const updatedTickets = tickets.map(t => {
             if (t.id === id) {
                 return {
                     ...t,
@@ -355,34 +359,45 @@ const App: React.FC = () => {
                 };
             }
             return t;
-        }));
+        });
+        setTickets(updatedTickets);
 
-        if (selectedTicket && selectedTicket.id === id) {
-            const updatedTicket = { 
-                ...selectedTicket, 
-                status,
-                resolvedAt: updates.resolved_at ? new Date(updates.resolved_at) : selectedTicket.resolvedAt,
-                updatedAt: new Date()
-            };
-            setSelectedTicket(updatedTicket);
+        const updatedSelectedTicket = updatedTickets.find(t => t.id === id);
+        if (selectedTicket && selectedTicket.id === id && updatedSelectedTicket) {
+            setSelectedTicket(updatedSelectedTicket);
+        }
+
+        // --- EMAIL NOTIFICATION LOGIC ---
+        // Notify requester if an admin changes the status of their ticket
+        if (currentUser.role === 'ADMIN' && ticketToUpdate.requesterId !== currentUser.id) {
+            const { data: requesterProfile } = await supabase
+                .from('profiles')
+                .select('email')
+                .eq('id', ticketToUpdate.requesterId)
+                .single();
             
-            // NOTIFICATION LOGIC: Notify the requester if status changes
-            // If I am an admin changing a user's ticket
-            if (currentUser.role === 'ADMIN') {
-                const { data: profile } = await supabase.from('profiles').select('name').eq('id', currentUser.id).single();
-                const adminName = profile?.name || 'Admin';
-                
-                // Don't notify if I am the requester too
-                if (selectedTicket.requesterId !== currentUser.id) {
-                    await supabase.from('notifications').insert({
-                        user_id: selectedTicket.requesterId,
-                        title: 'Status Atualizado',
-                        message: `Seu chamado "${selectedTicket.title}" mudou para ${status} por ${adminName}.`,
-                        ticket_id: id
-                    });
+            if (requesterProfile?.email) {
+                const subject = `Atualização no seu chamado #${ticketToUpdate.ticketNumber}: ${ticketToUpdate.title}`;
+                const htmlBody = `
+                    <h1>Olá, ${ticketToUpdate.requester}!</h1>
+                    <p>O status do seu chamado <strong>"${ticketToUpdate.title}"</strong> foi atualizado para <strong>${status}</strong>.</p>
+                    <p>A atualização foi feita por: ${currentUser.name}.</p>
+                    <p>Você pode visualizar o chamado clicando no link abaixo:</p>
+                    <a href="${window.location.href}">Ver Chamado</a>
+                    <br/><p>Atenciosamente,<br/>Equipe de Suporte AirService</p>
+                `;
+
+                // Invoke the Edge Function
+                const { error: funcError } = await supabase.functions.invoke('send-email', {
+                    body: { to: requesterProfile.email, subject, htmlBody }
+                });
+                if (funcError) {
+                    console.error("Failed to send status update email:", funcError);
+                    // Non-critical error, so we don't show an alert to the admin
                 }
             }
         }
+        
     } catch (error) {
         console.error("Error updating status:", error);
     }
