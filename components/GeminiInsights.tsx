@@ -81,24 +81,27 @@ export const GeminiInsights: React.FC<GeminiInsightsProps> = ({ insights, loadin
                 </div>
 
                 {/* Grid Sentimento e Urgência */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* gap-3 em vez de gap-4 para ganhar espaço */}
+                <div className="grid grid-cols-2 gap-3">
                     {/* Card Sentimento */}
-                    <div className={`p-4 rounded-xl border ${sentiment.bgColor} ${sentiment.borderColor} flex flex-col justify-center`}>
+                    {/* p-3 em vez de p-4 para ganhar espaço */}
+                    <div className={`p-3 rounded-xl border ${sentiment.bgColor} ${sentiment.borderColor} flex flex-col justify-center`}>
                         <h4 className="text-[10px] font-bold uppercase text-gray-500 mb-1 tracking-wider flex items-center">
                             SENTIMENTO
                         </h4>
-                        <div className="flex items-baseline space-x-2">
+                        {/* flex-wrap para permitir quebra de linha se necessário */}
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
                             <span className={`text-base font-bold ${sentiment.color}`}>{sentiment.label}</span>
-                            <span className="text-xs text-gray-400 font-medium">({insights.sentimentScore}/100)</span>
+                            <span className="text-xs text-gray-400 font-medium whitespace-nowrap">({insights.sentimentScore}/100)</span>
                         </div>
                     </div>
 
                      {/* Card Urgência */}
-                     <div className={`p-4 rounded-xl border ${urgencyStyle.bgColor} ${urgencyStyle.borderColor} flex flex-col justify-center`}>
+                     <div className={`p-3 rounded-xl border ${urgencyStyle.bgColor} ${urgencyStyle.borderColor} flex flex-col justify-center`}>
                         <h4 className="text-[10px] font-bold uppercase text-gray-500 mb-1 tracking-wider flex items-center">
                             URGÊNCIA
                         </h4>
-                        <div className="flex items-baseline space-x-2">
+                        <div className="flex flex-wrap items-baseline gap-x-2">
                             <span className={`text-base font-bold ${urgencyStyle.color}`}>{insights.urgency}</span>
                         </div>
                     </div>
@@ -110,7 +113,7 @@ export const GeminiInsights: React.FC<GeminiInsightsProps> = ({ insights, loadin
                         <h4 className="text-xs font-bold uppercase text-indigo-500 tracking-wide">SUGESTÃO DE RESPOSTA</h4>
                         <button 
                             onClick={() => onUseSuggestion(insights.suggestedResponse)}
-                            className="flex items-center text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors border border-indigo-100"
+                            className="flex items-center text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors border border-indigo-100 whitespace-nowrap ml-2"
                         >
                             <Check size={14} className="mr-1.5" />
                             Usar esta
