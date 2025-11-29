@@ -1,11 +1,11 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Ticket, TicketStatus, User, Comment, AuditLog, GeminiInsightData } from '../types';
-import { ArrowLeft, CheckCircle, Clock, User as UserIcon, Calendar, Tag, Trash2, Edit, Send, MessageSquare, FileText, Paperclip, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, User as UserIcon, Calendar, Tag, Trash2, Edit, Send, MessageSquare, FileText, Paperclip } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { GeminiInsights } from './GeminiInsights';
 import { getGeminiInsights } from '../services/geminiService';
-import { v4 as uuidv4 } from 'uuid';
 
 interface TicketDetailProps {
   ticket: Ticket;
@@ -16,14 +16,9 @@ interface TicketDetailProps {
   onEdit: (ticket: Ticket) => void;
 }
 
-// Interface estendida para controlar o estado de envio localmente
-interface CommentWithStatus extends Comment {
-    isSending?: boolean;
-}
-
 export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser, onBack, onUpdateStatus, onDelete, onEdit }) => {
   // Comment State
-  const [comments, setComments] = useState<CommentWithStatus[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(true);
   const commentsEndRef = useRef<HTMLDivElement>(null);
@@ -38,10 +33,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
   const isAdmin = currentUser.role === 'ADMIN';
   const isOwner = currentUser.id === ticket.requesterId;
-
-  const scrollToBottom = () => {
-      commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
 
   useEffect(() => {
       fetchComments();
@@ -83,10 +74,9 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
     }
   }, [ticket.id, ticket.title, ticket.description, isAdmin]);
 
-  // Auto-scroll sempre que a lista de comentários mudar
   useEffect(() => {
-      scrollToBottom();
-  }, [comments.length, loadingComments]);
+      commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [comments]);
 
   const fetchComments = async () => {
       const { data, error } = await supabase
@@ -98,7 +88,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       if (error) {
           console.error("Error fetching comments", error);
       } else {
-          const serverComments: CommentWithStatus[] = data.map((c: any) => ({
+          const formattedComments = data.map((c: any) => ({
               id: c.id,
               ticketId: c.ticket_id,
               userId: c.user_id,
@@ -107,17 +97,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
               userName: c.profiles?.name || 'Desconhecido',
               userRole: c.profiles?.role || 'USER'
           }));
-
-          setComments(currentComments => {
-              // Merge Inteligente:
-              // Mantém os comentários vindos do servidor.
-              // Mantém também os comentários locais que estão com flag 'isSending' (que ainda não chegaram do servidor),
-              // garantindo que eles não sumam da tela durante o refresh.
-              const sendingComments = currentComments.filter(
-                  c => c.isSending && !serverComments.find(sc => sc.id === c.id)
-              );
-              return [...serverComments, ...sendingComments];
-          });
+          setComments(formattedComments);
       }
       setLoadingComments(false);
   };
@@ -156,30 +136,23 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
       const commentText = newComment;
       
-      // Gera ID no cliente para garantir consistência entre UI otimista e resposta do servidor
-      const optimisticId = uuidv4();
-      
       // Optimistic Update
-      const optimisticComment: CommentWithStatus = {
-          id: optimisticId,
+      const tempId = `temp-${Date.now()}`;
+      const optimisticComment: Comment = {
+          id: tempId,
           ticketId: ticket.id,
           userId: currentUser.id,
           userName: currentUser.name,
           userRole: currentUser.role,
           content: commentText,
-          createdAt: new Date(),
-          isSending: true // Flag visual
+          createdAt: new Date()
       };
 
       setComments(prev => [...prev, optimisticComment]);
       setNewComment(''); 
-      
-      // Força scroll imediato
-      setTimeout(scrollToBottom, 50);
 
       try {
           const { error } = await supabase.from('comments').insert({
-              id: optimisticId, // Usa o mesmo ID gerado
               ticket_id: ticket.id,
               user_id: currentUser.id,
               content: commentText
@@ -187,10 +160,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
           if (error) throw error;
 
-          // Sucesso: Atualiza o estado local removendo o flag de envio
-          setComments(prev => prev.map(c => c.id === optimisticId ? { ...c, isSending: false } : c));
-
-          // Notifications Logic
+          // Notifications
           if (isAdmin) {
              if (ticket.requesterId !== currentUser.id) {
                  await supabase.from('notifications').insert({
@@ -218,8 +188,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       } catch (error) {
           console.error("Error sending comment:", error);
           alert("Erro ao enviar mensagem");
-          // Remove o comentário otimista em caso de erro
-          setComments(prev => prev.filter(c => c.id !== optimisticId));
+          setComments(prev => prev.filter(c => c.id !== tempId));
           setNewComment(commentText); 
       }
   };
@@ -414,18 +383,12 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                                             {isStaff && <span className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-sm text-[10px] mr-2">STAFF</span>}
                                             <span>{comment.createdAt.toLocaleString('pt-BR')}</span>
                                         </div>
-                                        <div className={`p-3 rounded-2xl text-sm relative group ${
+                                        <div className={`p-3 rounded-2xl text-sm ${
                                             isMe 
                                             ? 'bg-primary-600 text-white rounded-tr-none' 
                                             : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none shadow-sm'
                                         }`}>
                                             {comment.content}
-                                            {comment.isSending && (
-                                                <span className="absolute bottom-1 right-2 text-[10px] opacity-70 flex items-center">
-                                                    <Loader2 size={10} className="animate-spin mr-1" />
-                                                    Enviando
-                                                </span>
-                                            )}
                                         </div>
                                     </div>
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-5 ${

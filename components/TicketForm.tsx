@@ -78,46 +78,27 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
       if (!e.target.files || e.target.files.length === 0) return;
       
       setIsUploading(true);
-      const files = Array.from(e.target.files);
-      const newAttachments: string[] = [];
-      const errors: string[] = [];
+      const file = e.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      // Adiciona timestamp para evitar conflitos de nome
+      const fileName = `${Date.now()}_${uuidv4()}.${fileExt}`;
+      const filePath = `${currentUser.id}/${fileName}`;
 
       try {
-          await Promise.all(files.map(async (file) => {
-              try {
-                  const fileExt = file.name.split('.').pop();
-                  // Adiciona timestamp para evitar conflitos de nome
-                  const fileName = `${Date.now()}_${uuidv4()}.${fileExt}`;
-                  const filePath = `${currentUser.id}/${fileName}`;
+          const { error: uploadError } = await supabase.storage
+            .from('attachments')
+            .upload(filePath, file);
 
-                  const { error: uploadError } = await supabase.storage
-                    .from('attachments')
-                    .upload(filePath, file);
+          if (uploadError) throw uploadError;
 
-                  if (uploadError) throw uploadError;
-
-                  const { data } = supabase.storage.from('attachments').getPublicUrl(filePath);
-                  
-                  if (data) {
-                      newAttachments.push(data.publicUrl);
-                  }
-              } catch (err: any) {
-                  console.error(`Error uploading ${file.name}:`, err);
-                  errors.push(file.name);
-              }
-          }));
-
-          if (newAttachments.length > 0) {
-              setAttachments(prev => [...prev, ...newAttachments]);
+          const { data } = supabase.storage.from('attachments').getPublicUrl(filePath);
+          
+          if (data) {
+              setAttachments(prev => [...prev, data.publicUrl]);
           }
-
-          if (errors.length > 0) {
-              alert(`Erro ao fazer upload de: ${errors.join(', ')}`);
-          }
-
       } catch (error: any) {
-          console.error('General upload error:', error);
-          alert('Erro inesperado ao processar arquivos.');
+          console.error('Error uploading file:', error);
+          alert(`Erro ao fazer upload: ${error.message || 'Verifique as permissões do Bucket.'}`);
       } finally {
           setIsUploading(false);
           // Reset input
@@ -254,11 +235,10 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
               <div className="flex items-center space-x-4">
                   <label className={`flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                       {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Paperclip size={18} />}
-                      <span className="text-sm text-gray-600">{isUploading ? 'Enviando...' : 'Anexar Arquivos'}</span>
+                      <span className="text-sm text-gray-600">{isUploading ? 'Enviando...' : 'Anexar Arquivo'}</span>
                       <input 
                         type="file" 
-                        className="hidden"
-                        multiple
+                        className="hidden" 
                         onChange={handleFileUpload} 
                         disabled={isUploading}
                       />

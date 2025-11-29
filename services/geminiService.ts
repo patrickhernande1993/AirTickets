@@ -1,26 +1,12 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { TicketPriority, GeminiInsightData } from "../types";
 
-// --- CONFIGURAÇÃO DE SEGURANÇA (Nova Chave) ---
-// A chave é dividida em partes para evitar que scanners de segurança (GitHub/Google)
-// a identifiquem como "vazada" e bloqueiem automaticamente.
+// As per guidelines, we use process.env.API_KEY directly.
+// The key availability is handled by the build configuration (vite.config.ts).
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Chave Nova: AlzaSyA7GuC_0eRdF71N4ZAToONmuVZgR_jCFTk
-const PART_A = 'AlzaSyA7GuC_0eRdF71N4'; 
-const PART_B = 'ZAToONmuVZgR_jCFTk';
-
-const API_KEY = PART_A + PART_B;
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
-
-// Validação simples
-const isValidApiKey = API_KEY.length > 20 && !API_KEY.includes('_SUBSTITUA_');
-
-// Helper para limpar JSON que vem envolto em Markdown (ex: ```json ... ```)
-const cleanJSON = (text: string) => {
-  if (!text) return "";
-  return text.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
-};
+// Basic validation
+const isValidApiKey = !!process.env.API_KEY;
 
 const ticketAnalysisSchema = {
   type: Type.OBJECT,
@@ -68,8 +54,7 @@ const geminiInsightsSchema = {
 
 export const analyzeTicketContent = async (title: string, description: string) => {
   if (!isValidApiKey) {
-    console.error("ERRO CRÍTICO: API Key inválida ou não configurada.");
-    alert("ERRO DE CONFIGURAÇÃO: API Key inválida.");
+    console.error("ERRO CRÍTICO: API Key inválida ou ausente.");
     return null;
   }
 
@@ -94,32 +79,18 @@ export const analyzeTicketContent = async (title: string, description: string) =
     });
 
     const jsonText = response.text;
-    if (!jsonText) {
-        console.error("Gemini Error: Resposta vazia.");
-        return null;
-    }
+    if (!jsonText) return null;
 
-    const cleanedJson = cleanJSON(jsonText);
-    
-    try {
-        return JSON.parse(cleanedJson) as { priority: TicketPriority; category: string; summary: string };
-    } catch (parseError) {
-        console.error("Gemini Error: Falha ao fazer parse do JSON.", parseError);
-        return null;
-    }
-
-  } catch (error: any) {
+    return JSON.parse(jsonText) as { priority: TicketPriority; category: string; summary: string };
+  } catch (error) {
     console.error("Error analyzing ticket with Gemini:", error);
-    // Tratamento específico para erro de chave bloqueada
-    if (error.message && (error.message.includes('403') || error.message.includes('API key'))) {
-        alert("ERRO DE API: Chave bloqueada ou inválida (Erro 403). Verifique o console.");
-    }
     return null;
   }
 };
 
 export const getGeminiInsights = async (title: string, description: string): Promise<GeminiInsightData | null> => {
   if (!isValidApiKey) {
+    console.error("ERRO CRÍTICO: API Key ausente.");
     return null;
   }
 
@@ -146,8 +117,7 @@ export const getGeminiInsights = async (title: string, description: string): Pro
     const jsonText = response.text;
     if (!jsonText) return null;
 
-    const cleanedJson = cleanJSON(jsonText);
-    return JSON.parse(cleanedJson) as GeminiInsightData;
+    return JSON.parse(jsonText) as GeminiInsightData;
   } catch (error) {
     console.error("Error getting Gemini insights:", error);
     return null;
