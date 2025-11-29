@@ -123,13 +123,20 @@ const App: React.FC = () => {
                 name: data.name, // Use DB name (which we ensured matches metadata on creation)
                 email: data.email || email,
                 role: data.role,
-                isActive: data.is_active
+                isActive: data.is_active,
+                avatar: data.avatar // Campo avatar adicionado
             });
           }
       } catch (error) {
           console.error('Error fetching/creating profile:', error);
       } finally {
           setLoading(false);
+      }
+  };
+  
+  const refreshProfile = () => {
+      if (currentUser) {
+          fetchProfile(currentUser.id, currentUser.email);
       }
   };
 
@@ -448,6 +455,7 @@ const App: React.FC = () => {
         currentUser={currentUser} 
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        onProfileUpdate={refreshProfile}
       />
       
       {/* Mobile Header */}
@@ -464,9 +472,18 @@ const App: React.FC = () => {
                  <span className="text-lg font-bold text-gray-800">AirService</span>
               </div>
           </div>
-          <div className="h-8 w-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold">
-              {currentUser.name.charAt(0).toUpperCase()}
-          </div>
+          {/* Avatar no Mobile */}
+          {currentUser.avatar ? (
+             <img 
+               src={currentUser.avatar} 
+               alt="Avatar" 
+               className="h-8 w-8 rounded-full object-cover border border-gray-200"
+             />
+          ) : (
+             <div className="h-8 w-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold">
+                {currentUser.name.charAt(0).toUpperCase()}
+             </div>
+          )}
       </div>
 
       <main className={`flex-1 p-4 md:p-8 overflow-y-auto h-screen transition-all duration-300 ${isSidebarOpen ? '' : 'ml-0'} md:ml-64 pt-20 md:pt-8`}>
@@ -492,9 +509,18 @@ const App: React.FC = () => {
                 >
                     Sair
                 </button>
-                <div className="h-10 w-10 rounded-full bg-gradient-to-r from-primary-500 to-orange-600 flex items-center justify-center text-white font-bold shadow-md">
-                    {currentUser.name.charAt(0).toUpperCase()}
-                </div>
+                {/* Avatar no Header Desktop */}
+                {currentUser.avatar ? (
+                    <img 
+                        src={currentUser.avatar} 
+                        alt="Avatar" 
+                        className="h-10 w-10 rounded-full object-cover border border-gray-200 shadow-sm"
+                    />
+                ) : (
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-r from-primary-500 to-orange-600 flex items-center justify-center text-white font-bold shadow-md">
+                        {currentUser.name.charAt(0).toUpperCase()}
+                    </div>
+                )}
             </div>
             {/* Mobile Logout (shown below header on mobile) */}
             <div className="md:hidden w-full flex justify-end">
