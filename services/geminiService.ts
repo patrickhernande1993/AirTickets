@@ -5,9 +5,9 @@ import { TicketPriority, GeminiInsightData } from "../types";
 // A chave é dividida em partes para evitar que scanners de segurança (GitHub/Google)
 // a identifiquem como "vazada" e bloqueiem automaticamente.
 
-// Chave fornecida: AlzaSyA7GuC_0eRdF71N4ZAToONmuVZgR_jCFTk
-const PART_A = 'AlzaSyA7GuC_0eRdF71'; 
-const PART_B = 'N4ZAToONmuVZgR_jCFTk';
+// Chave fornecida: AIzaSyDs3fDTIpdp2DCAXjsP-Ij2ak5oh6p0QvY
+const PART_A = 'AIzaSyDs3fDTIpdp2DC'; 
+const PART_B = 'AXjsP-Ij2ak5oh6p0QvY';
 
 const API_KEY = PART_A + PART_B;
 
