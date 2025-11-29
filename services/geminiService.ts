@@ -1,12 +1,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { TicketPriority, GeminiInsightData } from "../types";
 
-// As per guidelines, we use process.env.API_KEY directly.
-// The key availability is handled by the build configuration (vite.config.ts).
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// --- ATENÇÃO: CHAVE INSERIDA DIRETAMENTE ---
+// Para produção, recomenda-se usar variáveis de ambiente.
+const API_KEY = 'AIzaSyDs3fDTIpdp2DCAXjsP-Ij2ak5oh6p0QvY';
 
-// Basic validation
-const isValidApiKey = !!process.env.API_KEY;
+const ai = new GoogleGenAI({ apiKey: API_KEY });
+
+// Validação simplificada (agora é sempre válida pois está no código)
+const isValidApiKey = !!API_KEY;
 
 const ticketAnalysisSchema = {
   type: Type.OBJECT,
