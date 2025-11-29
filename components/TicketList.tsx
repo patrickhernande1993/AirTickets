@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Ticket, TicketPriority, TicketStatus } from '../types';
 import { AlertCircle, CheckCircle, Clock, Search, Plus, Filter, ArrowUpDown, FileSpreadsheet } from 'lucide-react';
@@ -242,7 +243,7 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                 />
              </div>
              
-             <div className="flex gap-2 w-full lg:w-auto">
+             <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
                  <button 
                     onClick={handleExportXLSX}
                     className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-white border border-gray-300 text-green-700 rounded-lg hover:bg-green-50 transition-colors shadow-sm text-sm font-medium whitespace-nowrap"
@@ -385,8 +386,8 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                             <td className="px-6 py-4">
                                 <div>
                                     <p className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">{ticket.title}</p>
-                                    {/* Largura reduzida para 300px para acomodar a nova coluna e evitar rolagem excessiva */}
-                                    <p className="text-xs text-gray-500 truncate max-w-[300px]">{ticket.description}</p>
+                                    {/* Largura ajustada para mobile (150px) e desktop (300px) */}
+                                    <p className="text-xs text-gray-500 truncate max-w-[150px] md:max-w-[300px]">{ticket.description}</p>
                                 </div>
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-700 font-medium">

@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { LayoutDashboard, Users, Ticket as TicketIcon, List, Bell } from 'lucide-react';
+import { LayoutDashboard, Users, Ticket as TicketIcon, List, Bell, X } from 'lucide-react';
 import { ViewState, User } from '../types';
 import { supabase } from '../services/supabase';
 import { Logo } from './Logo';
@@ -9,6 +9,8 @@ interface SidebarProps {
   currentView: ViewState;
   onChangeView: (view: ViewState) => void;
   currentUser: User;
+  isOpen: boolean; // Novo prop para controle mobile
+  onClose: () => void; // Novo prop para fechar no mobile
 }
 
 interface NavItem {
@@ -18,7 +20,7 @@ interface NavItem {
   badge?: number;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, currentUser }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, currentUser, isOpen, onClose }) => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -78,70 +80,95 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
 
   const navItems = getNavItems();
 
-  return (
-    <div className="w-64 bg-white h-screen border-r border-gray-200 flex flex-col fixed left-0 top-0 z-10">
-      <div className="p-6 flex items-center justify-center border-b border-gray-100 h-20">
-          {/* LOGO COMPONENT */}
-          <div className="flex items-center space-x-2">
-             <Logo className="h-10 w-auto" />
-             <span className="text-xl font-bold text-gray-800 tracking-tight">AirService</span>
-          </div>
-      </div>
+  const handleItemClick = (view: ViewState) => {
+      onChangeView(view);
+      onClose(); // Fecha o menu ao clicar em um item (no mobile)
+  };
 
-      <div className="px-6 py-4">
-        <div className="bg-gray-50 rounded-lg p-3 flex items-center space-x-3 border border-gray-100">
-            <div className="h-8 w-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-xs">
-                {currentUser.name.charAt(0).toUpperCase()}
+  return (
+    <>
+        {/* Sidebar Container */}
+        <div className={`
+            fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col h-screen
+            transform transition-transform duration-300 ease-in-out
+            ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
+            md:translate-x-0
+        `}>
+        <div className="p-6 flex items-center justify-between border-b border-gray-100 h-20">
+            {/* LOGO COMPONENT */}
+            <div className="flex items-center space-x-2">
+                <Logo className="h-10 w-auto" />
+                <span className="text-xl font-bold text-gray-800 tracking-tight">AirService</span>
             </div>
-            <div className="overflow-hidden">
-                <p className="text-sm font-medium text-gray-900 truncate">{currentUser.name}</p>
-                <p className="text-xs text-gray-500 truncate capitalize">{currentUser.role === 'ADMIN' ? 'Desenvolvedor/Admin' : 'Usuário'}</p>
+            {/* Mobile Close Button */}
+            <button onClick={onClose} className="md:hidden text-gray-500 hover:text-gray-700">
+                <X size={24} />
+            </button>
+        </div>
+
+        <div className="px-6 py-4">
+            <div className="bg-gray-50 rounded-lg p-3 flex items-center space-x-3 border border-gray-100">
+                <div className="h-8 w-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-xs">
+                    {currentUser.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="overflow-hidden">
+                    <p className="text-sm font-medium text-gray-900 truncate">{currentUser.name}</p>
+                    <p className="text-xs text-gray-500 truncate capitalize">{currentUser.role === 'ADMIN' ? 'Desenvolvedor/Admin' : 'Usuário'}</p>
+                </div>
             </div>
         </div>
-      </div>
 
-      <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => {
-            const Icon = item.icon;
-            
-            // Determine if this item is active
-            let isActive = currentView === item.id;
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            {navItems.map((item) => {
+                const Icon = item.icon;
+                
+                // Determine if this item is active
+                let isActive = currentView === item.id;
 
-            // Handle logic for Detail/Create/Edit views which are sub-views of the main lists
-            if (['TICKET_DETAIL', 'CREATE_TICKET', 'EDIT_TICKET'].includes(currentView)) {
-                 // For Admins, ticket details usually fall under "Todos os Chamados" context
-                 if (currentUser.role === 'ADMIN' && item.id === 'ALL_TICKETS') {
-                     isActive = true;
-                 }
-                 // For Users, ticket details fall under "Meus Chamados" context
-                 if (currentUser.role === 'USER' && item.id === 'MY_TICKETS') {
-                     isActive = true;
-                 }
-            }
-            
-            return (
-                <button
-                key={item.id + item.label}
-                onClick={() => onChangeView(item.id as ViewState)}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                    isActive
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <Icon size={20} />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge ? (
-                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                      {item.badge}
-                    </span>
-                  ) : null}
-                </button>
-            );
-        })}
-      </nav>
-    </div>
+                // Handle logic for Detail/Create/Edit views which are sub-views of the main lists
+                if (['TICKET_DETAIL', 'CREATE_TICKET', 'EDIT_TICKET'].includes(currentView)) {
+                    // For Admins, ticket details usually fall under "Todos os Chamados" context
+                    if (currentUser.role === 'ADMIN' && item.id === 'ALL_TICKETS') {
+                        isActive = true;
+                    }
+                    // For Users, ticket details fall under "Meus Chamados" context
+                    if (currentUser.role === 'USER' && item.id === 'MY_TICKETS') {
+                        isActive = true;
+                    }
+                }
+                
+                return (
+                    <button
+                    key={item.id + item.label}
+                    onClick={() => handleItemClick(item.id as ViewState)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                        isActive
+                        ? 'bg-primary-50 text-primary-700'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                    >
+                    <div className="flex items-center space-x-3">
+                        <Icon size={20} />
+                        <span>{item.label}</span>
+                    </div>
+                    {item.badge ? (
+                        <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        {item.badge}
+                        </span>
+                    ) : null}
+                    </button>
+                );
+            })}
+        </nav>
+        </div>
+        
+        {/* Mobile Overlay */}
+        {isOpen && (
+            <div 
+                className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+                onClick={onClose}
+            ></div>
+        )}
+    </>
   );
 };

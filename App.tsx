@@ -10,7 +10,8 @@ import { Notifications } from './components/Notifications';
 import { Dashboard } from './components/Dashboard';
 import { Ticket, ViewState, TicketStatus, User } from './types';
 import { supabase } from './services/supabase';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Menu } from 'lucide-react';
+import { Logo } from './components/Logo';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -19,6 +20,9 @@ const App: React.FC = () => {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Mobile Sidebar State
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Check auth session on load
   useEffect(() => {
@@ -438,13 +442,39 @@ const App: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar currentView={currentView} onChangeView={setCurrentView} currentUser={currentUser} />
-      <main className="flex-1 ml-64 p-8 overflow-y-auto h-screen">
+      <Sidebar 
+        currentView={currentView} 
+        onChangeView={setCurrentView} 
+        currentUser={currentUser} 
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
+      
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 w-full bg-white z-30 border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+              <button 
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="p-1 text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                  <Menu size={24} />
+              </button>
+              <div className="flex items-center space-x-2">
+                 <Logo className="h-8 w-auto" />
+                 <span className="text-lg font-bold text-gray-800">AirService</span>
+              </div>
+          </div>
+          <div className="h-8 w-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold">
+              {currentUser.name.charAt(0).toUpperCase()}
+          </div>
+      </div>
+
+      <main className={`flex-1 p-4 md:p-8 overflow-y-auto h-screen transition-all duration-300 ${isSidebarOpen ? '' : 'ml-0'} md:ml-64 pt-20 md:pt-8`}>
         {/* Changed from max-w-6xl mx-auto to w-[95%] mx-auto to stretch the grid */}
-        <div className="w-[95%] mx-auto">
-          <header className="mb-8 flex justify-between items-center">
+        <div className="w-full md:w-[95%] mx-auto">
+          <header className="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">
                 {currentView === 'DASHBOARD' && (currentUser.role === 'ADMIN' ? 'Visão Geral' : 'Dashboard')}
                 {currentView === 'MY_TICKETS' && 'Meus Chamados'}
                 {currentView === 'ALL_TICKETS' && 'Todos os Chamados'}
@@ -455,7 +485,7 @@ const App: React.FC = () => {
                 {currentView === 'NOTIFICATIONS' && 'Central de Notificações'}
               </h1>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="hidden md:flex items-center space-x-4">
                 <button 
                     onClick={handleLogout}
                     className="text-sm text-gray-500 hover:text-gray-700 underline"
@@ -465,6 +495,15 @@ const App: React.FC = () => {
                 <div className="h-10 w-10 rounded-full bg-gradient-to-r from-primary-500 to-orange-600 flex items-center justify-center text-white font-bold shadow-md">
                     {currentUser.name.charAt(0).toUpperCase()}
                 </div>
+            </div>
+            {/* Mobile Logout (shown below header on mobile) */}
+            <div className="md:hidden w-full flex justify-end">
+                <button 
+                    onClick={handleLogout}
+                    className="text-sm text-gray-500 border border-gray-200 px-3 py-1 rounded-lg"
+                >
+                    Sair
+                </button>
             </div>
           </header>
           {renderContent()}
