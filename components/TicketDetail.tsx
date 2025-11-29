@@ -1,11 +1,8 @@
 
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Ticket, TicketStatus, User, Comment, AuditLog, GeminiInsightData } from '../types';
+import { Ticket, TicketStatus, User, Comment, AuditLog } from '../types';
 import { ArrowLeft, CheckCircle, Clock, User as UserIcon, Calendar, Tag, Trash2, Edit, Send, MessageSquare, FileText, Paperclip } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import { GeminiInsights } from './GeminiInsights';
-import { getGeminiInsights } from '../services/geminiService';
 
 interface TicketDetailProps {
   ticket: Ticket;
@@ -25,11 +22,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
   // Audit Logs State
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  
-  // Gemini Insights State
-  const [insights, setInsights] = useState<GeminiInsightData | null>(null);
-  const [loadingInsights, setLoadingInsights] = useState(false);
-
 
   const isAdmin = currentUser.role === 'ADMIN';
   const isOwner = currentUser.id === ticket.requesterId;
@@ -59,20 +51,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
           supabase.removeChannel(logsChannel);
       }
   }, [ticket.id]);
-  
-  // Fetch Gemini Insights
-  useEffect(() => {
-    if (isAdmin) {
-        setLoadingInsights(true);
-        getGeminiInsights(ticket.title, ticket.description)
-            .then(data => {
-                setInsights(data);
-            })
-            .finally(() => {
-                setLoadingInsights(false);
-            });
-    }
-  }, [ticket.id, ticket.title, ticket.description, isAdmin]);
 
   useEffect(() => {
       commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -119,14 +97,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             details: l.details,
             createdAt: new Date(l.created_at)
         })));
-    }
-  };
-  
-  const handleUseSuggestion = (suggestion: string) => {
-    setNewComment(prev => prev ? `${prev}\n${suggestion}` : suggestion);
-    const input = document.querySelector('input[placeholder="Escreva uma mensagem..."]');
-    if (input) {
-        (input as HTMLInputElement).focus();
     }
   };
 
@@ -351,7 +321,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
         )}
       </div>
 
-      {/* AI Analysis & Solution */}
+      {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             {/* Comments / Interactions */}
@@ -427,15 +397,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
           </div>
 
           <div className="space-y-6">
-             {/* AI Insights Card */}
-             {isAdmin && (
-                <GeminiInsights
-                    loading={loadingInsights}
-                    insights={insights}
-                    onUseSuggestion={handleUseSuggestion}
-                />
-             )}
-
              {/* Real Audit History */}
              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                  <h3 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">Histórico do Chamado</h3>

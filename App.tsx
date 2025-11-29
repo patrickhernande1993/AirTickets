@@ -95,7 +95,6 @@ const App: React.FC = () => {
           }
 
           // 4. Check for INACTIVE status
-          // Note: is_active defaults to true in DB, but might be false if changed by admin
           if (data.is_active === false) {
               alert("Sua conta foi desativada pelo administrador. Entre em contato com o suporte.");
               await supabase.auth.signOut();
@@ -154,7 +153,6 @@ const App: React.FC = () => {
               createdAt: new Date(t.created_at),
               updatedAt: t.updated_at ? new Date(t.updated_at) : new Date(t.created_at),
               resolvedAt: t.resolved_at ? new Date(t.resolved_at) : undefined,
-              aiAnalysis: t.ai_analysis,
               attachments: t.attachments || []
           }));
 
@@ -183,7 +181,6 @@ const App: React.FC = () => {
                     priority: newTicketData.priority,
                     category: newTicketData.category,
                     status: newTicketData.status,
-                    ai_analysis: newTicketData.aiAnalysis,
                     attachments: newTicketData.attachments
                 })
                 .eq('id', ticketToEdit.id);
@@ -212,7 +209,6 @@ const App: React.FC = () => {
                     priority: newTicketData.priority,
                     category: newTicketData.category,
                     status: 'OPEN',
-                    ai_analysis: newTicketData.aiAnalysis,
                     attachments: newTicketData.attachments
                 }])
                 .select()
@@ -284,7 +280,6 @@ const App: React.FC = () => {
                 createdAt: new Date(data.created_at),
                 updatedAt: data.updated_at ? new Date(data.updated_at) : new Date(data.created_at),
                 resolvedAt: data.resolved_at ? new Date(data.resolved_at) : undefined,
-                aiAnalysis: data.ai_analysis,
                 attachments: data.attachments || []
              };
              setSelectedTicket(formatted);

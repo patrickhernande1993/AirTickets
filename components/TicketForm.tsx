@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Ticket, TicketPriority, TicketStatus, User } from '../types';
-import { analyzeTicketContent } from '../services/geminiService';
-import { Sparkles, Loader2, ArrowLeft, Paperclip, X, FileText, AlertTriangle } from 'lucide-react';
+import { Loader2, ArrowLeft, Paperclip, X, FileText } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -26,9 +25,6 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TicketPriority>(TicketPriority.LOW);
   const [category, setCategory] = useState(CATEGORIES[0]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
-  const [aiError, setAiError] = useState<string | null>(null);
   
   // Attachments State
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -40,39 +36,9 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
         setDescription(initialData.description);
         setPriority(initialData.priority);
         setCategory(initialData.category);
-        setAiSummary(initialData.aiAnalysis || null);
         setAttachments(initialData.attachments || []);
     }
   }, [initialData]);
-
-  const handleAIAnalysis = async () => {
-    setAiError(null);
-    if (!title || !description) {
-        setAiError("Por favor, preencha o Assunto e a Descrição para que a IA possa analisar.");
-        return;
-    }
-    
-    setIsAnalyzing(true);
-    try {
-        const result = await analyzeTicketContent(title, description);
-        
-        if (result) {
-          setPriority(result.priority);
-          // AI Category might not match our fixed list, so we try to match or keep 'Outro'
-          if (CATEGORIES.includes(result.category)) {
-              setCategory(result.category);
-          }
-          setAiSummary(result.summary);
-        } else {
-            setAiError("Não foi possível classificar. Verifique se a API Key no arquivo .env está correta.");
-        }
-    } catch (error) {
-        console.error("AI Error:", error);
-        setAiError("Erro de conexão com o serviço de IA. Tente novamente mais tarde.");
-    } finally {
-        setIsAnalyzing(false);
-    }
-  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files || e.target.files.length === 0) return;
@@ -120,7 +86,6 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
       priority,
       category,
       status: initialData ? initialData.status : TicketStatus.OPEN,
-      aiAnalysis: aiSummary || undefined,
       attachments: attachments
     });
   };
@@ -195,39 +160,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all resize-none"
               placeholder="Descreva o problema em detalhes..."
             />
-            
-            <div className="absolute bottom-3 right-3">
-                <button
-                    type="button"
-                    onClick={handleAIAnalysis}
-                    disabled={isAnalyzing || !description}
-                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                        isAnalyzing || !description 
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200'
-                    }`}
-                >
-                    {isAnalyzing ? (
-                        <>
-                            <Loader2 size={14} className="animate-spin" />
-                            <span>Analisando...</span>
-                        </>
-                    ) : (
-                        <>
-                            <Sparkles size={14} />
-                            <span>Auto-Classificar com IA</span>
-                        </>
-                    )}
-                </button>
-            </div>
           </div>
-          
-          {aiError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-3">
-                  <AlertTriangle className="text-red-500 mt-0.5 flex-shrink-0" size={16} />
-                  <p className="text-sm text-red-700">{aiError}</p>
-              </div>
-          )}
 
           {/* Attachments Section */}
           <div>
@@ -268,19 +201,6 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
                   </div>
               )}
           </div>
-
-          {aiSummary && (
-            <div className="bg-orange-50 border border-orange-100 rounded-lg p-4 flex items-start gap-3">
-                <Sparkles className="text-orange-600 mt-0.5 flex-shrink-0" size={18} />
-                <div>
-                    <h4 className="text-sm font-semibold text-orange-900">Análise da IA</h4>
-                    <p className="text-sm text-orange-800 mt-1">{aiSummary}</p>
-                    <p className="text-xs text-orange-600 mt-2">
-                        Prioridade Sugerida: <span className="font-bold">{translatePriority(priority)}</span>
-                    </p>
-                </div>
-            </div>
-          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              <div>
