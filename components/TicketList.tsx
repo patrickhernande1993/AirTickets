@@ -1,7 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { Ticket, TicketPriority, TicketStatus } from '../types';
-import { AlertCircle, CheckCircle, Clock, Search, Plus, Filter, ArrowUpDown, Download } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Search, Plus, Filter, ArrowUpDown, FileSpreadsheet } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface TicketListProps {
   tickets: Ticket[];
@@ -101,64 +101,70 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
       }
   };
 
-  const handleExportCSV = () => {
+  const translateStatusText = (s: string) => {
+    switch(s) {
+        case 'OPEN': return 'Aberto';
+        case 'IN_PROGRESS': return 'Em Progresso';
+        case 'RESOLVED': return 'Resolvido';
+        case 'CLOSED': return 'Fechado';
+        default: return s;
+    }
+  };
+
+  const translatePriorityText = (p: string) => {
+    switch(p) {
+        case 'LOW': return 'Baixa';
+        case 'MEDIUM': return 'Média';
+        case 'HIGH': return 'Alta';
+        case 'CRITICAL': return 'Crítica';
+        default: return p;
+    }
+  };
+
+  const handleExportXLSX = () => {
     if (filteredTickets.length === 0) {
         alert("Não há chamados para exportar com os filtros atuais.");
         return;
     }
 
-    const headers = [
-        "ID", 
-        "Assunto", 
-        "Descrição", 
-        "Solicitante", 
-        "Categoria", 
-        "Prioridade", 
-        "Status", 
-        "Data Abertura", 
-        "Data Resolução",
-        "Última Atualização"
+    // Prepara os dados formatados
+    const dataToExport = filteredTickets.map(ticket => ({
+        "ID": ticket.ticketNumber,
+        "Assunto": ticket.title,
+        "Descrição": ticket.description,
+        "Solicitante": ticket.requester,
+        "Categoria": ticket.category,
+        "Prioridade": translatePriorityText(ticket.priority),
+        "Status": translateStatusText(ticket.status),
+        "Data Abertura": ticket.createdAt ? ticket.createdAt.toLocaleString('pt-BR') : '',
+        "Data Resolução": ticket.resolvedAt ? ticket.resolvedAt.toLocaleString('pt-BR') : '',
+        "Última Atualização": ticket.updatedAt ? ticket.updatedAt.toLocaleString('pt-BR') : ''
+    }));
+
+    // Cria a planilha (Worksheet)
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+
+    // Configura a largura das colunas
+    const wscols = [
+        { wch: 10 }, // ID
+        { wch: 40 }, // Assunto
+        { wch: 60 }, // Descrição
+        { wch: 20 }, // Solicitante
+        { wch: 15 }, // Categoria
+        { wch: 12 }, // Prioridade
+        { wch: 15 }, // Status
+        { wch: 20 }, // Data Abertura
+        { wch: 20 }, // Data Resolução
+        { wch: 20 }  // Ultima Atualização
     ];
+    ws['!cols'] = wscols;
 
-    const escapeCsv = (text: string) => {
-        if (!text) return "";
-        // Escapa aspas duplas e remove quebras de linha para manter a formatação do CSV
-        return `"${text.toString().replace(/"/g, '""').replace(/(\r\n|\n|\r)/g, ' ')}"`;
-    };
+    // Cria o arquivo (Workbook) e adiciona a planilha
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Chamados");
 
-    const formatDateCsv = (date?: Date) => {
-        if (!date) return "";
-        return date.toLocaleString('pt-BR');
-    };
-
-    const csvRows = filteredTickets.map(ticket => [
-        ticket.ticketNumber,
-        escapeCsv(ticket.title),
-        escapeCsv(ticket.description),
-        escapeCsv(ticket.requester),
-        escapeCsv(ticket.category),
-        escapeCsv(ticket.priority),
-        escapeCsv(ticket.status),
-        formatDateCsv(ticket.createdAt),
-        formatDateCsv(ticket.resolvedAt),
-        formatDateCsv(ticket.updatedAt)
-    ]);
-
-    const csvContent = [
-        headers.join(","),
-        ...csvRows.map(row => row.join(","))
-    ].join("\n");
-
-    // Cria o blob e dispara o download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `chamados_export_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Gera o arquivo e força o download
+    XLSX.writeFile(wb, `chamados_export_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   const SortIcon = ({ field }: { field: keyof Ticket }) => {
@@ -238,12 +244,12 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
              
              <div className="flex gap-2 w-full lg:w-auto">
                  <button 
-                    onClick={handleExportCSV}
-                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm text-sm font-medium whitespace-nowrap"
-                    title="Exportar dados filtrados para CSV"
+                    onClick={handleExportXLSX}
+                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-white border border-gray-300 text-green-700 rounded-lg hover:bg-green-50 transition-colors shadow-sm text-sm font-medium whitespace-nowrap"
+                    title="Exportar dados filtrados para Excel"
                  >
-                    <Download size={18} />
-                    <span>Exportar CSV</span>
+                    <FileSpreadsheet size={18} />
+                    <span>Exportar Excel</span>
                  </button>
                  <button 
                     onClick={onCreateTicket}
