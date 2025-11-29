@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Ticket, TicketPriority, TicketStatus } from '../types';
-import { AlertCircle, CheckCircle, Clock, Search, Plus, Filter, ArrowUpDown } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Search, Plus, Filter, ArrowUpDown, Download } from 'lucide-react';
 
 interface TicketListProps {
   tickets: Ticket[];
@@ -101,6 +101,66 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
       }
   };
 
+  const handleExportCSV = () => {
+    if (filteredTickets.length === 0) {
+        alert("Não há chamados para exportar com os filtros atuais.");
+        return;
+    }
+
+    const headers = [
+        "ID", 
+        "Assunto", 
+        "Descrição", 
+        "Solicitante", 
+        "Categoria", 
+        "Prioridade", 
+        "Status", 
+        "Data Abertura", 
+        "Data Resolução",
+        "Última Atualização"
+    ];
+
+    const escapeCsv = (text: string) => {
+        if (!text) return "";
+        // Escapa aspas duplas e remove quebras de linha para manter a formatação do CSV
+        return `"${text.toString().replace(/"/g, '""').replace(/(\r\n|\n|\r)/g, ' ')}"`;
+    };
+
+    const formatDateCsv = (date?: Date) => {
+        if (!date) return "";
+        return date.toLocaleString('pt-BR');
+    };
+
+    const csvRows = filteredTickets.map(ticket => [
+        ticket.ticketNumber,
+        escapeCsv(ticket.title),
+        escapeCsv(ticket.description),
+        escapeCsv(ticket.requester),
+        escapeCsv(ticket.category),
+        escapeCsv(ticket.priority),
+        escapeCsv(ticket.status),
+        formatDateCsv(ticket.createdAt),
+        formatDateCsv(ticket.resolvedAt),
+        formatDateCsv(ticket.updatedAt)
+    ]);
+
+    const csvContent = [
+        headers.join(","),
+        ...csvRows.map(row => row.join(","))
+    ].join("\n");
+
+    // Cria o blob e dispara o download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `chamados_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const SortIcon = ({ field }: { field: keyof Ticket }) => {
       if (sortField !== field) return <ArrowUpDown size={12} className="ml-1 opacity-30" />;
       return <ArrowUpDown size={12} className={`ml-1 ${sortDirection === 'asc' ? 'text-primary-600' : 'text-primary-600 transform rotate-180'}`} />;
@@ -175,13 +235,24 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                     className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
                 />
              </div>
-             <button 
-                onClick={onCreateTicket}
-                className="w-full lg:w-auto flex items-center justify-center space-x-2 px-5 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm text-sm font-medium whitespace-nowrap"
-            >
-                <Plus size={18} />
-                <span>Novo Chamado</span>
-             </button>
+             
+             <div className="flex gap-2 w-full lg:w-auto">
+                 <button 
+                    onClick={handleExportCSV}
+                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm text-sm font-medium whitespace-nowrap"
+                    title="Exportar dados filtrados para CSV"
+                 >
+                    <Download size={18} />
+                    <span>Exportar CSV</span>
+                 </button>
+                 <button 
+                    onClick={onCreateTicket}
+                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-5 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm text-sm font-medium whitespace-nowrap"
+                >
+                    <Plus size={18} />
+                    <span>Novo Chamado</span>
+                 </button>
+             </div>
           </div>
 
           {/* Advanced Filters Row */}
