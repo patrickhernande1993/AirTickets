@@ -1,14 +1,17 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { TicketPriority, GeminiInsightData } from "../types";
 
-// --- ATENÇÃO: CHAVE INSERIDA DIRETAMENTE ---
-// Para produção, recomenda-se usar variáveis de ambiente.
+// --- ATENÇÃO: CHAVE INSERIDA DIRETAMENTE PARA RESOLVER BLOQUEIO NO VERCEL ---
 const API_KEY = 'AIzaSyDs3fDTIpdp2DCAXjsP-Ij2ak5oh6p0QvY';
 
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
-// Validação simplificada (agora é sempre válida pois está no código)
-const isValidApiKey = !!API_KEY;
+// Helper para limpar JSON que vem envolto em Markdown (ex: ```json ... ```)
+const cleanJSON = (text: string) => {
+  if (!text) return "";
+  // Remove marcadores de código Markdown e espaços extras
+  return text.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
+};
 
 const ticketAnalysisSchema = {
   type: Type.OBJECT,
@@ -55,7 +58,7 @@ const geminiInsightsSchema = {
 };
 
 export const analyzeTicketContent = async (title: string, description: string) => {
-  if (!isValidApiKey) {
+  if (!API_KEY) {
     console.error("ERRO CRÍTICO: API Key inválida ou ausente.");
     return null;
   }
@@ -81,9 +84,21 @@ export const analyzeTicketContent = async (title: string, description: string) =
     });
 
     const jsonText = response.text;
-    if (!jsonText) return null;
+    if (!jsonText) {
+        console.error("Gemini Error: Resposta vazia.");
+        return null;
+    }
 
-    return JSON.parse(jsonText) as { priority: TicketPriority; category: string; summary: string };
+    // Limpa a resposta antes de fazer o parse
+    const cleanedJson = cleanJSON(jsonText);
+    
+    try {
+        return JSON.parse(cleanedJson) as { priority: TicketPriority; category: string; summary: string };
+    } catch (parseError) {
+        console.error("Gemini Error: Falha ao fazer parse do JSON.", parseError, "Texto recebido:", jsonText);
+        return null;
+    }
+
   } catch (error) {
     console.error("Error analyzing ticket with Gemini:", error);
     return null;
@@ -91,7 +106,7 @@ export const analyzeTicketContent = async (title: string, description: string) =
 };
 
 export const getGeminiInsights = async (title: string, description: string): Promise<GeminiInsightData | null> => {
-  if (!isValidApiKey) {
+  if (!API_KEY) {
     console.error("ERRO CRÍTICO: API Key ausente.");
     return null;
   }
@@ -119,7 +134,8 @@ export const getGeminiInsights = async (title: string, description: string): Pro
     const jsonText = response.text;
     if (!jsonText) return null;
 
-    return JSON.parse(jsonText) as GeminiInsightData;
+    const cleanedJson = cleanJSON(jsonText);
+    return JSON.parse(cleanedJson) as GeminiInsightData;
   } catch (error) {
     console.error("Error getting Gemini insights:", error);
     return null;
