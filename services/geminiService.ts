@@ -60,6 +60,7 @@ const geminiInsightsSchema = {
 export const analyzeTicketContent = async (title: string, description: string) => {
   if (!API_KEY) {
     console.error("ERRO CRÍTICO: API Key inválida ou ausente.");
+    alert("ERRO CRÍTICO: API Key inválida ou ausente.");
     return null;
   }
 
@@ -86,6 +87,7 @@ export const analyzeTicketContent = async (title: string, description: string) =
     const jsonText = response.text;
     if (!jsonText) {
         console.error("Gemini Error: Resposta vazia.");
+        alert("Erro na IA: A resposta veio vazia.");
         return null;
     }
 
@@ -96,11 +98,13 @@ export const analyzeTicketContent = async (title: string, description: string) =
         return JSON.parse(cleanedJson) as { priority: TicketPriority; category: string; summary: string };
     } catch (parseError) {
         console.error("Gemini Error: Falha ao fazer parse do JSON.", parseError, "Texto recebido:", jsonText);
+        alert("Erro na IA: Falha ao processar a resposta (JSON inválido).");
         return null;
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error analyzing ticket with Gemini:", error);
+    alert(`Erro ao conectar com a IA: ${error.message || error}`);
     return null;
   }
 };
@@ -108,6 +112,7 @@ export const analyzeTicketContent = async (title: string, description: string) =
 export const getGeminiInsights = async (title: string, description: string): Promise<GeminiInsightData | null> => {
   if (!API_KEY) {
     console.error("ERRO CRÍTICO: API Key ausente.");
+    alert("ERRO CRÍTICO: API Key ausente.");
     return null;
   }
 
@@ -136,8 +141,9 @@ export const getGeminiInsights = async (title: string, description: string): Pro
 
     const cleanedJson = cleanJSON(jsonText);
     return JSON.parse(cleanedJson) as GeminiInsightData;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error getting Gemini insights:", error);
+    alert(`Erro ao obter insights da IA: ${error.message || error}`);
     return null;
   }
 };
