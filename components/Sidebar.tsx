@@ -1,6 +1,6 @@
 
-import React, { useEffect, useState, useRef } from 'react';
-import { LayoutDashboard, Users, Ticket as TicketIcon, List, Bell, X, Camera, Loader2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { LayoutDashboard, Users, Ticket as TicketIcon, List, Bell, X } from 'lucide-react';
 import { ViewState, User } from '../types';
 import { supabase } from '../services/supabase';
 import { Logo } from './Logo';
@@ -11,7 +11,6 @@ interface SidebarProps {
   currentUser: User;
   isOpen: boolean; // Novo prop para controle mobile
   onClose: () => void; // Novo prop para fechar no mobile
-  onProfileUpdate: () => void; // Callback para atualizar o app após mudar a foto
 }
 
 interface NavItem {
@@ -21,10 +20,8 @@ interface NavItem {
   badge?: number;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, currentUser, isOpen, onClose, onProfileUpdate }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, currentUser, isOpen, onClose }) => {
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchUnreadNotifications();
@@ -55,55 +52,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
       .eq('is_read', false);
     
     setUnreadCount(count || 0);
-  };
-
-  const handleAvatarClick = () => {
-    if (fileInputRef.current) {
-        fileInputRef.current.click();
-    }
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${currentUser.id}-${Date.now()}.${fileExt}`;
-        const filePath = `${fileName}`;
-
-        // 1. Upload to Supabase Storage
-        const { error: uploadError } = await supabase.storage
-            .from('avatars')
-            .upload(filePath, file, { upsert: true });
-
-        if (uploadError) throw uploadError;
-
-        // 2. Get Public URL
-        const { data: { publicUrl } } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath);
-
-        // 3. Update Profile in DB
-        const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ avatar: publicUrl })
-            .eq('id', currentUser.id);
-
-        if (updateError) throw updateError;
-
-        // 4. Refresh App State
-        onProfileUpdate();
-
-    } catch (error: any) {
-        console.error('Error uploading avatar:', error);
-        alert('Erro ao atualizar foto. Verifique se o bucket "avatars" existe e é público no Supabase.');
-    } finally {
-        setIsUploading(false);
-        // Reset input to allow selecting the same file again if needed
-        if (fileInputRef.current) fileInputRef.current.value = '';
-    }
   };
 
   const getNavItems = (): NavItem[] => {
@@ -160,46 +108,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
 
         <div className="px-6 py-4">
             <div className="bg-gray-50 rounded-lg p-3 flex items-center space-x-3 border border-gray-100">
-                {/* Avatar Interativo */}
-                <div 
-                    onClick={handleAvatarClick}
-                    className="relative h-10 w-10 flex-shrink-0 cursor-pointer group"
-                    title="Alterar foto de perfil"
-                >
-                    <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleFileChange} 
-                        className="hidden" 
-                        accept="image/*"
-                    />
-                    
-                    {isUploading ? (
-                        <div className="h-full w-full rounded-full bg-gray-200 flex items-center justify-center">
-                            <Loader2 size={16} className="animate-spin text-primary-600" />
-                        </div>
-                    ) : (
-                        <>
-                            {currentUser.avatar ? (
-                                <img 
-                                    src={currentUser.avatar} 
-                                    alt="Profile" 
-                                    className="h-full w-full rounded-full object-cover border border-gray-200"
-                                />
-                            ) : (
-                                <div className="h-full w-full rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-xs border border-primary-200">
-                                    {currentUser.name.charAt(0).toUpperCase()}
-                                </div>
-                            )}
-                            
-                            {/* Overlay de Hover */}
-                            <div className="absolute inset-0 bg-black bg-opacity-30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Camera size={14} className="text-white drop-shadow-sm" />
-                            </div>
-                        </>
-                    )}
+                <div className="h-8 w-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-xs">
+                    {currentUser.name.charAt(0).toUpperCase()}
                 </div>
-
                 <div className="overflow-hidden">
                     <p className="text-sm font-medium text-gray-900 truncate">{currentUser.name}</p>
                     <p className="text-xs text-gray-500 truncate capitalize">{currentUser.role === 'ADMIN' ? 'Desenvolvedor/Admin' : 'Usuário'}</p>
