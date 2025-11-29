@@ -3,14 +3,14 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Carrega variáveis de arquivos .env locais
+  // Carrega variáveis de arquivos .env locais (se existirem)
+  // Cast process as any to avoid type errors with cwd()
   const env = loadEnv(mode, (process as any).cwd(), '');
   
-  // ACESSO DIRETO AO PROCESSO (Crucial para Vercel)
-  // O loadEnv às vezes falha em pegar variáveis de sistema no Vercel se não houver arquivo .env
-  const processEnv = process.env as any;
+  // Captura variáveis de ambiente do processo (Crucial para Vercel/Node)
+  const processEnv = process.env;
 
-  // Tenta encontrar a chave em todas as fontes possíveis
+  // Tenta encontrar a chave em todas as variações possíveis
   const apiKey = 
     env.VITE_GEMINI_API_KEY || 
     env.GEMINI_API_KEY || 
@@ -20,11 +20,12 @@ export default defineConfig(({ mode }) => {
     processEnv.API_KEY || 
     '';
 
-  // Log de diagnóstico
+  // Log de diagnóstico no Build (aparecerá nos logs do Vercel)
   if (!apiKey) {
     console.warn("⚠️  ALERTA DE BUILD: Nenhuma API Key do Gemini encontrada. A IA não funcionará.");
   } else {
-    console.log("✅  SUCESSO: API Key detectada no Build (Iniciando com: " + apiKey.substring(0, 5) + "...)");
+    // Log seguro (mostra apenas os primeiros caracteres)
+    console.log("✅  SUCESSO: API Key detectada no Build. Injetando no cliente...");
   }
 
   return {
@@ -33,8 +34,10 @@ export default defineConfig(({ mode }) => {
       port: 3000
     },
     define: {
-      // Injeta a chave no código final
-      'process.env.API_KEY': JSON.stringify(apiKey)
+      // Injeta a chave como uma constante global no código do navegador
+      // Isso evita erros de 'process is not defined' e garante acesso no Vercel
+      'process.env.API_KEY': JSON.stringify(apiKey),
+      '__APP_GEMINI_KEY__': JSON.stringify(apiKey)
     }
   };
 });

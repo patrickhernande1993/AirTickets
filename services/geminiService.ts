@@ -1,37 +1,12 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { TicketPriority, GeminiInsightData } from "../types";
 
-// Lógica robusta para recuperar a API Key
-let recoveredKey = '';
+// As per guidelines, we use process.env.API_KEY directly.
+// The key availability is handled by the build configuration (vite.config.ts).
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// 1. Tenta via injeção do Vite (process.env.API_KEY definido no vite.config.ts)
-try {
-    // @ts-ignore
-    if (typeof process !== 'undefined' && process.env?.API_KEY) {
-        // @ts-ignore
-        recoveredKey = process.env.API_KEY;
-    }
-} catch (e) { /* ignorar erro de acesso */ }
-
-// 2. Tenta via padrão nativo do Vite (import.meta.env) - Funciona bem no Vercel para vars VITE_
-if (!recoveredKey) {
-    try {
-        // @ts-ignore
-        if (import.meta.env?.VITE_GEMINI_API_KEY) {
-            // @ts-ignore
-            recoveredKey = import.meta.env.VITE_GEMINI_API_KEY;
-        }
-    } catch (e) { /* ignorar erro */ }
-}
-
-const apiKey = recoveredKey;
-
-// É seguro inicializar o cliente mesmo sem a chave no momento da definição,
-// pois o erro será tratado na chamada da função.
-const ai = new GoogleGenAI({ apiKey });
-
-// Validação simples
-const isValidApiKey = typeof apiKey === 'string' && apiKey.length > 10;
+// Basic validation
+const isValidApiKey = !!process.env.API_KEY;
 
 const ticketAnalysisSchema = {
   type: Type.OBJECT,
@@ -80,7 +55,6 @@ const geminiInsightsSchema = {
 export const analyzeTicketContent = async (title: string, description: string) => {
   if (!isValidApiKey) {
     console.error("ERRO CRÍTICO: API Key inválida ou ausente.");
-    console.warn("Dica: Se estiver no Vercel, adicione VITE_GEMINI_API_KEY nas Environment Variables e faça Redeploy.");
     return null;
   }
 
@@ -116,7 +90,7 @@ export const analyzeTicketContent = async (title: string, description: string) =
 
 export const getGeminiInsights = async (title: string, description: string): Promise<GeminiInsightData | null> => {
   if (!isValidApiKey) {
-    console.error("ERRO CRÍTICO: API Key ausente. Configure VITE_GEMINI_API_KEY no painel do Vercel.");
+    console.error("ERRO CRÍTICO: API Key ausente.");
     return null;
   }
 
