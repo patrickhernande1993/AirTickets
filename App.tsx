@@ -12,6 +12,8 @@ import { Ticket, ViewState, TicketStatus, User } from './types';
 import { supabase } from './services/supabase';
 import { Loader2, Menu } from 'lucide-react';
 import { Logo } from './components/Logo';
+import { Toaster, toast } from 'react-hot-toast';
+import { sendTicketResolvedEmail } from './services/emailService';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -54,6 +56,12 @@ const App: React.FC = () => {
           await fetchProfile(session.user.id, session.user.email!);
       } else {
           setLoading(false);
+      }
+  };
+
+  const refreshProfile = async () => {
+      if (currentUser && currentUser.email) {
+          await fetchProfile(currentUser.id, currentUser.email);
       }
   };
 
@@ -123,7 +131,8 @@ const App: React.FC = () => {
                 name: data.name, // Use DB name (which we ensured matches metadata on creation)
                 email: data.email || email,
                 role: data.role,
-                isActive: data.is_active
+                isActive: data.is_active,
+                avatar: data.avatar
             });
           }
       } catch (error) {
@@ -199,6 +208,7 @@ const App: React.FC = () => {
                 details: 'Detalhes do chamado editados'
             });
             
+            toast.success("Chamado atualizado com sucesso!");
             setTicketToEdit(null);
         } else {
             // Create new ticket
@@ -240,6 +250,7 @@ const App: React.FC = () => {
                     }));
                     await supabase.from('notifications').insert(notifications);
                 }
+                toast.success("Chamado criado com sucesso!");
             }
         }
         
@@ -252,7 +263,7 @@ const App: React.FC = () => {
         }
     } catch (error) {
         console.error("Error saving ticket:", error);
-        alert("Falha ao salvar chamado. Por favor, tente novamente.");
+        toast.error("Falha ao salvar chamado.");
     }
   };
 
@@ -303,9 +314,10 @@ const App: React.FC = () => {
         } else {
             setCurrentView('ALL_TICKETS');
         }
+        toast.success("Chamado excluído.");
       } catch (error) {
           console.error("Error deleting ticket:", error);
-          alert("Falha ao excluir chamado.");
+          toast.error("Falha ao excluir chamado.");
       }
   };
 
@@ -343,6 +355,29 @@ const App: React.FC = () => {
             action: 'STATUS_CHANGE',
             details: `Status alterado para ${status}`
         });
+
+        // EMAIL & NOTIFICATION TRIGGER FOR RESOLUTION
+        if (status === TicketStatus.RESOLVED) {
+            // Fetch necessary data for email
+            const { data: ticketData } = await supabase
+                .from('tickets')
+                .select('requester_id, title, ticket_number, profiles:requester_id(name, email)')
+                .eq('id', id)
+                .single();
+            
+            if (ticketData && ticketData.profiles) {
+                const requesterProfile = ticketData.profiles as any; // Cast for simpler access
+                if (requesterProfile.email) {
+                    await sendTicketResolvedEmail(
+                        requesterProfile.email, 
+                        requesterProfile.name, 
+                        ticketData.title, 
+                        ticketData.ticket_number
+                    );
+                    toast.success("E-mail de conclusão enviado ao solicitante.", { icon: '📧' });
+                }
+            }
+        }
 
         // Update local state immediately (Optimistic or Fetch)
         setTickets(prev => prev.map(t => {
@@ -383,8 +418,10 @@ const App: React.FC = () => {
                 }
             }
         }
+        toast.success(`Status atualizado para ${status}`);
     } catch (error) {
         console.error("Error updating status:", error);
+        toast.error("Erro ao atualizar status");
     }
   };
 
@@ -437,17 +474,24 @@ const App: React.FC = () => {
   }
 
   if (!currentUser) {
-    return <Login onLoginSuccess={() => checkUser()} />;
+    return (
+        <>
+            <Toaster position="top-right" />
+            <Login onLoginSuccess={() => checkUser()} />
+        </>
+    );
   }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
+      <Toaster position="top-right" />
       <Sidebar 
         currentView={currentView} 
         onChangeView={setCurrentView} 
         currentUser={currentUser} 
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        onProfileUpdate={refreshProfile}
       />
       
       {/* Mobile Header */}
@@ -464,8 +508,12 @@ const App: React.FC = () => {
                  <span className="text-lg font-bold text-gray-800">AirService</span>
               </div>
           </div>
-          <div className="h-8 w-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold">
-              {currentUser.name.charAt(0).toUpperCase()}
+          <div className="h-8 w-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold overflow-hidden">
+               {currentUser.avatar ? (
+                  <img src={currentUser.avatar} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  currentUser.name.charAt(0).toUpperCase()
+                )}
           </div>
       </div>
 
@@ -492,8 +540,12 @@ const App: React.FC = () => {
                 >
                     Sair
                 </button>
-                <div className="h-10 w-10 rounded-full bg-gradient-to-r from-primary-500 to-orange-600 flex items-center justify-center text-white font-bold shadow-md">
-                    {currentUser.name.charAt(0).toUpperCase()}
+                <div className="h-10 w-10 rounded-full bg-gradient-to-r from-primary-500 to-orange-600 flex items-center justify-center text-white font-bold shadow-md overflow-hidden">
+                    {currentUser.avatar ? (
+                        <img src={currentUser.avatar} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                        currentUser.name.charAt(0).toUpperCase()
+                    )}
                 </div>
             </div>
             {/* Mobile Logout (shown below header on mobile) */}
