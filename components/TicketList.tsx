@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Ticket, TicketPriority, TicketStatus, User } from '../types';
+import { Ticket, TicketPriority, TicketStatus } from '../types';
 import { AlertCircle, CheckCircle, Clock, Search, Plus, Filter, ArrowUpDown, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -8,20 +8,13 @@ interface TicketListProps {
   tickets: Ticket[];
   onSelectTicket: (ticket: Ticket) => void;
   onCreateTicket: () => void;
-  currentUser: User;
 }
 
-export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket, onCreateTicket, currentUser }) => {
+export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket, onCreateTicket }) => {
   
   // Filtros States
   const [searchText, setSearchText] = useState('');
-  
-  // Lógica de inicialização do filtro: Se for ADMIN (Dev), começa filtrando apenas os Abertos (OPEN).
-  // Se for USER, mostra todos (ALL).
-  const [statusFilter, setStatusFilter] = useState<string>(
-      currentUser.role === 'ADMIN' ? 'OPEN' : 'ALL'
-  );
-  
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [requesterFilter, setRequesterFilter] = useState<string>('ALL');
   
@@ -93,10 +86,7 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
 
   const clearFilters = () => {
       setSearchText('');
-      // Ao limpar filtros, volta para 'ALL' para permitir ver tudo, 
-      // ou você pode manter a lógica de resetar para o padrão do usuário.
-      // Aqui optei por limpar TUDO (mostrar todos).
-      setStatusFilter('ALL'); 
+      setStatusFilter('ALL');
       setCategoryFilter('ALL');
       setRequesterFilter('ALL');
       setDateValue('');
@@ -434,11 +424,7 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                         <Search size={24} className="text-gray-400" />
                     </div>
                     <p className="text-gray-900 font-medium">Nenhum chamado encontrado.</p>
-                    <p className="text-sm text-gray-500 mt-1">
-                        {statusFilter !== 'ALL' 
-                         ? `Exibindo apenas status: ${translateStatusText(statusFilter)}. Tente limpar os filtros.`
-                         : "Tente ajustar seus filtros ou crie um novo chamado."}
-                    </p>
+                    <p className="text-sm text-gray-500 mt-1">Tente ajustar seus filtros ou crie um novo chamado.</p>
                 </div>
             )}
         </div>
