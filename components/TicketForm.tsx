@@ -29,6 +29,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
   // Attachments State
   const [attachments, setAttachments] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     if (initialData) {
@@ -44,11 +45,21 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
       if (!e.target.files || e.target.files.length === 0) return;
       
       setIsUploading(true);
+      setUploadProgress(0);
+
       const file = e.target.files[0];
       const fileExt = file.name.split('.').pop();
       // Adiciona timestamp para evitar conflitos de nome
       const fileName = `${Date.now()}_${uuidv4()}.${fileExt}`;
       const filePath = `${currentUser.id}/${fileName}`;
+
+      // Simulação de progresso visual (já que o supabase upload simples não tem callback de progresso nativo exposto facilmente)
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+            if (prev >= 90) return prev; // Segura em 90% até terminar
+            return prev + 10;
+        });
+      }, 100);
 
       try {
           const { error: uploadError } = await supabase.storage
@@ -57,17 +68,30 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
 
           if (uploadError) throw uploadError;
 
+          // Upload concluído
+          clearInterval(progressInterval);
+          setUploadProgress(100);
+
           const { data } = supabase.storage.from('attachments').getPublicUrl(filePath);
           
           if (data) {
-              setAttachments(prev => [...prev, data.publicUrl]);
+              // Pequeno delay para o usuário ver o 100%
+              setTimeout(() => {
+                  setAttachments(prev => [...prev, data.publicUrl]);
+                  setIsUploading(false);
+                  setUploadProgress(0);
+              }, 500);
+          } else {
+              setIsUploading(false);
           }
       } catch (error: any) {
           console.error('Error uploading file:', error);
           alert(`Erro ao fazer upload: ${error.message || 'Verifique as permissões do Bucket.'}`);
-      } finally {
           setIsUploading(false);
-          // Reset input
+          setUploadProgress(0);
+      } finally {
+          clearInterval(progressInterval);
+          // Reset input para permitir selecionar o mesmo arquivo se der erro
           e.target.value = ''; 
       }
   };
@@ -242,25 +266,49 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
                           <label className="block text-sm font-medium text-gray-700">Anexos (Opcional)</label>
                           <p className="text-xs text-gray-500 mt-1">Adicione prints ou documentos para ajudar.</p>
                       </div>
+                      
+                      {/* Upload Button or Progress Bar */}
                       <label className={`
-                          flex items-center space-x-2 px-4 py-2 rounded-lg cursor-pointer transition-colors shadow-sm
-                          ${isUploading ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'}
+                          flex flex-col md:flex-row items-center justify-center space-x-0 md:space-x-2 px-4 py-2 rounded-lg transition-all shadow-sm w-full md:w-auto min-w-[160px] relative overflow-hidden
+                          ${isUploading 
+                            ? 'bg-gray-50 border border-gray-200 cursor-not-allowed h-12' 
+                            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 cursor-pointer h-10'}
                       `}>
-                          {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Paperclip size={18} />}
-                          <span className="text-sm font-medium">{isUploading ? 'Enviando...' : 'Selecionar Arquivo'}</span>
-                          <input 
-                            type="file" 
-                            className="hidden" 
-                            onChange={handleFileUpload} 
-                            disabled={isUploading}
-                          />
+                          {isUploading ? (
+                              <div className="w-full px-2 flex flex-col justify-center h-full">
+                                  <div className="flex justify-between items-center mb-1 w-full">
+                                      <span className="text-xs font-semibold text-primary-700 flex items-center">
+                                          <Loader2 size={10} className="animate-spin mr-1" />
+                                          Enviando...
+                                      </span>
+                                      <span className="text-xs font-bold text-primary-700">{uploadProgress}%</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                      <div 
+                                        className="bg-primary-600 h-1.5 rounded-full transition-all duration-300 ease-out" 
+                                        style={{ width: `${uploadProgress}%` }}
+                                      ></div>
+                                  </div>
+                              </div>
+                          ) : (
+                              <>
+                                <Paperclip size={18} />
+                                <span className="text-sm font-medium">Selecionar Arquivo</span>
+                                <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    onChange={handleFileUpload} 
+                                    disabled={isUploading}
+                                />
+                              </>
+                          )}
                       </label>
                   </div>
                   
                   {attachments.length > 0 && (
                       <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {attachments.map((url, index) => (
-                              <div key={index} className="flex items-center justify-between bg-white px-3 py-2 rounded border border-gray-200 shadow-sm">
+                              <div key={index} className="flex items-center justify-between bg-white px-3 py-2 rounded border border-gray-200 shadow-sm animate-blob">
                                   <div className="flex items-center space-x-2 overflow-hidden">
                                       <div className="bg-blue-50 p-1.5 rounded text-blue-500">
                                         <FileText size={14} />
@@ -294,8 +342,14 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
             </button>
             <button
               type="submit"
-              className="px-8 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 w-full md:w-auto text-center"
+              disabled={isUploading}
+              className={`px-8 py-2.5 text-white rounded-lg font-medium shadow-lg transition-all w-full md:w-auto text-center flex justify-center items-center
+                ${isUploading 
+                    ? 'bg-primary-400 cursor-not-allowed' 
+                    : 'bg-primary-600 hover:bg-primary-700 hover:shadow-xl hover:-translate-y-0.5'}
+              `}
             >
+              {isUploading && <Loader2 size={18} className="animate-spin mr-2" />}
               {initialData ? 'Salvar Alterações' : 'Criar Chamado'}
             </button>
           </div>
