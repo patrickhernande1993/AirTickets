@@ -1,4 +1,3 @@
-
 {
   "name": "novadesk-ai",
   "private": true,
@@ -10,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "0.1.3",
     "@supabase/supabase-js": "^2.39.7",
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",

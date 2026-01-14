@@ -1,10 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Ticket, TicketPriority, TicketStatus, User } from '../types';
-import { Loader2, ArrowLeft, Paperclip, X, FileText, Check, Sparkles, Wand2 } from 'lucide-react';
+import { Loader2, ArrowLeft, Paperclip, X, FileText, Check } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { v4 as uuidv4 } from 'uuid';
-import { classifyTicket } from '../services/geminiService';
 
 interface TicketFormProps {
   onSave: (ticket: Omit<Ticket, 'id' | 'createdAt' | 'ticketNumber'>) => void;
@@ -27,10 +26,6 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
   const [priority, setPriority] = useState<TicketPriority>(TicketPriority.LOW);
   const [category, setCategory] = useState(CATEGORIES[0]);
   
-  // AI State
-  const [isAnalysing, setIsAnalysing] = useState(false);
-  const [aiReasoning, setAiReasoning] = useState<string | null>(null);
-
   // Attachments State
   const [attachments, setAttachments] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -46,31 +41,6 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
     }
   }, [initialData]);
 
-  const handleAiClassification = async () => {
-    if (!title || !description) {
-        alert("Preencha o assunto e a descrição para que a IA possa analisar.");
-        return;
-    }
-
-    setIsAnalysing(true);
-    setAiReasoning(null);
-    
-    try {
-        const result = await classifyTicket(title, description);
-        if (result) {
-            setCategory(result.category);
-            setPriority(result.priority);
-            setAiReasoning(result.reasoning);
-        } else {
-            alert("Não foi possível analisar o chamado no momento.");
-        }
-    } catch (e) {
-        console.error(e);
-    } finally {
-        setIsAnalysing(false);
-    }
-  };
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files || e.target.files.length === 0) return;
       
@@ -83,7 +53,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
       const fileName = `${Date.now()}_${uuidv4()}.${fileExt}`;
       const filePath = `${currentUser.id}/${fileName}`;
 
-      // Simulação de progresso visual
+      // Simulação de progresso visual (já que o supabase upload simples não tem callback de progresso nativo exposto facilmente)
       const progressInterval = setInterval(() => {
         setUploadProgress((prev) => {
             if (prev >= 90) return prev; // Segura em 90% até terminar
@@ -105,6 +75,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
           const { data } = supabase.storage.from('attachments').getPublicUrl(filePath);
           
           if (data) {
+              // Pequeno delay para o usuário ver o 100%
               setTimeout(() => {
                   setAttachments(prev => [...prev, data.publicUrl]);
                   setIsUploading(false);
@@ -120,6 +91,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
           setUploadProgress(0);
       } finally {
           clearInterval(progressInterval);
+          // Reset input para permitir selecionar o mesmo arquivo se der erro
           e.target.value = ''; 
       }
   };
@@ -133,8 +105,8 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
     onSave({
       title,
       description,
-      requester: currentUser.name, 
-      requesterId: currentUser.id, 
+      requester: currentUser.name, // Always use logged user name
+      requesterId: currentUser.id, // Always use logged user ID
       priority,
       category,
       status: initialData ? initialData.status : TicketStatus.OPEN,
@@ -142,6 +114,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
     });
   };
 
+  // Configuração visual dos cartões de prioridade
   const PRIORITY_OPTIONS = [
     { 
         id: TicketPriority.LOW, 
@@ -247,36 +220,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
           {/* Seção 2: Detalhes e Prioridade */}
           <div className="space-y-6">
              <div>
-                <div className="flex justify-between items-center mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Descrição Detalhada</label>
-                    
-                    {/* Botão de IA */}
-                    <button
-                        type="button"
-                        onClick={handleAiClassification}
-                        disabled={isAnalysing || !description}
-                        className={`
-                           flex items-center text-xs px-3 py-1.5 rounded-full transition-all border
-                           ${isAnalysing 
-                             ? 'bg-purple-100 text-purple-700 border-purple-200' 
-                             : 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white border-transparent hover:shadow-md hover:scale-105'}
-                           ${!description ? 'opacity-50 cursor-not-allowed' : ''}
-                        `}
-                    >
-                        {isAnalysing ? (
-                            <>
-                                <Loader2 size={12} className="animate-spin mr-1.5" />
-                                Analisando...
-                            </>
-                        ) : (
-                            <>
-                                <Sparkles size={12} className="mr-1.5" />
-                                Sugerir Categoria e Prioridade
-                            </>
-                        )}
-                    </button>
-                </div>
-                
+                <label className="block text-sm font-medium text-gray-700 mb-2">Descrição Detalhada</label>
                 <div className="relative">
                     <textarea
                         required
@@ -290,17 +234,6 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
                         Quanto mais detalhes, mais rápido resolvemos.
                     </div>
                 </div>
-                
-                {/* Feedback da IA */}
-                {aiReasoning && (
-                    <div className="mt-3 bg-purple-50 border border-purple-100 rounded-lg p-3 flex items-start animate-fade-in">
-                        <Wand2 size={16} className="text-purple-600 mr-2 mt-0.5 flex-shrink-0" />
-                        <div>
-                            <p className="text-xs font-bold text-purple-800 mb-0.5">Sugestão da IA Aplicada</p>
-                            <p className="text-xs text-purple-700">{aiReasoning}</p>
-                        </div>
-                    </div>
-                )}
              </div>
 
              <div>
@@ -326,7 +259,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
                 </div>
              </div>
 
-             {/* Attachments Section */}
+             {/* Attachments Section Modernized */}
              <div className="bg-gray-50 rounded-lg p-4 border border-dashed border-gray-300">
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                       <div>
@@ -334,6 +267,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
                           <p className="text-xs text-gray-500 mt-1">Adicione prints ou documentos para ajudar.</p>
                       </div>
                       
+                      {/* Upload Button or Progress Bar */}
                       <label className={`
                           flex flex-col md:flex-row items-center justify-center space-x-0 md:space-x-2 px-4 py-2 rounded-lg transition-all shadow-sm w-full md:w-auto min-w-[160px] relative overflow-hidden
                           ${isUploading 
@@ -397,6 +331,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
              </div>
           </div>
 
+          {/* Footer Actions */}
           <div className="pt-6 flex flex-col-reverse md:flex-row justify-end gap-3 md:gap-4 border-t border-gray-100">
             <button
               type="button"
@@ -407,9 +342,9 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
             </button>
             <button
               type="submit"
-              disabled={isUploading || isAnalysing}
+              disabled={isUploading}
               className={`px-8 py-2.5 text-white rounded-lg font-medium shadow-lg transition-all w-full md:w-auto text-center flex justify-center items-center
-                ${isUploading || isAnalysing
+                ${isUploading 
                     ? 'bg-primary-400 cursor-not-allowed' 
                     : 'bg-primary-600 hover:bg-primary-700 hover:shadow-xl hover:-translate-y-0.5'}
               `}
