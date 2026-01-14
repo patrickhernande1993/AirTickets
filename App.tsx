@@ -321,8 +321,8 @@ const App: React.FC = () => {
         // Prepare update data
         const updates: any = { status };
         
-        // Logic for Resolved/Closed Date
-        if (status === TicketStatus.RESOLVED || status === TicketStatus.CLOSED) {
+        // Logic for Resolved Date
+        if (status === TicketStatus.RESOLVED) {
             updates.resolved_at = new Date().toISOString();
         } else {
             // If reopening, maybe clear resolved_at? 

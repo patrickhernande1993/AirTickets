@@ -12,8 +12,7 @@ interface TicketKanbanProps {
 const COLUMNS = [
   { id: TicketStatus.OPEN, label: 'Aberto', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
   { id: TicketStatus.IN_PROGRESS, label: 'Em Progresso', color: 'bg-blue-100 text-blue-800 border-blue-200' },
-  { id: TicketStatus.RESOLVED, label: 'Resolvido', color: 'bg-green-100 text-green-800 border-green-200' },
-  { id: TicketStatus.CLOSED, label: 'Fechado', color: 'bg-gray-100 text-gray-800 border-gray-200' }
+  { id: TicketStatus.RESOLVED, label: 'Resolvido', color: 'bg-green-100 text-green-800 border-green-200' }
 ];
 
 export const TicketKanban: React.FC<TicketKanbanProps> = ({ tickets, onSelectTicket, onUpdateStatus }) => {
@@ -23,12 +22,12 @@ export const TicketKanban: React.FC<TicketKanbanProps> = ({ tickets, onSelectTic
       [TicketStatus.OPEN]: [] as Ticket[],
       [TicketStatus.IN_PROGRESS]: [] as Ticket[],
       [TicketStatus.RESOLVED]: [] as Ticket[],
-      [TicketStatus.CLOSED]: [] as Ticket[],
     };
 
     tickets.forEach(ticket => {
-      if (cols[ticket.status]) {
-        cols[ticket.status].push(ticket);
+      // Safety check: only add if the status exists in our defined columns (handles legacy 'CLOSED' tickets gracefully-ish)
+      if (cols[ticket.status as TicketStatus]) {
+        cols[ticket.status as TicketStatus].push(ticket);
       }
     });
 
@@ -73,7 +72,7 @@ export const TicketKanban: React.FC<TicketKanbanProps> = ({ tickets, onSelectTic
           <div className={`p-3 border-b border-gray-100 flex justify-between items-center rounded-t-xl ${col.id === TicketStatus.OPEN ? 'bg-yellow-50/50' : col.id === TicketStatus.IN_PROGRESS ? 'bg-blue-50/50' : col.id === TicketStatus.RESOLVED ? 'bg-green-50/50' : 'bg-gray-50'}`}>
             <div className="flex items-center gap-2">
               <span className={`px-2 py-1 rounded text-xs font-bold ${col.color}`}>
-                {columns[col.id].length}
+                {columns[col.id]?.length || 0}
               </span>
               <span className="font-semibold text-gray-700 text-sm">{col.label}</span>
             </div>
@@ -81,7 +80,7 @@ export const TicketKanban: React.FC<TicketKanbanProps> = ({ tickets, onSelectTic
 
           {/* Cards Container */}
           <div className="p-2 flex-1 overflow-y-auto space-y-2.5 scrollbar-thin scrollbar-thumb-gray-200">
-            {columns[col.id].map(ticket => (
+            {columns[col.id]?.map(ticket => (
               <div
                 key={ticket.id}
                 draggable
@@ -112,7 +111,7 @@ export const TicketKanban: React.FC<TicketKanbanProps> = ({ tickets, onSelectTic
               </div>
             ))}
             
-            {columns[col.id].length === 0 && (
+            {(columns[col.id]?.length || 0) === 0 && (
                 <div className="h-24 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs">
                     Arraste aqui
                 </div>

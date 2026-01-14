@@ -15,12 +15,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
   const stats = useMemo(() => {
     const total = tickets.length;
     const open = tickets.filter(t => t.status === TicketStatus.OPEN).length;
-    const resolved = tickets.filter(t => t.status === TicketStatus.RESOLVED || t.status === TicketStatus.CLOSED).length;
-    // Críticos ativos (Críticos que não estão resolvidos ou fechados)
+    const resolved = tickets.filter(t => t.status === TicketStatus.RESOLVED).length;
+    // Críticos ativos (Críticos que não estão resolvidos)
     const criticalActive = tickets.filter(t => 
         t.priority === TicketPriority.CRITICAL && 
-        t.status !== TicketStatus.RESOLVED && 
-        t.status !== TicketStatus.CLOSED
+        t.status !== TicketStatus.RESOLVED
     ).length;
 
     const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
@@ -56,7 +55,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
           const item = data.find(i => i.monthIndex === d.getMonth() && i.year === d.getFullYear());
           if (item) {
               item.Abertos += 1;
-              if (t.status === TicketStatus.RESOLVED || t.status === TicketStatus.CLOSED) {
+              if (t.status === TicketStatus.RESOLVED) {
                   item.Resolvidos += 1;
               }
           }

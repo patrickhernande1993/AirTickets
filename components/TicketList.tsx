@@ -112,7 +112,6 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
         case 'OPEN': return 'Aberto';
         case 'IN_PROGRESS': return 'Em Progresso';
         case 'RESOLVED': return 'Resolvido';
-        case 'CLOSED': return 'Fechado';
         default: return s;
     }
   };
@@ -184,12 +183,6 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
           return (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 whitespace-nowrap">
                 <CheckCircle size={12} className="mr-1" /> Resolvido
-            </span>
-          );
-      case TicketStatus.CLOSED: 
-          return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 whitespace-nowrap">
-                <CheckCircle size={12} className="mr-1" /> Fechado
             </span>
           );
       case TicketStatus.IN_PROGRESS: 
@@ -293,7 +286,7 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
              </div>
 
              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 w-full flex-1">
-                {/* Status Filter - Only show if in List mode or if user wants to filter Kanban too */}
+                {/* Status Filter */}
                 <select 
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
@@ -303,7 +296,6 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                     <option value="OPEN">Aberto</option>
                     <option value="IN_PROGRESS">Em Progresso</option>
                     <option value="RESOLVED">Resolvido</option>
-                    <option value="CLOSED">Fechado</option>
                 </select>
 
                 {/* Category Filter */}

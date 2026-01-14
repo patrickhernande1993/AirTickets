@@ -178,7 +178,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
           case 'OPEN': return 'Aberto';
           case 'IN_PROGRESS': return 'Em Progresso';
           case 'RESOLVED': return 'Resolvido';
-          case 'CLOSED': return 'Fechado';
           default: return s;
       }
   };
@@ -303,7 +302,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             <div className="mt-6 flex items-center justify-end space-x-4 pt-4 border-t border-gray-100">
                 <span className="text-sm text-gray-500 font-medium">Atualizar Status:</span>
                 <div className="flex bg-gray-100 p-1 rounded-lg">
-                    {[TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED, TicketStatus.CLOSED].map((status) => (
+                    {[TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED].map((status) => (
                         <button
                             key={status}
                             onClick={() => onUpdateStatus(ticket.id, status)}
