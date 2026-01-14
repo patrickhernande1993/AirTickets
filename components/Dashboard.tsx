@@ -37,7 +37,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
   }, [tickets]);
 
   const chartData = useMemo(() => {
-      const data: any[] = [];
+      // Helpers para chaves de data consistentes (Local Time)
+      const getDailyKey = (date: Date) => {
+          const y = date.getFullYear();
+          const m = String(date.getMonth() + 1).padStart(2, '0');
+          const d = String(date.getDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+      };
+
+      const getMonthlyKey = (date: Date) => {
+          return `${date.getFullYear()}-${date.getMonth()}`; // Month index 0-11
+      };
+
+      // 1. Criar o esqueleto da linha do tempo (Buckets vazios)
+      // Usamos Map para acesso rápido O(1)
+      const timeline = new Map<string, { name: string; Abertos: number; Resolvidos: number }>();
       const now = new Date();
 
       if (timeRange === 'YEAR') {
@@ -46,60 +60,67 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
           
           for (let i = 11; i >= 0; i--) {
               const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-              data.push({
+              const key = getMonthlyKey(d);
+              timeline.set(key, {
                   name: `${months[d.getMonth()]}`,
                   Abertos: 0,
-                  Resolvidos: 0,
-                  key: `${d.getFullYear()}-${d.getMonth()}` // Chave auxiliar para contagem
+                  Resolvidos: 0
               });
           }
-
-          tickets.forEach(t => {
-              const createdKey = `${t.createdAt.getFullYear()}-${t.createdAt.getMonth()}`;
-              const openItem = data.find(i => i.key === createdKey);
-              if (openItem) openItem.Abertos += 1;
-
-              if (t.status === TicketStatus.RESOLVED && t.resolvedAt) {
-                  const resolvedKey = `${t.resolvedAt.getFullYear()}-${t.resolvedAt.getMonth()}`;
-                  const resolvedItem = data.find(i => i.key === resolvedKey);
-                  if (resolvedItem) resolvedItem.Resolvidos += 1;
-              }
-          });
-
       } else {
           // Lógica Diária (7 dias ou 30 dias)
           const daysToLookBack = timeRange === 'WEEK' ? 7 : 30;
           
-          // Helper para formatar data YYYY-MM-DD para comparação
-          const formatDateKey = (date: Date) => {
-             return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-          };
-
           for (let i = daysToLookBack - 1; i >= 0; i--) {
               const d = new Date();
               d.setDate(now.getDate() - i);
-              data.push({
+              const key = getDailyKey(d);
+              timeline.set(key, {
                   name: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
                   Abertos: 0,
-                  Resolvidos: 0,
-                  key: formatDateKey(d)
+                  Resolvidos: 0
               });
           }
-
-          tickets.forEach(t => {
-              const createdKey = formatDateKey(t.createdAt);
-              const openItem = data.find(i => i.key === createdKey);
-              if (openItem) openItem.Abertos += 1;
-
-              if (t.status === TicketStatus.RESOLVED && t.resolvedAt) {
-                  const resolvedKey = formatDateKey(t.resolvedAt);
-                  const resolvedItem = data.find(i => i.key === resolvedKey);
-                  if (resolvedItem) resolvedItem.Resolvidos += 1;
-              }
-          });
       }
 
-      return data;
+      // 2. Preencher Dados
+      tickets.forEach(t => {
+          // --- Contagem de ABERTURA (Usa createdAt) ---
+          let createdKey = '';
+          if (timeRange === 'YEAR') {
+              createdKey = getMonthlyKey(t.createdAt);
+          } else {
+              createdKey = getDailyKey(t.createdAt);
+          }
+
+          // Se a data de criação cair dentro do período do gráfico, incrementa Abertos
+          if (timeline.has(createdKey)) {
+              timeline.get(createdKey)!.Abertos += 1;
+          }
+
+          // --- Contagem de RESOLUÇÃO (Usa resolvedAt) ---
+          if (t.status === TicketStatus.RESOLVED) {
+              // Usa resolvedAt (preferencial) ou updatedAt como fallback para dados antigos
+              const dateReference = t.resolvedAt || t.updatedAt;
+
+              if (dateReference) {
+                  let resolvedKey = '';
+                  if (timeRange === 'YEAR') {
+                      resolvedKey = getMonthlyKey(dateReference);
+                  } else {
+                      resolvedKey = getDailyKey(dateReference);
+                  }
+
+                  // Se a data de resolução cair dentro do período do gráfico, incrementa Resolvidos
+                  // Independente de quando foi criado
+                  if (timeline.has(resolvedKey)) {
+                      timeline.get(resolvedKey)!.Resolvidos += 1;
+                  }
+              }
+          }
+      });
+
+      return Array.from(timeline.values());
   }, [tickets, timeRange]);
 
   return (
@@ -191,7 +212,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
                         <CalendarRange className="mr-2 text-primary-600" size={20} />
                         Tendência de Chamados
                     </h3>
-                    <p className="text-sm text-gray-500 mt-1">Comparativo de volume de abertura e resolução.</p>
+                    <p className="text-sm text-gray-500 mt-1">Comparativo de abertura (Data Criação) vs Resolução (Data Fechamento).</p>
                 </div>
                 
                 {/* Time Range Selector */}
@@ -256,7 +277,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
                         />
                         <Legend wrapperStyle={{ paddingTop: '20px' }} />
                         <Bar 
-                            name="Novos Chamados" 
+                            name="Criados" 
                             dataKey="Abertos" 
                             fill="#f43f5e" 
                             radius={[4, 4, 0, 0]} 
