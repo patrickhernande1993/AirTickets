@@ -413,7 +413,12 @@ const App: React.FC = () => {
             onEdit={handleEditTicket}
           />
         ) : (
-           <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} onCreateTicket={() => setCurrentView('CREATE_TICKET')} />
+           <TicketList 
+                tickets={tickets} 
+                onSelectTicket={handleSelectTicket} 
+                onCreateTicket={() => setCurrentView('CREATE_TICKET')} 
+                onUpdateStatus={handleUpdateStatus} 
+           />
         );
       case 'USERS':
         return currentUser.role === 'ADMIN' ? <UserManagement currentUser={currentUser} /> : <div>Acesso Negado</div>;
@@ -421,7 +426,14 @@ const App: React.FC = () => {
         return <Notifications currentUser={currentUser} onSelectNotification={handleSelectNotificationTicket} />;
       case 'MY_TICKETS':
       case 'ALL_TICKETS':
-        return <TicketList tickets={tickets} onSelectTicket={handleSelectTicket} onCreateTicket={() => setCurrentView('CREATE_TICKET')} />;
+        return (
+            <TicketList 
+                tickets={tickets} 
+                onSelectTicket={handleSelectTicket} 
+                onCreateTicket={() => setCurrentView('CREATE_TICKET')} 
+                onUpdateStatus={handleUpdateStatus} 
+            />
+        );
       case 'DASHBOARD':
       default:
         return <Dashboard tickets={tickets} currentUser={currentUser} onCreateTicket={() => setCurrentView('CREATE_TICKET')} />;

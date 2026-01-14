@@ -1,17 +1,22 @@
 
 import React, { useState, useMemo } from 'react';
 import { Ticket, TicketPriority, TicketStatus } from '../types';
-import { AlertCircle, CheckCircle, Clock, Search, Plus, Filter, ArrowUpDown, FileSpreadsheet } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Search, Plus, Filter, ArrowUpDown, FileSpreadsheet, LayoutList, KanbanSquare } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { TicketKanban } from './TicketKanban';
 
 interface TicketListProps {
   tickets: Ticket[];
   onSelectTicket: (ticket: Ticket) => void;
   onCreateTicket: () => void;
+  onUpdateStatus: (id: string, status: TicketStatus) => void;
 }
 
-export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket, onCreateTicket }) => {
+export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket, onCreateTicket, onUpdateStatus }) => {
   
+  // View Mode
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+
   // Filtros States
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -244,13 +249,31 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
              </div>
              
              <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+                 {/* View Toggle */}
+                 <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+                    <button
+                        onClick={() => setViewMode('list')}
+                        className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow text-primary-600' : 'text-gray-500 hover:text-gray-700'}`}
+                        title="Visualização em Lista"
+                    >
+                        <LayoutList size={18} />
+                    </button>
+                    <button
+                        onClick={() => setViewMode('kanban')}
+                        className={`p-1.5 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-white shadow text-primary-600' : 'text-gray-500 hover:text-gray-700'}`}
+                        title="Visualização em Kanban"
+                    >
+                        <KanbanSquare size={18} />
+                    </button>
+                 </div>
+
                  <button 
                     onClick={handleExportXLSX}
                     className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-white border border-gray-300 text-green-700 rounded-lg hover:bg-green-50 transition-colors shadow-sm text-sm font-medium whitespace-nowrap"
                     title="Exportar dados filtrados para Excel"
                  >
                     <FileSpreadsheet size={18} />
-                    <span>Exportar Excel</span>
+                    <span className="hidden sm:inline">Exportar</span>
                  </button>
                  <button 
                     onClick={onCreateTicket}
@@ -270,7 +293,7 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
              </div>
 
              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 w-full flex-1">
-                {/* Status Filter */}
+                {/* Status Filter - Only show if in List mode or if user wants to filter Kanban too */}
                 <select 
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
@@ -338,97 +361,104 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
           </div>
       </div>
 
-      {/* Tickets Table */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-            <table className="w-full text-left">
-                <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 uppercase text-[11px] font-semibold tracking-wider">
-                    <tr>
-                        <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('ticketNumber')}>
-                            <div className="flex items-center">ID <SortIcon field="ticketNumber" /></div>
-                        </th>
-                        <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('title')}>
-                            <div className="flex items-center">Assunto <SortIcon field="title" /></div>
-                        </th>
-                        <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('requester')}>
-                            <div className="flex items-center">Solicitante <SortIcon field="requester" /></div>
-                        </th>
-                        <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('category')}>
-                            <div className="flex items-center">Categoria <SortIcon field="category" /></div>
-                        </th>
-                        <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('priority')}>
-                            <div className="flex items-center">Prioridade <SortIcon field="priority" /></div>
-                        </th>
-                        <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('createdAt')}>
-                            <div className="flex items-center">Data Abertura <SortIcon field="createdAt" /></div>
-                        </th>
-                        <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('resolvedAt')}>
-                            <div className="flex items-center">Data Resolução <SortIcon field="resolvedAt" /></div>
-                        </th>
-                        <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('updatedAt')}>
-                            <div className="flex items-center">Última At. <SortIcon field="updatedAt" /></div>
-                        </th>
-                         <th className="px-6 py-3 cursor-pointer hover:bg-gray-100 text-right" onClick={() => handleSort('status')}>
-                            <div className="flex items-center justify-end">Status <SortIcon field="status" /></div>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                    {filteredTickets.map((ticket) => (
-                        <tr 
-                            key={ticket.id} 
-                            onClick={() => onSelectTicket(ticket)}
-                            className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
-                        >
-                            <td className="px-6 py-4 text-sm font-medium text-gray-500">
-                                #{ticket.ticketNumber}
-                            </td>
-                            <td className="px-6 py-4">
-                                <div>
-                                    <p className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">{ticket.title}</p>
-                                    {/* Largura ajustada para mobile (150px) e desktop (300px) */}
-                                    <p className="text-xs text-gray-500 truncate max-w-[150px] md:max-w-[300px]">{ticket.description}</p>
-                                </div>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-700 font-medium">
-                                {ticket.requester}
-                            </td>
-                             <td className="px-6 py-4">
-                                <span className="px-2 py-1 bg-gray-100 rounded text-xs font-medium text-gray-600 border border-gray-200">
-                                    {ticket.category}
-                                </span>
-                            </td>
-                            <td className="px-6 py-4">
-                                {getPriorityBadge(ticket.priority)}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                                {formatDate(ticket.createdAt)}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                                {formatDate(ticket.resolvedAt)}
-                            </td>
-                             <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                                {formatDate(ticket.updatedAt)}
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                                {getStatusBadge(ticket.status)}
-                            </td>
+      {/* Main Content Area */}
+      {viewMode === 'kanban' ? (
+          <TicketKanban 
+            tickets={filteredTickets} 
+            onSelectTicket={onSelectTicket}
+            onUpdateStatus={onUpdateStatus}
+          />
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                    <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 uppercase text-[11px] font-semibold tracking-wider">
+                        <tr>
+                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('ticketNumber')}>
+                                <div className="flex items-center">ID <SortIcon field="ticketNumber" /></div>
+                            </th>
+                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('title')}>
+                                <div className="flex items-center">Assunto <SortIcon field="title" /></div>
+                            </th>
+                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('requester')}>
+                                <div className="flex items-center">Solicitante <SortIcon field="requester" /></div>
+                            </th>
+                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('category')}>
+                                <div className="flex items-center">Categoria <SortIcon field="category" /></div>
+                            </th>
+                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('priority')}>
+                                <div className="flex items-center">Prioridade <SortIcon field="priority" /></div>
+                            </th>
+                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('createdAt')}>
+                                <div className="flex items-center">Data Abertura <SortIcon field="createdAt" /></div>
+                            </th>
+                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('resolvedAt')}>
+                                <div className="flex items-center">Data Resolução <SortIcon field="resolvedAt" /></div>
+                            </th>
+                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('updatedAt')}>
+                                <div className="flex items-center">Última At. <SortIcon field="updatedAt" /></div>
+                            </th>
+                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100 text-right" onClick={() => handleSort('status')}>
+                                <div className="flex items-center justify-end">Status <SortIcon field="status" /></div>
+                            </th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
-            
-            {filteredTickets.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="bg-gray-50 p-4 rounded-full mb-3">
-                        <Search size={24} className="text-gray-400" />
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        {filteredTickets.map((ticket) => (
+                            <tr 
+                                key={ticket.id} 
+                                onClick={() => onSelectTicket(ticket)}
+                                className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
+                            >
+                                <td className="px-6 py-4 text-sm font-medium text-gray-500">
+                                    #{ticket.ticketNumber}
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div>
+                                        <p className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">{ticket.title}</p>
+                                        <p className="text-xs text-gray-500 truncate max-w-[150px] md:max-w-[300px]">{ticket.description}</p>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-700 font-medium">
+                                    {ticket.requester}
+                                </td>
+                                <td className="px-6 py-4">
+                                    <span className="px-2 py-1 bg-gray-100 rounded text-xs font-medium text-gray-600 border border-gray-200">
+                                        {ticket.category}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                    {getPriorityBadge(ticket.priority)}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                                    {formatDate(ticket.createdAt)}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                                    {formatDate(ticket.resolvedAt)}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                                    {formatDate(ticket.updatedAt)}
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    {getStatusBadge(ticket.status)}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                
+                {filteredTickets.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <div className="bg-gray-50 p-4 rounded-full mb-3">
+                            <Search size={24} className="text-gray-400" />
+                        </div>
+                        <p className="text-gray-900 font-medium">Nenhum chamado encontrado.</p>
+                        <p className="text-sm text-gray-500 mt-1">Tente ajustar seus filtros ou crie um novo chamado.</p>
                     </div>
-                    <p className="text-gray-900 font-medium">Nenhum chamado encontrado.</p>
-                    <p className="text-sm text-gray-500 mt-1">Tente ajustar seus filtros ou crie um novo chamado.</p>
-                </div>
-            )}
+                )}
+            </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
