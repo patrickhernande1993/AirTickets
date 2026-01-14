@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Ticket, TicketStatus, User, Comment, AuditLog } from '../types';
-import { ArrowLeft, CheckCircle, Clock, User as UserIcon, Calendar, Tag, Trash2, Edit, Send, MessageSquare, FileText, Paperclip } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, User as UserIcon, Calendar, Tag, Trash2, Edit, Send, MessageSquare, FileText, Paperclip, Sparkles, Bot, Loader2 } from 'lucide-react';
 import { supabase } from '../services/supabase';
+import { getGeminiInsights } from '../services/geminiService';
+import ReactMarkdown from 'react-markdown';
 
 interface TicketDetailProps {
   ticket: Ticket;
@@ -22,6 +24,10 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
   // Audit Logs State
   const [logs, setLogs] = useState<AuditLog[]>([]);
+
+  // AI State
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [loadingAi, setLoadingAi] = useState(false);
 
   const isAdmin = currentUser.role === 'ADMIN';
   const isOwner = currentUser.id === ticket.requesterId;
@@ -98,6 +104,13 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             createdAt: new Date(l.created_at)
         })));
     }
+  };
+
+  const handleGenerateInsight = async () => {
+      setLoadingAi(true);
+      const insight = await getGeminiInsights(ticket.title, ticket.description);
+      setAiInsight(insight);
+      setLoadingAi(false);
   };
 
   const handleSendComment = async (e: React.FormEvent) => {
@@ -297,6 +310,38 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                 </div>
             </div>
         )}
+
+        {/* AI Insights Section (Visible to everyone or just Admin? Let's keep for Admins or the Requester to see self-help) */}
+        <div className="mt-6 border-t border-gray-100 pt-4">
+            {!aiInsight ? (
+                 <button
+                    onClick={handleGenerateInsight}
+                    disabled={loadingAi}
+                    className="flex items-center text-sm font-medium text-purple-600 hover:text-purple-800 hover:bg-purple-50 px-3 py-2 rounded-lg transition-colors"
+                 >
+                     {loadingAi ? <Loader2 size={16} className="animate-spin mr-2" /> : <Sparkles size={16} className="mr-2" />}
+                     Gerar Solução Sugerida com IA
+                 </button>
+            ) : (
+                <div className="bg-purple-50 rounded-lg border border-purple-100 p-4 animate-fade-in">
+                    <div className="flex items-center justify-between mb-3">
+                        <h4 className="flex items-center text-sm font-bold text-purple-900">
+                            <Bot size={18} className="mr-2" />
+                            Solução Sugerida (IA)
+                        </h4>
+                        <button onClick={() => setAiInsight(null)} className="text-purple-400 hover:text-purple-600">
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
+                    <div className="prose prose-sm prose-purple max-w-none text-gray-700 text-sm">
+                        <ReactMarkdown>{aiInsight}</ReactMarkdown>
+                    </div>
+                    <p className="text-[10px] text-purple-400 mt-3 border-t border-purple-100 pt-2">
+                        Gerado automaticamente por Gemini AI. Verifique as informações antes de aplicar.
+                    </p>
+                </div>
+            )}
+        </div>
 
         {isAdmin && (
             <div className="mt-6 flex items-center justify-end space-x-4 pt-4 border-t border-gray-100">
