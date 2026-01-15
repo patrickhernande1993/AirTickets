@@ -1,7 +1,7 @@
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LayoutDashboard, Users, Ticket as TicketIcon, List, Bell, X } from 'lucide-react';
-import { ViewState, User, Ticket, TicketStatus } from '../types';
+import { ViewState, User } from '../types';
 import { supabase } from '../services/supabase';
 import { Logo } from './Logo';
 
@@ -9,9 +9,8 @@ interface SidebarProps {
   currentView: ViewState;
   onChangeView: (view: ViewState) => void;
   currentUser: User;
-  tickets: Ticket[]; // Receives tickets to calculate stats
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen: boolean; // Novo prop para controle mobile
+  onClose: () => void; // Novo prop para fechar no mobile
 }
 
 interface NavItem {
@@ -21,7 +20,7 @@ interface NavItem {
   badge?: number;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, currentUser, tickets, isOpen, onClose }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, currentUser, isOpen, onClose }) => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -54,19 +53,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
     
     setUnreadCount(count || 0);
   };
-
-  // Calculate Stats based on User Role
-  const stats = useMemo(() => {
-    // If Admin, count all tickets in the system. If User, only their own.
-    const relevantTickets = tickets.filter(t => 
-        currentUser.role === 'ADMIN' ? true : t.requesterId === currentUser.id
-    );
-
-    return {
-        open: relevantTickets.filter(t => t.status === TicketStatus.OPEN).length,
-        inProgress: relevantTickets.filter(t => t.status === TicketStatus.IN_PROGRESS).length
-    };
-  }, [tickets, currentUser]);
 
   const getNavItems = (): NavItem[] => {
     // Common items for everyone (Notifications)
@@ -121,29 +107,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
         </div>
 
         <div className="px-6 py-4">
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 shadow-sm">
-                <div className="flex items-center space-x-3 mb-3">
-                    <div className="h-9 w-9 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm ring-2 ring-white">
-                        {currentUser.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="overflow-hidden">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{currentUser.name}</p>
-                        <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 truncate">
-                            {currentUser.role === 'ADMIN' ? 'Admin' : 'Usuário'}
-                        </p>
-                    </div>
+            <div className="bg-gray-50 rounded-lg p-3 flex items-center space-x-3 border border-gray-100">
+                <div className="h-8 w-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-xs">
+                    {currentUser.name.charAt(0).toUpperCase()}
                 </div>
-                
-                {/* Status Summary */}
-                <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-white p-2 rounded-lg border border-yellow-100 flex flex-col items-center">
-                        <span className="text-sm font-bold text-yellow-700">{stats.open}</span>
-                        <span className="text-[9px] text-gray-400 uppercase font-medium">Abertos</span>
-                    </div>
-                    <div className="bg-white p-2 rounded-lg border border-blue-100 flex flex-col items-center">
-                        <span className="text-sm font-bold text-blue-700">{stats.inProgress}</span>
-                        <span className="text-[9px] text-gray-400 uppercase font-medium">Em And.</span>
-                    </div>
+                <div className="overflow-hidden">
+                    <p className="text-sm font-medium text-gray-900 truncate">{currentUser.name}</p>
+                    <p className="text-xs text-gray-500 truncate capitalize">{currentUser.role === 'ADMIN' ? 'Desenvolvedor/Admin' : 'Usuário'}</p>
                 </div>
             </div>
         </div>

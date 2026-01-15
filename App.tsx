@@ -458,7 +458,6 @@ const App: React.FC = () => {
         currentView={currentView} 
         onChangeView={setCurrentView} 
         currentUser={currentUser} 
-        tickets={tickets}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
