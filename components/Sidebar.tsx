@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { LayoutDashboard, Users, Ticket as TicketIcon, List, Bell, X } from 'lucide-react';
+import { LayoutDashboard, Users, Ticket as TicketIcon, List, Bell, X, Clock, AlertCircle } from 'lucide-react';
 import { ViewState, User, Ticket, TicketStatus } from '../types';
 import { supabase } from '../services/supabase';
 import { Logo } from './Logo';
@@ -9,7 +9,7 @@ interface SidebarProps {
   currentView: ViewState;
   onChangeView: (view: ViewState) => void;
   currentUser: User;
-  tickets: Ticket[]; // Added missing prop
+  tickets: Ticket[];
   isOpen: boolean;
   onClose: () => void;
 }
@@ -27,7 +27,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
   useEffect(() => {
     fetchUnreadNotifications();
     
-    // Realtime subscription for notifications
     const channel = supabase
       .channel('public:notifications')
       .on('postgres_changes', { 
@@ -55,9 +54,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
     setUnreadCount(count || 0);
   };
 
-  // Calculate Stats based on User Role
+  // Resumo de Status baseados no Papel do Usuário
   const stats = useMemo(() => {
-    // If Admin, count all relevant status tickets. If User, only theirs.
     const userTickets = currentUser.role === 'ADMIN' 
         ? tickets 
         : tickets.filter(t => t.requesterId === currentUser.id);
@@ -117,7 +115,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
         <div className="px-6 py-4">
             <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 shadow-sm">
                 <div className="flex items-center space-x-3 mb-3">
-                    <div className="h-9 w-9 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm ring-2 ring-white">
+                    <div className="h-9 w-9 rounded-full bg-primary-600 text-white flex items-center justify-center font-bold text-sm ring-2 ring-white">
                         {currentUser.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="overflow-hidden">
@@ -128,13 +126,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
                     </div>
                 </div>
                 
-                {/* Status Summary */}
-                <div className="grid grid-cols-2 gap-2 mt-3">
-                    <div className="bg-white p-2 rounded-lg border border-yellow-100 flex flex-col items-center">
+                {/* Resumo de Status solicitado */}
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="bg-white p-2 rounded-lg border border-yellow-100 flex flex-col items-center justify-center">
                         <span className="text-sm font-bold text-yellow-700">{stats.open}</span>
                         <span className="text-[9px] text-gray-400 uppercase font-bold">Abertos</span>
                     </div>
-                    <div className="bg-white p-2 rounded-lg border border-blue-100 flex flex-col items-center">
+                    <div className="bg-white p-2 rounded-lg border border-blue-100 flex flex-col items-center justify-center">
                         <span className="text-sm font-bold text-blue-700">{stats.inProgress}</span>
                         <span className="text-[9px] text-gray-400 uppercase font-bold">Em And.</span>
                     </div>
@@ -167,7 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
                         <span>{item.label}</span>
                     </div>
                     {item.badge ? (
-                        <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                         {item.badge}
                         </span>
                     ) : null}
