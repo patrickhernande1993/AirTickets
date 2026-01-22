@@ -1,15 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { Ticket, TicketPriority, TicketStatus, User } from '../types';
-import { Loader2, ArrowLeft, Paperclip, X, FileText, Check, User as UserIcon } from 'lucide-react';
+import { Loader2, ArrowLeft, Paperclip, X, FileText, Check } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 interface TicketFormProps {
   onSave: (ticket: Omit<Ticket, 'id' | 'createdAt' | 'ticketNumber'>) => void;
   onCancel: () => void;
-  initialData?: Ticket;
-  currentUser: User;
+  initialData?: Ticket; // Optional for Edit mode
+  currentUser: User; // Obrigatório para pegar o nome automaticamente
 }
 
 const CATEGORIES = [
@@ -26,21 +26,10 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
   const [priority, setPriority] = useState<TicketPriority>(TicketPriority.LOW);
   const [category, setCategory] = useState(CATEGORIES[0]);
   
-  // Requester Selection State
-  const [requesterId, setRequesterId] = useState(currentUser.id);
-  const [requesterName, setRequesterName] = useState(currentUser.name);
-  const [availableUsers, setAvailableUsers] = useState<{id: string, name: string}[]>([]);
-
   // Attachments State
   const [attachments, setAttachments] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-
-  useEffect(() => {
-    if (currentUser.role === 'ADMIN') {
-        fetchUsers();
-    }
-  }, [currentUser.role]);
 
   useEffect(() => {
     if (initialData) {
@@ -49,51 +38,61 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
         setPriority(initialData.priority);
         setCategory(initialData.category);
         setAttachments(initialData.attachments || []);
-        setRequesterId(initialData.requesterId);
-        setRequesterName(initialData.requester);
     }
   }, [initialData]);
 
-  const fetchUsers = async () => {
-      const { data } = await supabase.from('profiles').select('id, name').eq('is_active', true).order('name');
-      if (data) {
-          setAvailableUsers(data);
-      }
-  };
-
-  const handleRequesterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const selectedId = e.target.value;
-      setRequesterId(selectedId);
-      const selectedUser = availableUsers.find(u => u.id === selectedId);
-      if (selectedUser) {
-          setRequesterName(selectedUser.name);
-      }
-  };
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files || e.target.files.length === 0) return;
+      
       setIsUploading(true);
-      setUploadProgress(10);
+      setUploadProgress(0);
 
       const file = e.target.files[0];
-      const fileName = `${Date.now()}_${uuidv4()}.${file.name.split('.').pop()}`;
+      const fileExt = file.name.split('.').pop();
+      // Adiciona timestamp para evitar conflitos de nome
+      const fileName = `${Date.now()}_${uuidv4()}.${fileExt}`;
       const filePath = `${currentUser.id}/${fileName}`;
 
+      // Simulação de progresso visual (já que o supabase upload simples não tem callback de progresso nativo exposto facilmente)
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+            if (prev >= 90) return prev; // Segura em 90% até terminar
+            return prev + 10;
+        });
+      }, 100);
+
       try {
-          const { error: uploadError } = await supabase.storage.from('attachments').upload(filePath, file);
+          const { error: uploadError } = await supabase.storage
+            .from('attachments')
+            .upload(filePath, file);
+
           if (uploadError) throw uploadError;
+
+          // Upload concluído
+          clearInterval(progressInterval);
           setUploadProgress(100);
 
           const { data } = supabase.storage.from('attachments').getPublicUrl(filePath);
+          
           if (data) {
-              setAttachments(prev => [...prev, data.publicUrl]);
+              // Pequeno delay para o usuário ver o 100%
+              setTimeout(() => {
+                  setAttachments(prev => [...prev, data.publicUrl]);
+                  setIsUploading(false);
+                  setUploadProgress(0);
+              }, 500);
+          } else {
+              setIsUploading(false);
           }
       } catch (error: any) {
-          alert(`Erro no upload: ${error.message}`);
-      } finally {
+          console.error('Error uploading file:', error);
+          alert(`Erro ao fazer upload: ${error.message || 'Verifique as permissões do Bucket.'}`);
           setIsUploading(false);
           setUploadProgress(0);
-          e.target.value = '';
+      } finally {
+          clearInterval(progressInterval);
+          // Reset input para permitir selecionar o mesmo arquivo se der erro
+          e.target.value = ''; 
       }
   };
 
@@ -106,8 +105,8 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
     onSave({
       title,
       description,
-      requester: requesterName, 
-      requesterId: requesterId, 
+      requester: currentUser.name, // Always use logged user name
+      requesterId: currentUser.id, // Always use logged user ID
       priority,
       category,
       status: initialData ? initialData.status : TicketStatus.OPEN,
@@ -115,11 +114,36 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
     });
   };
 
+  // Configuração visual dos cartões de prioridade
   const PRIORITY_OPTIONS = [
-    { id: TicketPriority.LOW, label: 'Baixa', colorClass: 'hover:border-green-400', selectedClass: 'border-green-500 bg-green-50 text-green-700', desc: 'Dúvidas simples' },
-    { id: TicketPriority.MEDIUM, label: 'Média', colorClass: 'hover:border-yellow-400', selectedClass: 'border-yellow-500 bg-yellow-50 text-yellow-800', desc: 'Afeta o trabalho' },
-    { id: TicketPriority.HIGH, label: 'Alta', colorClass: 'hover:border-orange-400', selectedClass: 'border-orange-500 bg-orange-50 text-orange-800', desc: 'Urgente' },
-    { id: TicketPriority.CRITICAL, label: 'Crítica', colorClass: 'hover:border-red-400', selectedClass: 'border-red-500 bg-red-50 text-red-800', desc: 'Parada crítica' }
+    { 
+        id: TicketPriority.LOW, 
+        label: 'Baixa', 
+        colorClass: 'hover:border-green-400 hover:bg-green-50', 
+        selectedClass: 'border-green-500 bg-green-50 text-green-700 ring-1 ring-green-500',
+        desc: 'Dúvidas ou solicitações simples' 
+    },
+    { 
+        id: TicketPriority.MEDIUM, 
+        label: 'Média', 
+        colorClass: 'hover:border-yellow-400 hover:bg-yellow-50', 
+        selectedClass: 'border-yellow-500 bg-yellow-50 text-yellow-800 ring-1 ring-yellow-500',
+        desc: 'Problemas que afetam o trabalho' 
+    },
+    { 
+        id: TicketPriority.HIGH, 
+        label: 'Alta', 
+        colorClass: 'hover:border-orange-400 hover:bg-orange-50', 
+        selectedClass: 'border-orange-500 bg-orange-50 text-orange-800 ring-1 ring-orange-500',
+        desc: 'Urgente, impede funções críticas' 
+    },
+    { 
+        id: TicketPriority.CRITICAL, 
+        label: 'Crítica', 
+        colorClass: 'hover:border-red-400 hover:bg-red-50', 
+        selectedClass: 'border-red-500 bg-red-50 text-red-800 ring-1 ring-red-500',
+        desc: 'Sistema parado ou emergência' 
+    }
   ];
 
   return (
@@ -130,72 +154,203 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
       </button>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden">
+        {/* Cabeçalho Visual */}
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-primary-600 to-primary-800 text-white">
-          <h2 className="text-xl font-bold">{initialData ? 'Editar Chamado' : 'Abrir Novo Chamado'}</h2>
-          <p className="text-primary-100 text-sm mt-1 opacity-90">Preencha os detalhes para suporte.</p>
+          <div className="flex justify-between items-center">
+             <div>
+                <h2 className="text-xl font-bold">{initialData ? 'Editar Chamado' : 'Abrir Novo Chamado'}</h2>
+                <p className="text-primary-100 text-sm mt-1 opacity-90">Descreva o problema para que possamos ajudar rapidamente.</p>
+             </div>
+             <div className="hidden md:block bg-white/10 p-3 rounded-lg backdrop-blur-sm">
+                <FileText size={24} className="text-white" />
+             </div>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-8">
+          
+          {/* Seção 1: Informações Básicas */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              <div className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Solicitante</label>
-                    {currentUser.role === 'ADMIN' ? (
-                        <div className="relative">
-                            <select
-                                value={requesterId}
-                                onChange={handleRequesterChange}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white appearance-none cursor-pointer"
-                            >
-                                {availableUsers.map(user => (
-                                    <option key={user.id} value={user.id}>{user.name}</option>
-                                ))}
-                            </select>
-                            <UserIcon size={16} className="absolute right-3 top-3 text-gray-400 pointer-events-none" />
-                        </div>
-                    ) : (
-                        <input type="text" value={currentUser.name} disabled className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed" />
-                    )}
+                    <input
+                        type="text"
+                        value={currentUser.name}
+                        disabled
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed font-medium"
+                    />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                    <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
-                        {CATEGORIES.map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                    </select>
+                    <div className="relative">
+                        <select
+                            value={category}
+                            onChange={(e) => setCategory(e.target.value)}
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white appearance-none cursor-pointer hover:border-primary-400 transition-colors"
+                        >
+                            {CATEGORIES.map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
                 </div>
              </div>
-             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Assunto</label>
-                <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Ex: Erro no acesso ao ERP" />
+
+             <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Assunto</label>
+                    <input
+                        type="text"
+                        required
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-gray-400"
+                        placeholder="Ex: Erro ao acessar o ERP"
+                    />
+                </div>
              </div>
           </div>
 
+          <div className="border-t border-gray-100 my-2"></div>
+
+          {/* Seção 2: Detalhes e Prioridade */}
           <div className="space-y-6">
              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Descrição</label>
-                <textarea required rows={5} value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none resize-none" />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Descrição Detalhada</label>
+                <div className="relative">
+                    <textarea
+                        required
+                        rows={6}
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all resize-none leading-relaxed"
+                        placeholder="Descreva o que aconteceu, quais passos você seguiu e se apareceu alguma mensagem de erro..."
+                    />
+                    <div className="absolute bottom-3 right-3 text-xs text-gray-400 pointer-events-none">
+                        Quanto mais detalhes, mais rápido resolvemos.
+                    </div>
+                </div>
              </div>
 
              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">Prioridade</label>
+                <label className="block text-sm font-medium text-gray-700 mb-3">Defina a Prioridade</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                    {PRIORITY_OPTIONS.map((opt) => (
-                        <button key={opt.id} type="button" onClick={() => setPriority(opt.id)} className={`flex flex-col p-3 rounded-xl border text-left transition-all ${priority === opt.id ? opt.selectedClass : 'bg-white text-gray-600 border-gray-200 ' + opt.colorClass}`}>
-                            <span className="font-bold text-sm">{opt.label}</span>
-                            <span className="text-[10px] opacity-80">{opt.desc}</span>
+                    {PRIORITY_OPTIONS.map((option) => (
+                        <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => setPriority(option.id)}
+                            className={`
+                                relative flex flex-col items-start p-3 rounded-xl border transition-all duration-200 text-left
+                                ${priority === option.id ? option.selectedClass : 'border-gray-200 bg-white text-gray-600 ' + option.colorClass}
+                            `}
+                        >
+                            <div className="flex items-center justify-between w-full mb-1">
+                                <span className="font-bold text-sm">{option.label}</span>
+                                {priority === option.id && <Check size={16} className="text-current" />}
+                            </div>
+                            <span className="text-xs opacity-80">{option.desc}</span>
                         </button>
                     ))}
                 </div>
              </div>
+
+             {/* Attachments Section Modernized */}
+             <div className="bg-gray-50 rounded-lg p-4 border border-dashed border-gray-300">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                      <div>
+                          <label className="block text-sm font-medium text-gray-700">Anexos (Opcional)</label>
+                          <p className="text-xs text-gray-500 mt-1">Adicione prints ou documentos para ajudar.</p>
+                      </div>
+                      
+                      {/* Upload Button or Progress Bar */}
+                      <label className={`
+                          flex flex-col md:flex-row items-center justify-center space-x-0 md:space-x-2 px-4 py-2 rounded-lg transition-all shadow-sm w-full md:w-auto min-w-[160px] relative overflow-hidden
+                          ${isUploading 
+                            ? 'bg-gray-50 border border-gray-200 cursor-not-allowed h-12' 
+                            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 cursor-pointer h-10'}
+                      `}>
+                          {isUploading ? (
+                              <div className="w-full px-2 flex flex-col justify-center h-full">
+                                  <div className="flex justify-between items-center mb-1 w-full">
+                                      <span className="text-xs font-semibold text-primary-700 flex items-center">
+                                          <Loader2 size={10} className="animate-spin mr-1" />
+                                          Enviando...
+                                      </span>
+                                      <span className="text-xs font-bold text-primary-700">{uploadProgress}%</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                      <div 
+                                        className="bg-primary-600 h-1.5 rounded-full transition-all duration-300 ease-out" 
+                                        style={{ width: `${uploadProgress}%` }}
+                                      ></div>
+                                  </div>
+                              </div>
+                          ) : (
+                              <>
+                                <Paperclip size={18} />
+                                <span className="text-sm font-medium">Selecionar Arquivo</span>
+                                <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    onChange={handleFileUpload} 
+                                    disabled={isUploading}
+                                />
+                              </>
+                          )}
+                      </label>
+                  </div>
+                  
+                  {attachments.length > 0 && (
+                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {attachments.map((url, index) => (
+                              <div key={index} className="flex items-center justify-between bg-white px-3 py-2 rounded border border-gray-200 shadow-sm animate-blob">
+                                  <div className="flex items-center space-x-2 overflow-hidden">
+                                      <div className="bg-blue-50 p-1.5 rounded text-blue-500">
+                                        <FileText size={14} />
+                                      </div>
+                                      <a href={url} target="_blank" rel="noreferrer" className="text-xs font-medium text-gray-700 hover:text-blue-600 hover:underline truncate max-w-[150px]">
+                                          Anexo {index + 1}
+                                      </a>
+                                  </div>
+                                  <button 
+                                    type="button" 
+                                    onClick={() => removeAttachment(url)}
+                                    className="text-gray-400 hover:text-red-500 p-1 rounded-full hover:bg-red-50 transition-colors"
+                                  >
+                                      <X size={14} />
+                                  </button>
+                              </div>
+                          ))}
+                      </div>
+                  )}
+             </div>
           </div>
 
-          <div className="pt-6 flex justify-end gap-3 border-t border-gray-100">
-            <button type="button" onClick={onCancel} className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancelar</button>
-            <button type="submit" disabled={isUploading} className="px-8 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-md flex items-center">
+          {/* Footer Actions */}
+          <div className="pt-6 flex flex-col-reverse md:flex-row justify-end gap-3 md:gap-4 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors w-full md:w-auto text-center"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isUploading}
+              className={`px-8 py-2.5 text-white rounded-lg font-medium shadow-lg transition-all w-full md:w-auto text-center flex justify-center items-center
+                ${isUploading 
+                    ? 'bg-primary-400 cursor-not-allowed' 
+                    : 'bg-primary-600 hover:bg-primary-700 hover:shadow-xl hover:-translate-y-0.5'}
+              `}
+            >
               {isUploading && <Loader2 size={18} className="animate-spin mr-2" />}
-              {initialData ? 'Salvar' : 'Criar Chamado'}
+              {initialData ? 'Salvar Alterações' : 'Criar Chamado'}
             </button>
           </div>
         </form>
