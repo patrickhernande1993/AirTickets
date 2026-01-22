@@ -1,7 +1,7 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { LayoutDashboard, Users, Ticket as TicketIcon, List, Bell, X } from 'lucide-react';
-import { ViewState, User } from '../types';
+import { ViewState, User, Ticket, TicketStatus } from '../types';
 import { supabase } from '../services/supabase';
 import { Logo } from './Logo';
 
@@ -9,8 +9,9 @@ interface SidebarProps {
   currentView: ViewState;
   onChangeView: (view: ViewState) => void;
   currentUser: User;
-  isOpen: boolean; // Novo prop para controle mobile
-  onClose: () => void; // Novo prop para fechar no mobile
+  tickets: Ticket[]; // Added missing prop
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 interface NavItem {
@@ -20,7 +21,7 @@ interface NavItem {
   badge?: number;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, currentUser, isOpen, onClose }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, currentUser, tickets, isOpen, onClose }) => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -54,26 +55,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
     setUnreadCount(count || 0);
   };
 
+  // Calculate Stats based on User Role
+  const stats = useMemo(() => {
+    // If Admin, count all relevant status tickets. If User, only theirs.
+    const userTickets = currentUser.role === 'ADMIN' 
+        ? tickets 
+        : tickets.filter(t => t.requesterId === currentUser.id);
+
+    return {
+      open: userTickets.filter(t => t.status === TicketStatus.OPEN).length,
+      inProgress: userTickets.filter(t => t.status === TicketStatus.IN_PROGRESS).length
+    };
+  }, [tickets, currentUser]);
+
   const getNavItems = (): NavItem[] => {
-    // Common items for everyone (Notifications)
-    // Dashboard label changes based on role
     const commonItems: NavItem[] = [
       { id: 'NOTIFICATIONS', label: 'Notificações', icon: Bell, badge: unreadCount },
     ];
 
     if (currentUser.role === 'USER') {
       return [
-        { id: 'DASHBOARD', label: 'Visão Geral', icon: LayoutDashboard }, // User Dashboard
+        { id: 'DASHBOARD', label: 'Visão Geral', icon: LayoutDashboard },
         ...commonItems,
         { id: 'MY_TICKETS', label: 'Meus Chamados', icon: List },
       ];
     }
 
-    // DEV / ADMIN Items
     return [
-      { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutDashboard }, // Admin Dashboard (Graphs)
+      { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutDashboard },
       ...commonItems,
-      { id: 'ALL_TICKETS', label: 'Todos os Chamados', icon: TicketIcon }, // Admin Ticket List
+      { id: 'ALL_TICKETS', label: 'Todos os Chamados', icon: TicketIcon },
       { id: 'USERS', label: 'Gestão de Usuários', icon: Users },
     ];
   };
@@ -82,12 +93,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
 
   const handleItemClick = (view: ViewState) => {
       onChangeView(view);
-      onClose(); // Fecha o menu ao clicar em um item (no mobile)
+      onClose();
   };
 
   return (
     <>
-        {/* Sidebar Container */}
         <div className={`
             fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col h-screen
             transform transition-transform duration-300 ease-in-out
@@ -95,25 +105,39 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
             md:translate-x-0
         `}>
         <div className="p-6 flex items-center justify-between border-b border-gray-100 h-20">
-            {/* LOGO COMPONENT */}
             <div className="flex items-center space-x-2">
                 <Logo className="h-10 w-auto" />
                 <span className="text-xl font-bold text-gray-800 tracking-tight">AirService</span>
             </div>
-            {/* Mobile Close Button */}
             <button onClick={onClose} className="md:hidden text-gray-500 hover:text-gray-700">
                 <X size={24} />
             </button>
         </div>
 
         <div className="px-6 py-4">
-            <div className="bg-gray-50 rounded-lg p-3 flex items-center space-x-3 border border-gray-100">
-                <div className="h-8 w-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-xs">
-                    {currentUser.name.charAt(0).toUpperCase()}
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 shadow-sm">
+                <div className="flex items-center space-x-3 mb-3">
+                    <div className="h-9 w-9 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm ring-2 ring-white">
+                        {currentUser.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="overflow-hidden">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{currentUser.name}</p>
+                        <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 truncate">
+                            {currentUser.role === 'ADMIN' ? 'Desenvolvedor/Admin' : 'Usuário'}
+                        </p>
+                    </div>
                 </div>
-                <div className="overflow-hidden">
-                    <p className="text-sm font-medium text-gray-900 truncate">{currentUser.name}</p>
-                    <p className="text-xs text-gray-500 truncate capitalize">{currentUser.role === 'ADMIN' ? 'Desenvolvedor/Admin' : 'Usuário'}</p>
+                
+                {/* Status Summary */}
+                <div className="grid grid-cols-2 gap-2 mt-3">
+                    <div className="bg-white p-2 rounded-lg border border-yellow-100 flex flex-col items-center">
+                        <span className="text-sm font-bold text-yellow-700">{stats.open}</span>
+                        <span className="text-[9px] text-gray-400 uppercase font-bold">Abertos</span>
+                    </div>
+                    <div className="bg-white p-2 rounded-lg border border-blue-100 flex flex-col items-center">
+                        <span className="text-sm font-bold text-blue-700">{stats.inProgress}</span>
+                        <span className="text-[9px] text-gray-400 uppercase font-bold">Em And.</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -121,20 +145,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
                 const Icon = item.icon;
-                
-                // Determine if this item is active
                 let isActive = currentView === item.id;
 
-                // Handle logic for Detail/Create/Edit views which are sub-views of the main lists
                 if (['TICKET_DETAIL', 'CREATE_TICKET', 'EDIT_TICKET'].includes(currentView)) {
-                    // For Admins, ticket details usually fall under "Todos os Chamados" context
-                    if (currentUser.role === 'ADMIN' && item.id === 'ALL_TICKETS') {
-                        isActive = true;
-                    }
-                    // For Users, ticket details fall under "Meus Chamados" context
-                    if (currentUser.role === 'USER' && item.id === 'MY_TICKETS') {
-                        isActive = true;
-                    }
+                    if (currentUser.role === 'ADMIN' && item.id === 'ALL_TICKETS') isActive = true;
+                    if (currentUser.role === 'USER' && item.id === 'MY_TICKETS') isActive = true;
                 }
                 
                 return (
@@ -162,7 +177,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
         </nav>
         </div>
         
-        {/* Mobile Overlay */}
         {isOpen && (
             <div 
                 className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
