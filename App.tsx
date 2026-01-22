@@ -177,6 +177,8 @@ const App: React.FC = () => {
     try {
         if (ticketToEdit) {
             // Update existing ticket
+            // We allow updating title, description, priority, category, status, and attachments
+            // AND potentially the requester if changed by admin
             const { error } = await supabase
                 .from('tickets')
                 .update({
@@ -185,7 +187,9 @@ const App: React.FC = () => {
                     priority: newTicketData.priority,
                     category: newTicketData.category,
                     status: newTicketData.status,
-                    attachments: newTicketData.attachments
+                    attachments: newTicketData.attachments,
+                    requester_id: newTicketData.requesterId, // Update Requester ID
+                    requester_name: newTicketData.requester // Update Requester Name
                 })
                 .eq('id', ticketToEdit.id);
 
@@ -203,13 +207,14 @@ const App: React.FC = () => {
         } else {
             // Create new ticket
             // ticket_number is generated automatically by Postgres
+            // Uses the requester info passed from the form (which might differ from currentUser if Admin)
             const { data: newTicket, error } = await supabase
                 .from('tickets')
                 .insert([{
                     title: newTicketData.title,
                     description: newTicketData.description,
-                    requester_name: currentUser?.name, 
-                    requester_id: currentUser?.id,
+                    requester_name: newTicketData.requester, 
+                    requester_id: newTicketData.requesterId,
                     priority: newTicketData.priority,
                     category: newTicketData.category,
                     status: 'OPEN',
@@ -235,10 +240,20 @@ const App: React.FC = () => {
                     const notifications = admins.map(admin => ({
                         user_id: admin.id,
                         title: 'Novo Chamado Criado',
-                        message: `${currentUser?.name} abriu um novo chamado: ${newTicketData.title}`,
+                        message: `${newTicketData.requester} abriu um novo chamado: ${newTicketData.title}`,
                         ticket_id: newTicket.id
                     }));
                     await supabase.from('notifications').insert(notifications);
+                }
+
+                // If Admin opened for someone else, notify that user
+                if (newTicketData.requesterId !== currentUser.id) {
+                     await supabase.from('notifications').insert({
+                        user_id: newTicketData.requesterId,
+                        title: 'Chamado Aberto para Você',
+                        message: `Um administrador abriu o chamado #${newTicket.ticket_number} em seu nome.`,
+                        ticket_id: newTicket.id
+                    });
                 }
             }
         }
@@ -458,6 +473,7 @@ const App: React.FC = () => {
         currentView={currentView} 
         onChangeView={setCurrentView} 
         currentUser={currentUser} 
+        tickets={tickets}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />

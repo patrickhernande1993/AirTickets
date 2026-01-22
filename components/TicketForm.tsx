@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Ticket, TicketPriority, TicketStatus, User } from '../types';
-import { Loader2, ArrowLeft, Paperclip, X, FileText, Check } from 'lucide-react';
+import { Loader2, ArrowLeft, Paperclip, X, FileText, Check, User as UserIcon } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -26,10 +26,22 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
   const [priority, setPriority] = useState<TicketPriority>(TicketPriority.LOW);
   const [category, setCategory] = useState(CATEGORIES[0]);
   
+  // Requester Selection State
+  const [requesterId, setRequesterId] = useState(currentUser.id);
+  const [requesterName, setRequesterName] = useState(currentUser.name);
+  const [availableUsers, setAvailableUsers] = useState<{id: string, name: string}[]>([]);
+
   // Attachments State
   const [attachments, setAttachments] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  useEffect(() => {
+    // If Admin, fetch all users to allow changing the requester
+    if (currentUser.role === 'ADMIN') {
+        fetchUsers();
+    }
+  }, [currentUser.role]);
 
   useEffect(() => {
     if (initialData) {
@@ -38,8 +50,30 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
         setPriority(initialData.priority);
         setCategory(initialData.category);
         setAttachments(initialData.attachments || []);
+        setRequesterId(initialData.requesterId);
+        setRequesterName(initialData.requester);
+    } else {
+        // Reset to current user if creating new
+        setRequesterId(currentUser.id);
+        setRequesterName(currentUser.name);
     }
-  }, [initialData]);
+  }, [initialData, currentUser]);
+
+  const fetchUsers = async () => {
+      const { data } = await supabase.from('profiles').select('id, name').order('name');
+      if (data) {
+          setAvailableUsers(data);
+      }
+  };
+
+  const handleRequesterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const selectedId = e.target.value;
+      setRequesterId(selectedId);
+      const selectedUser = availableUsers.find(u => u.id === selectedId);
+      if (selectedUser) {
+          setRequesterName(selectedUser.name);
+      }
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files || e.target.files.length === 0) return;
@@ -105,8 +139,8 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
     onSave({
       title,
       description,
-      requester: currentUser.name, // Always use logged user name
-      requesterId: currentUser.id, // Always use logged user ID
+      requester: requesterName, 
+      requesterId: requesterId, 
       priority,
       category,
       status: initialData ? initialData.status : TicketStatus.OPEN,
@@ -174,12 +208,32 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
              <div className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Solicitante</label>
-                    <input
-                        type="text"
-                        value={currentUser.name}
-                        disabled
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed font-medium"
-                    />
+                    {currentUser.role === 'ADMIN' ? (
+                        <div className="relative">
+                            <select
+                                value={requesterId}
+                                onChange={handleRequesterChange}
+                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white appearance-none cursor-pointer hover:border-primary-400 transition-colors"
+                            >
+                                {availableUsers.map(user => (
+                                    <option key={user.id} value={user.id}>{user.name}</option>
+                                ))}
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                <UserIcon size={16} className="text-gray-400" />
+                            </div>
+                        </div>
+                    ) : (
+                        <input
+                            type="text"
+                            value={currentUser.name}
+                            disabled
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed font-medium"
+                        />
+                    )}
+                    {currentUser.role === 'ADMIN' && (
+                        <p className="text-xs text-gray-500 mt-1">Como Admin, você pode abrir chamados em nome de outros.</p>
+                    )}
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
