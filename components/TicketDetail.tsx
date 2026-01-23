@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Ticket, TicketStatus, User, Comment, AuditLog } from '../types';
 import { ArrowLeft, CheckCircle, Clock, User as UserIcon, Calendar, Tag, Trash2, Edit, Send, MessageSquare, FileText, Paperclip } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import { GeminiInsights } from './GeminiInsights';
 
 interface TicketDetailProps {
   ticket: Ticket;
@@ -274,9 +273,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             <h3 className="text-sm font-bold text-gray-900 mb-2">Descrição do Problema</h3>
             <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{ticket.description}</p>
         </div>
-
-        {/* Fix: Added GeminiInsights to the ticket detail view */}
-        <GeminiInsights title={ticket.title} description={ticket.description} />
 
         {/* Attachments View */}
         {ticket.attachments && ticket.attachments.length > 0 && (

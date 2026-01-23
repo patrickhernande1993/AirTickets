@@ -8,9 +8,8 @@ import { Login } from './components/Login';
 import { UserManagement } from './components/UserManagement';
 import { Notifications } from './components/Notifications';
 import { Dashboard } from './components/Dashboard';
-import { Toast } from './components/Toast';
 import { Ticket, ViewState, TicketStatus, User } from './types';
-import { supabase, sendEmailAlert, sendEmailStatusUpdateAlert } from './services/supabase';
+import { supabase } from './services/supabase';
 import { Loader2, Menu } from 'lucide-react';
 import { Logo } from './components/Logo';
 
@@ -22,9 +21,8 @@ const App: React.FC = () => {
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // UI State
+  // Mobile Sidebar State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeToast, setActiveToast] = useState<{message: string, subMessage?: string} | null>(null);
 
   // Check auth session on load
   useEffect(() => {
@@ -61,46 +59,59 @@ const App: React.FC = () => {
 
   const fetchProfile = async (userId: string, email: string) => {
       try {
+          // 1. Get Auth Metadata to ensure we have the real name entered during sign up
           const { data: authUser } = await supabase.auth.getUser();
           const metaName = authUser.user?.user_metadata?.full_name;
+          
+          // Fallback name logic: Metadata > Email
           const displayName = metaName || email.split('@')[0];
 
+          // 2. Attempt to fetch profile from DB
           let { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', userId)
             .maybeSingle();
           
+          // 3. SELF-HEALING: If profile is missing but Auth exists, create it now.
           if (!data) {
+            console.log("Profile missing for authenticated user. Creating default 'USER' profile...");
+            
             const { data: newProfile, error: createError } = await supabase
                 .from('profiles')
                 .insert([{ 
                     id: userId, 
                     email: email, 
-                    name: displayName, 
-                    role: 'USER', 
+                    name: displayName, // Uses the real name from registration if available
+                    role: 'USER', // Enforced default role
                     is_active: true
                 }])
                 .select()
                 .single();
             
-            if (createError) throw createError;
+            if (createError) {
+                console.error("Failed to auto-create profile:", createError);
+                throw createError;
+            }
             data = newProfile;
           } else if (error) {
             throw error;
           }
 
+          // 4. Check for INACTIVE status
           if (data.is_active === false) {
-              alert("Sua conta foi desativada pelo administrador.");
+              alert("Sua conta foi desativada pelo administrador. Entre em contato com o suporte.");
               await supabase.auth.signOut();
               setCurrentUser(null);
               setLoading(false);
               return;
           }
 
+          // 5. SPECIAL ADMIN OVERRIDE (Bootstrap)
           const superAdmins = ['ti@grupoairslaid.com.br'];
           if (superAdmins.includes(email) || email.startsWith('admin') || email.startsWith('dev')) {
              if (data && data.role !== 'ADMIN') {
+                 console.log(`Promoting super user ${email} to ADMIN...`);
                  await supabase.from('profiles').update({ role: 'ADMIN' }).eq('id', userId);
                  data.role = 'ADMIN';
              }
@@ -109,7 +120,7 @@ const App: React.FC = () => {
           if (data) {
             setCurrentUser({
                 id: data.id,
-                name: data.name, 
+                name: data.name, // Use DB name (which we ensured matches metadata on creation)
                 email: data.email || email,
                 role: data.role,
                 isActive: data.is_active
@@ -124,9 +135,10 @@ const App: React.FC = () => {
 
   const fetchTickets = async () => {
       try {
+          // Alterado para fazer JOIN com a tabela profiles e pegar o nome atualizado
           const { data, error } = await supabase
             .from('tickets')
-            .select('*, profiles:requester_id(name, email)')
+            .select('*, profiles:requester_id(name)')
             .order('created_at', { ascending: false });
 
           if (error) throw error;
@@ -136,6 +148,7 @@ const App: React.FC = () => {
               ticketNumber: t.ticket_number || 0,
               title: t.title,
               description: t.description,
+              // Usa o nome do perfil (atualizado) se existir, senão usa o nome gravado no ticket (backup)
               requester: t.profiles?.name || t.requester_name,
               requesterId: t.requester_id,
               priority: t.priority,
@@ -163,6 +176,7 @@ const App: React.FC = () => {
 
     try {
         if (ticketToEdit) {
+            // Update existing ticket
             const { error } = await supabase
                 .from('tickets')
                 .update({
@@ -177,6 +191,7 @@ const App: React.FC = () => {
 
             if (error) throw error;
 
+            // Audit Log for Edit
             await supabase.from('audit_logs').insert({
                 ticket_id: ticketToEdit.id,
                 actor_id: currentUser.id,
@@ -185,8 +200,9 @@ const App: React.FC = () => {
             });
             
             setTicketToEdit(null);
-            setActiveToast({ message: "Chamado atualizado com sucesso!" });
         } else {
+            // Create new ticket
+            // ticket_number is generated automatically by Postgres
             const { data: newTicket, error } = await supabase
                 .from('tickets')
                 .insert([{
@@ -205,6 +221,7 @@ const App: React.FC = () => {
             if (error) throw error;
 
             if (newTicket) {
+                // Audit Log for Creation
                 await supabase.from('audit_logs').insert({
                     ticket_id: newTicket.id,
                     actor_id: currentUser.id,
@@ -212,20 +229,7 @@ const App: React.FC = () => {
                     details: `Chamado criado com prioridade ${newTicketData.priority}`
                 });
 
-                // Tenta enviar o e-mail e aguarda para dar feedback visual
-                const emailSent = await sendEmailAlert({
-                    ticketNumber: newTicket.ticket_number,
-                    title: newTicketData.title,
-                    requester: currentUser.name,
-                    priority: newTicketData.priority,
-                    category: newTicketData.category
-                });
-
-                setActiveToast({ 
-                    message: "Chamado aberto com sucesso!", 
-                    subMessage: emailSent ? "E-mail de alerta enviado para a equipe de TI." : "Notificando equipe de TI via sistema." 
-                });
-
+                // NOTIFICATION LOGIC: Notify all Admins
                 const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'ADMIN');
                 if (admins && admins.length > 0) {
                     const notifications = admins.map(admin => ({
@@ -239,11 +243,16 @@ const App: React.FC = () => {
             }
         }
         
-        await fetchTickets();
-        setCurrentView(currentUser?.role === 'USER' ? 'MY_TICKETS' : 'ALL_TICKETS');
+        await fetchTickets(); // Refresh list
+        
+        if (currentUser?.role === 'USER') {
+            setCurrentView('MY_TICKETS');
+        } else {
+            setCurrentView('ALL_TICKETS'); // Return to list view after edit/create
+        }
     } catch (error) {
         console.error("Error saving ticket:", error);
-        alert("Falha ao salvar chamado no banco de dados.");
+        alert("Falha ao salvar chamado. Por favor, tente novamente.");
     }
   };
 
@@ -253,11 +262,13 @@ const App: React.FC = () => {
   };
   
   const handleSelectNotificationTicket = async (ticketId: string) => {
+      // Find the ticket in the current list or fetch it
       const existing = tickets.find(t => t.id === ticketId);
       if (existing) {
           setSelectedTicket(existing);
           setCurrentView('TICKET_DETAIL');
       } else {
+          // Fallback fetch if not loaded
           const { data } = await supabase.from('tickets').select('*, profiles:requester_id(name)').eq('id', ticketId).single();
           if (data) {
              const formatted: Ticket = {
@@ -287,8 +298,11 @@ const App: React.FC = () => {
         if (error) throw error;
         
         setTickets(tickets.filter(t => t.id !== id));
-        setActiveToast({ message: "Chamado excluído com sucesso." });
-        setCurrentView(currentUser?.role === 'USER' ? 'MY_TICKETS' : 'ALL_TICKETS');
+        if (currentUser?.role === 'USER') {
+            setCurrentView('MY_TICKETS');
+        } else {
+            setCurrentView('ALL_TICKETS');
+        }
       } catch (error) {
           console.error("Error deleting ticket:", error);
           alert("Falha ao excluir chamado.");
@@ -303,13 +317,16 @@ const App: React.FC = () => {
   const handleUpdateStatus = async (id: string, status: TicketStatus) => {
     if (!currentUser) return;
 
-    const targetTicket = tickets.find(t => t.id === id);
-    if (!targetTicket) return;
-
     try {
+        // Prepare update data
         const updates: any = { status };
+        
+        // Logic for Resolved Date
         if (status === TicketStatus.RESOLVED) {
             updates.resolved_at = new Date().toISOString();
+        } else {
+            // If reopening, maybe clear resolved_at? 
+            // updates.resolved_at = null; // Optional: Uncomment if reopening should clear the date
         }
 
         const { error } = await supabase
@@ -319,6 +336,7 @@ const App: React.FC = () => {
 
         if (error) throw error;
 
+        // Audit Log for Status Change
         await supabase.from('audit_logs').insert({
             ticket_id: id,
             actor_id: currentUser.id,
@@ -326,56 +344,47 @@ const App: React.FC = () => {
             details: `Status alterado para ${status}`
         });
 
-        // Obter e-mail do solicitante
-        const { data: requesterProfile } = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('id', targetTicket.requesterId)
-            .single();
-
-        let emailSuccess = false;
-        if (requesterProfile?.email) {
-            emailSuccess = await sendEmailStatusUpdateAlert({
-                ticketNumber: targetTicket.ticketNumber,
-                title: targetTicket.title,
-                newStatus: status,
-                recipientEmail: requesterProfile.email
-            });
-        }
-
-        // Feedback visual explícito do e-mail
-        setActiveToast({ 
-            message: "Status atualizado com sucesso!", 
-            subMessage: emailSuccess 
-                ? `E-mail de notificação enviado para ${requesterProfile?.email}` 
-                : "Registro salvo (notificação via e-mail pendente de configuração)." 
-        });
-
+        // Update local state immediately (Optimistic or Fetch)
         setTickets(prev => prev.map(t => {
             if (t.id === id) {
                 return {
                     ...t,
                     status,
                     resolvedAt: updates.resolved_at ? new Date(updates.resolved_at) : t.resolvedAt,
-                    updatedAt: new Date()
+                    updatedAt: new Date() // Optimistic update for Last Update
                 };
             }
             return t;
         }));
 
         if (selectedTicket && selectedTicket.id === id) {
-            setSelectedTicket({ 
+            const updatedTicket = { 
                 ...selectedTicket, 
                 status,
                 resolvedAt: updates.resolved_at ? new Date(updates.resolved_at) : selectedTicket.resolvedAt,
                 updatedAt: new Date()
-            });
+            };
+            setSelectedTicket(updatedTicket);
+            
+            // NOTIFICATION LOGIC: Notify the requester if status changes
+            // If I am an admin changing a user's ticket
+            if (currentUser.role === 'ADMIN') {
+                const { data: profile } = await supabase.from('profiles').select('name').eq('id', currentUser.id).single();
+                const adminName = profile?.name || 'Admin';
+                
+                // Don't notify if I am the requester too
+                if (selectedTicket.requesterId !== currentUser.id) {
+                    await supabase.from('notifications').insert({
+                        user_id: selectedTicket.requesterId,
+                        title: 'Status Atualizado',
+                        message: `Seu chamado "${selectedTicket.title}" mudou para ${status} por ${adminName}.`,
+                        ticket_id: id
+                    });
+                }
+            }
         }
-        
-        fetchTickets();
     } catch (error) {
         console.error("Error updating status:", error);
-        alert("Erro ao atualizar status.");
     }
   };
 
@@ -403,9 +412,16 @@ const App: React.FC = () => {
             onDelete={handleDeleteTicket}
             onEdit={handleEditTicket}
           />
-        ) : null;
+        ) : (
+           <TicketList 
+                tickets={tickets} 
+                onSelectTicket={handleSelectTicket} 
+                onCreateTicket={() => setCurrentView('CREATE_TICKET')} 
+                onUpdateStatus={handleUpdateStatus} 
+           />
+        );
       case 'USERS':
-        return currentUser.role === 'ADMIN' ? <UserManagement currentUser={currentUser} /> : null;
+        return currentUser.role === 'ADMIN' ? <UserManagement currentUser={currentUser} /> : <div>Acesso Negado</div>;
       case 'NOTIFICATIONS':
         return <Notifications currentUser={currentUser} onSelectNotification={handleSelectNotificationTicket} />;
       case 'MY_TICKETS':
@@ -438,14 +454,6 @@ const App: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {activeToast && (
-          <Toast 
-            message={activeToast.message} 
-            subMessage={activeToast.subMessage} 
-            onClose={() => setActiveToast(null)} 
-          />
-      )}
-
       <Sidebar 
         currentView={currentView} 
         onChangeView={setCurrentView} 
@@ -454,6 +462,7 @@ const App: React.FC = () => {
         onClose={() => setIsSidebarOpen(false)}
       />
       
+      {/* Mobile Header */}
       <div className="md:hidden fixed top-0 left-0 w-full bg-white z-30 border-b border-gray-200 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-3">
               <button 
@@ -473,6 +482,7 @@ const App: React.FC = () => {
       </div>
 
       <main className={`flex-1 p-4 md:p-8 overflow-y-auto h-screen transition-all duration-300 ${isSidebarOpen ? '' : 'ml-0'} md:ml-64 pt-20 md:pt-8`}>
+        {/* Changed from max-w-6xl mx-auto to w-[95%] mx-auto to stretch the grid */}
         <div className="w-full md:w-[95%] mx-auto">
           <header className="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
@@ -498,6 +508,7 @@ const App: React.FC = () => {
                     {currentUser.name.charAt(0).toUpperCase()}
                 </div>
             </div>
+            {/* Mobile Logout (shown below header on mobile) */}
             <div className="md:hidden w-full flex justify-end">
                 <button 
                     onClick={handleLogout}
