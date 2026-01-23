@@ -20,12 +20,12 @@ export interface User {
   email: string;
   role: UserRole;
   avatar?: string;
-  isActive?: boolean; // Campo para controlar se o usuário está ativo ou bloqueado
+  isActive?: boolean;
 }
 
 export interface Ticket {
   id: string;
-  ticketNumber: number; // ID Sequencial (1, 2, 3...)
+  ticketNumber: number;
   title: string;
   description: string;
   requester: string; 
@@ -34,9 +34,9 @@ export interface Ticket {
   status: TicketStatus;
   category: string;
   createdAt: Date;
-  updatedAt?: Date; // Última atualização
-  resolvedAt?: Date; // Data de resolução
-  attachments?: string[]; // URLs dos arquivos anexados
+  updatedAt?: Date;
+  resolvedAt?: Date;
+  attachments?: string[];
 }
 
 export interface Comment {
@@ -47,6 +47,7 @@ export interface Comment {
   userRole: UserRole;
   content: string;
   createdAt: Date;
+  source?: 'WEB' | 'EMAIL'; // Identifica a origem da mensagem
 }
 
 export interface Notification {
@@ -62,10 +63,10 @@ export interface Notification {
 export interface AuditLog {
   id: string;
   ticketId: string;
-  ticketNumber?: number; // Para exibição nos logs
+  ticketNumber?: number;
   actorId: string;
   actorName?: string;
-  action: string; // 'CREATED' | 'STATUS_CHANGE' | 'EDITED'
+  action: string;
   details?: string;
   createdAt: Date;
 }
