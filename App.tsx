@@ -8,8 +8,9 @@ import { Login } from './components/Login';
 import { UserManagement } from './components/UserManagement';
 import { Notifications } from './components/Notifications';
 import { Dashboard } from './components/Dashboard';
+import { Toast } from './components/Toast';
 import { Ticket, ViewState, TicketStatus, User } from './types';
-import { supabase, sendEmailAlert } from './services/supabase';
+import { supabase, sendEmailAlert, sendEmailStatusUpdateAlert } from './services/supabase';
 import { Loader2, Menu } from 'lucide-react';
 import { Logo } from './components/Logo';
 
@@ -21,8 +22,9 @@ const App: React.FC = () => {
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Mobile Sidebar State
+  // UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeToast, setActiveToast] = useState<{message: string, subMessage?: string} | null>(null);
 
   // Check auth session on load
   useEffect(() => {
@@ -124,7 +126,7 @@ const App: React.FC = () => {
       try {
           const { data, error } = await supabase
             .from('tickets')
-            .select('*, profiles:requester_id(name)')
+            .select('*, profiles:requester_id(name, email)')
             .order('created_at', { ascending: false });
 
           if (error) throw error;
@@ -183,6 +185,7 @@ const App: React.FC = () => {
             });
             
             setTicketToEdit(null);
+            setActiveToast({ message: "Chamado atualizado com sucesso!" });
         } else {
             const { data: newTicket, error } = await supabase
                 .from('tickets')
@@ -209,13 +212,18 @@ const App: React.FC = () => {
                     details: `Chamado criado com prioridade ${newTicketData.priority}`
                 });
 
-                // Disparar Alerta por E-mail via Resend
-                sendEmailAlert({
+                // Tenta enviar o e-mail e aguarda para dar feedback visual
+                const emailSent = await sendEmailAlert({
                     ticketNumber: newTicket.ticket_number,
                     title: newTicketData.title,
                     requester: currentUser.name,
                     priority: newTicketData.priority,
                     category: newTicketData.category
+                });
+
+                setActiveToast({ 
+                    message: "Chamado aberto com sucesso!", 
+                    subMessage: emailSent ? "E-mail de alerta enviado para a equipe de TI." : "Notificando equipe de TI via sistema." 
                 });
 
                 const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'ADMIN');
@@ -232,15 +240,10 @@ const App: React.FC = () => {
         }
         
         await fetchTickets();
-        
-        if (currentUser?.role === 'USER') {
-            setCurrentView('MY_TICKETS');
-        } else {
-            setCurrentView('ALL_TICKETS');
-        }
+        setCurrentView(currentUser?.role === 'USER' ? 'MY_TICKETS' : 'ALL_TICKETS');
     } catch (error) {
         console.error("Error saving ticket:", error);
-        alert("Falha ao salvar chamado.");
+        alert("Falha ao salvar chamado no banco de dados.");
     }
   };
 
@@ -284,11 +287,8 @@ const App: React.FC = () => {
         if (error) throw error;
         
         setTickets(tickets.filter(t => t.id !== id));
-        if (currentUser?.role === 'USER') {
-            setCurrentView('MY_TICKETS');
-        } else {
-            setCurrentView('ALL_TICKETS');
-        }
+        setActiveToast({ message: "Chamado excluído com sucesso." });
+        setCurrentView(currentUser?.role === 'USER' ? 'MY_TICKETS' : 'ALL_TICKETS');
       } catch (error) {
           console.error("Error deleting ticket:", error);
           alert("Falha ao excluir chamado.");
@@ -302,6 +302,9 @@ const App: React.FC = () => {
 
   const handleUpdateStatus = async (id: string, status: TicketStatus) => {
     if (!currentUser) return;
+
+    const targetTicket = tickets.find(t => t.id === id);
+    if (!targetTicket) return;
 
     try {
         const updates: any = { status };
@@ -323,6 +326,31 @@ const App: React.FC = () => {
             details: `Status alterado para ${status}`
         });
 
+        // Obter e-mail do solicitante
+        const { data: requesterProfile } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('id', targetTicket.requesterId)
+            .single();
+
+        let emailSuccess = false;
+        if (requesterProfile?.email) {
+            emailSuccess = await sendEmailStatusUpdateAlert({
+                ticketNumber: targetTicket.ticketNumber,
+                title: targetTicket.title,
+                newStatus: status,
+                recipientEmail: requesterProfile.email
+            });
+        }
+
+        // Feedback visual explícito do e-mail
+        setActiveToast({ 
+            message: "Status atualizado com sucesso!", 
+            subMessage: emailSuccess 
+                ? `E-mail de notificação enviado para ${requesterProfile?.email}` 
+                : "Registro salvo (notificação via e-mail pendente de configuração)." 
+        });
+
         setTickets(prev => prev.map(t => {
             if (t.id === id) {
                 return {
@@ -336,30 +364,18 @@ const App: React.FC = () => {
         }));
 
         if (selectedTicket && selectedTicket.id === id) {
-            const updatedTicket = { 
+            setSelectedTicket({ 
                 ...selectedTicket, 
                 status,
                 resolvedAt: updates.resolved_at ? new Date(updates.resolved_at) : selectedTicket.resolvedAt,
                 updatedAt: new Date()
-            };
-            setSelectedTicket(updatedTicket);
-            
-            if (currentUser.role === 'ADMIN') {
-                const { data: profile } = await supabase.from('profiles').select('name').eq('id', currentUser.id).single();
-                const adminName = profile?.name || 'Admin';
-                
-                if (selectedTicket.requesterId !== currentUser.id) {
-                    await supabase.from('notifications').insert({
-                        user_id: selectedTicket.requesterId,
-                        title: 'Status Atualizado',
-                        message: `Seu chamado "${selectedTicket.title}" mudou para ${status} por ${adminName}.`,
-                        ticket_id: id
-                    });
-                }
-            }
+            });
         }
+        
+        fetchTickets();
     } catch (error) {
         console.error("Error updating status:", error);
+        alert("Erro ao atualizar status.");
     }
   };
 
@@ -387,16 +403,9 @@ const App: React.FC = () => {
             onDelete={handleDeleteTicket}
             onEdit={handleEditTicket}
           />
-        ) : (
-           <TicketList 
-                tickets={tickets} 
-                onSelectTicket={handleSelectTicket} 
-                onCreateTicket={() => setCurrentView('CREATE_TICKET')} 
-                onUpdateStatus={handleUpdateStatus} 
-           />
-        );
+        ) : null;
       case 'USERS':
-        return currentUser.role === 'ADMIN' ? <UserManagement currentUser={currentUser} /> : <div>Acesso Negado</div>;
+        return currentUser.role === 'ADMIN' ? <UserManagement currentUser={currentUser} /> : null;
       case 'NOTIFICATIONS':
         return <Notifications currentUser={currentUser} onSelectNotification={handleSelectNotificationTicket} />;
       case 'MY_TICKETS':
@@ -429,6 +438,14 @@ const App: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
+      {activeToast && (
+          <Toast 
+            message={activeToast.message} 
+            subMessage={activeToast.subMessage} 
+            onClose={() => setActiveToast(null)} 
+          />
+      )}
+
       <Sidebar 
         currentView={currentView} 
         onChangeView={setCurrentView} 
