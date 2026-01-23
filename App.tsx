@@ -9,7 +9,7 @@ import { UserManagement } from './components/UserManagement';
 import { Notifications } from './components/Notifications';
 import { Dashboard } from './components/Dashboard';
 import { Ticket, ViewState, TicketStatus, User } from './types';
-import { supabase } from './services/supabase';
+import { supabase, sendEmailAlert } from './services/supabase';
 import { Loader2, Menu } from 'lucide-react';
 import { Logo } from './components/Logo';
 
@@ -20,10 +20,14 @@ const App: React.FC = () => {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Mobile Sidebar State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Check auth session on load
   useEffect(() => {
     checkUser();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         if (session) {
             fetchProfile(session.user.id, session.user.email!);
@@ -33,9 +37,11 @@ const App: React.FC = () => {
             setLoading(false);
         }
     });
+
     return () => subscription.unsubscribe();
   }, []);
 
+  // Fetch tickets whenever user changes or view updates
   useEffect(() => {
       if (currentUser) {
           fetchTickets();
@@ -53,15 +59,62 @@ const App: React.FC = () => {
 
   const fetchProfile = async (userId: string, email: string) => {
       try {
-          const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-          if (data && data.is_active !== false) {
-            setCurrentUser({ id: data.id, name: data.name, email: data.email || email, role: data.role, isActive: data.is_active });
-          } else if (data && data.is_active === false) {
-            alert("Sua conta está desativada.");
-            await supabase.auth.signOut();
+          const { data: authUser } = await supabase.auth.getUser();
+          const metaName = authUser.user?.user_metadata?.full_name;
+          const displayName = metaName || email.split('@')[0];
+
+          let { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle();
+          
+          if (!data) {
+            const { data: newProfile, error: createError } = await supabase
+                .from('profiles')
+                .insert([{ 
+                    id: userId, 
+                    email: email, 
+                    name: displayName, 
+                    role: 'USER', 
+                    is_active: true
+                }])
+                .select()
+                .single();
+            
+            if (createError) throw createError;
+            data = newProfile;
+          } else if (error) {
+            throw error;
+          }
+
+          if (data.is_active === false) {
+              alert("Sua conta foi desativada pelo administrador.");
+              await supabase.auth.signOut();
+              setCurrentUser(null);
+              setLoading(false);
+              return;
+          }
+
+          const superAdmins = ['ti@grupoairslaid.com.br'];
+          if (superAdmins.includes(email) || email.startsWith('admin') || email.startsWith('dev')) {
+             if (data && data.role !== 'ADMIN') {
+                 await supabase.from('profiles').update({ role: 'ADMIN' }).eq('id', userId);
+                 data.role = 'ADMIN';
+             }
+          }
+
+          if (data) {
+            setCurrentUser({
+                id: data.id,
+                name: data.name, 
+                email: data.email || email,
+                role: data.role,
+                isActive: data.is_active
+            });
           }
       } catch (error) {
-          console.error('Error fetching profile:', error);
+          console.error('Error fetching/creating profile:', error);
       } finally {
           setLoading(false);
       }
@@ -76,7 +129,7 @@ const App: React.FC = () => {
 
           if (error) throw error;
 
-          setTickets(data.map((t: any) => ({
+          const formattedTickets: Ticket[] = data.map((t: any) => ({
               id: t.id,
               ticketNumber: t.ticket_number || 0,
               title: t.title,
@@ -90,103 +143,355 @@ const App: React.FC = () => {
               updatedAt: t.updated_at ? new Date(t.updated_at) : new Date(t.created_at),
               resolvedAt: t.resolved_at ? new Date(t.resolved_at) : undefined,
               attachments: t.attachments || []
-          })));
+          }));
+
+          setTickets(formattedTickets);
       } catch (error) {
           console.error('Error fetching tickets:', error);
       }
   };
 
+  const handleLogout = async () => {
+      await supabase.auth.signOut();
+      setCurrentView('DASHBOARD');
+  };
+
   const handleCreateTicket = async (newTicketData: Omit<Ticket, 'id' | 'createdAt' | 'ticketNumber'>) => {
     if (!currentUser) return;
+
     try {
         if (ticketToEdit) {
-            const { error } = await supabase.from('tickets').update({
-                title: newTicketData.title,
-                description: newTicketData.description,
-                priority: newTicketData.priority,
-                category: newTicketData.category,
-                status: newTicketData.status,
-                attachments: newTicketData.attachments,
-                requester_id: newTicketData.requesterId, // Permite alterar o solicitante na edição também
-                requester_name: newTicketData.requester
-            }).eq('id', ticketToEdit.id);
+            const { error } = await supabase
+                .from('tickets')
+                .update({
+                    title: newTicketData.title,
+                    description: newTicketData.description,
+                    priority: newTicketData.priority,
+                    category: newTicketData.category,
+                    status: newTicketData.status,
+                    attachments: newTicketData.attachments
+                })
+                .eq('id', ticketToEdit.id);
+
             if (error) throw error;
+
+            await supabase.from('audit_logs').insert({
+                ticket_id: ticketToEdit.id,
+                actor_id: currentUser.id,
+                action: 'EDITED',
+                details: 'Detalhes do chamado editados'
+            });
+            
             setTicketToEdit(null);
         } else {
-            const { error } = await supabase.from('tickets').insert([{
-                title: newTicketData.title,
-                description: newTicketData.description,
-                requester_name: newTicketData.requester, 
-                requester_id: newTicketData.requesterId,
-                priority: newTicketData.priority,
-                category: newTicketData.category,
-                status: 'OPEN',
-                attachments: newTicketData.attachments
-            }]);
+            const { data: newTicket, error } = await supabase
+                .from('tickets')
+                .insert([{
+                    title: newTicketData.title,
+                    description: newTicketData.description,
+                    requester_name: currentUser?.name, 
+                    requester_id: currentUser?.id,
+                    priority: newTicketData.priority,
+                    category: newTicketData.category,
+                    status: 'OPEN',
+                    attachments: newTicketData.attachments
+                }])
+                .select()
+                .single();
+
             if (error) throw error;
+
+            if (newTicket) {
+                await supabase.from('audit_logs').insert({
+                    ticket_id: newTicket.id,
+                    actor_id: currentUser.id,
+                    action: 'CREATED',
+                    details: `Chamado criado com prioridade ${newTicketData.priority}`
+                });
+
+                // Disparar Alerta por E-mail via Resend
+                sendEmailAlert({
+                    ticketNumber: newTicket.ticket_number,
+                    title: newTicketData.title,
+                    requester: currentUser.name,
+                    priority: newTicketData.priority,
+                    category: newTicketData.category
+                });
+
+                const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'ADMIN');
+                if (admins && admins.length > 0) {
+                    const notifications = admins.map(admin => ({
+                        user_id: admin.id,
+                        title: 'Novo Chamado Criado',
+                        message: `${currentUser?.name} abriu um novo chamado: ${newTicketData.title}`,
+                        ticket_id: newTicket.id
+                    }));
+                    await supabase.from('notifications').insert(notifications);
+                }
+            }
         }
+        
         await fetchTickets();
-        setCurrentView(currentUser.role === 'USER' ? 'MY_TICKETS' : 'ALL_TICKETS');
+        
+        if (currentUser?.role === 'USER') {
+            setCurrentView('MY_TICKETS');
+        } else {
+            setCurrentView('ALL_TICKETS');
+        }
     } catch (error) {
-        alert("Erro ao salvar chamado.");
+        console.error("Error saving ticket:", error);
+        alert("Falha ao salvar chamado.");
     }
   };
 
-  const handleUpdateStatus = async (id: string, status: TicketStatus) => {
-    try {
-        const { error } = await supabase.from('tickets').update({ 
-            status, 
-            resolved_at: status === TicketStatus.RESOLVED ? new Date().toISOString() : null 
-        }).eq('id', id);
+  const handleSelectTicket = (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    setCurrentView('TICKET_DETAIL');
+  };
+  
+  const handleSelectNotificationTicket = async (ticketId: string) => {
+      const existing = tickets.find(t => t.id === ticketId);
+      if (existing) {
+          setSelectedTicket(existing);
+          setCurrentView('TICKET_DETAIL');
+      } else {
+          const { data } = await supabase.from('tickets').select('*, profiles:requester_id(name)').eq('id', ticketId).single();
+          if (data) {
+             const formatted: Ticket = {
+                id: data.id,
+                ticketNumber: data.ticket_number,
+                title: data.title,
+                description: data.description,
+                requester: data.profiles?.name || data.requester_name,
+                requesterId: data.requester_id,
+                priority: data.priority,
+                status: data.status,
+                category: data.category,
+                createdAt: new Date(data.created_at),
+                updatedAt: data.updated_at ? new Date(data.updated_at) : new Date(data.created_at),
+                resolvedAt: data.resolved_at ? new Date(data.resolved_at) : undefined,
+                attachments: data.attachments || []
+             };
+             setSelectedTicket(formatted);
+             setCurrentView('TICKET_DETAIL');
+          }
+      }
+  };
+
+  const handleDeleteTicket = async (id: string) => {
+      try {
+        const { error } = await supabase.from('tickets').delete().eq('id', id);
         if (error) throw error;
-        await fetchTickets();
+        
+        setTickets(tickets.filter(t => t.id !== id));
+        if (currentUser?.role === 'USER') {
+            setCurrentView('MY_TICKETS');
+        } else {
+            setCurrentView('ALL_TICKETS');
+        }
+      } catch (error) {
+          console.error("Error deleting ticket:", error);
+          alert("Falha ao excluir chamado.");
+      }
+  };
+
+  const handleEditTicket = (ticket: Ticket) => {
+      setTicketToEdit(ticket);
+      setCurrentView('EDIT_TICKET');
+  };
+
+  const handleUpdateStatus = async (id: string, status: TicketStatus) => {
+    if (!currentUser) return;
+
+    try {
+        const updates: any = { status };
+        if (status === TicketStatus.RESOLVED) {
+            updates.resolved_at = new Date().toISOString();
+        }
+
+        const { error } = await supabase
+            .from('tickets')
+            .update(updates)
+            .eq('id', id);
+
+        if (error) throw error;
+
+        await supabase.from('audit_logs').insert({
+            ticket_id: id,
+            actor_id: currentUser.id,
+            action: 'STATUS_CHANGE',
+            details: `Status alterado para ${status}`
+        });
+
+        setTickets(prev => prev.map(t => {
+            if (t.id === id) {
+                return {
+                    ...t,
+                    status,
+                    resolvedAt: updates.resolved_at ? new Date(updates.resolved_at) : t.resolvedAt,
+                    updatedAt: new Date()
+                };
+            }
+            return t;
+        }));
+
+        if (selectedTicket && selectedTicket.id === id) {
+            const updatedTicket = { 
+                ...selectedTicket, 
+                status,
+                resolvedAt: updates.resolved_at ? new Date(updates.resolved_at) : selectedTicket.resolvedAt,
+                updatedAt: new Date()
+            };
+            setSelectedTicket(updatedTicket);
+            
+            if (currentUser.role === 'ADMIN') {
+                const { data: profile } = await supabase.from('profiles').select('name').eq('id', currentUser.id).single();
+                const adminName = profile?.name || 'Admin';
+                
+                if (selectedTicket.requesterId !== currentUser.id) {
+                    await supabase.from('notifications').insert({
+                        user_id: selectedTicket.requesterId,
+                        title: 'Status Atualizado',
+                        message: `Seu chamado "${selectedTicket.title}" mudou para ${status} por ${adminName}.`,
+                        ticket_id: id
+                    });
+                }
+            }
+        }
     } catch (error) {
-        console.error("Error status:", error);
+        console.error("Error updating status:", error);
     }
   };
 
   const renderContent = () => {
     if (!currentUser) return null;
+
     switch (currentView) {
       case 'CREATE_TICKET':
       case 'EDIT_TICKET':
-        return <TicketForm onSave={handleCreateTicket} onCancel={() => setCurrentView(currentUser.role === 'USER' ? 'MY_TICKETS' : 'ALL_TICKETS')} initialData={currentView === 'EDIT_TICKET' ? ticketToEdit || undefined : undefined} currentUser={currentUser} />;
+        return (
+          <TicketForm 
+            onSave={handleCreateTicket} 
+            onCancel={() => setCurrentView(currentUser.role === 'USER' ? 'MY_TICKETS' : 'ALL_TICKETS')} 
+            initialData={currentView === 'EDIT_TICKET' ? ticketToEdit || undefined : undefined}
+            currentUser={currentUser}
+          />
+        );
       case 'TICKET_DETAIL':
-        return selectedTicket ? <TicketDetail ticket={selectedTicket} currentUser={currentUser} onBack={() => setCurrentView(currentUser.role === 'USER' ? 'MY_TICKETS' : 'ALL_TICKETS')} onUpdateStatus={handleUpdateStatus} onDelete={() => {}} onEdit={(t) => {setTicketToEdit(t); setCurrentView('EDIT_TICKET');}} /> : null;
+        return selectedTicket ? (
+          <TicketDetail 
+            ticket={selectedTicket}
+            currentUser={currentUser}
+            onBack={() => setCurrentView(currentUser.role === 'USER' ? 'MY_TICKETS' : 'ALL_TICKETS')}
+            onUpdateStatus={handleUpdateStatus}
+            onDelete={handleDeleteTicket}
+            onEdit={handleEditTicket}
+          />
+        ) : (
+           <TicketList 
+                tickets={tickets} 
+                onSelectTicket={handleSelectTicket} 
+                onCreateTicket={() => setCurrentView('CREATE_TICKET')} 
+                onUpdateStatus={handleUpdateStatus} 
+           />
+        );
       case 'USERS':
-        return <UserManagement currentUser={currentUser} />;
+        return currentUser.role === 'ADMIN' ? <UserManagement currentUser={currentUser} /> : <div>Acesso Negado</div>;
       case 'NOTIFICATIONS':
-        return <Notifications currentUser={currentUser} onSelectNotification={() => {}} />;
+        return <Notifications currentUser={currentUser} onSelectNotification={handleSelectNotificationTicket} />;
       case 'MY_TICKETS':
       case 'ALL_TICKETS':
-        return <TicketList tickets={tickets} onSelectTicket={(t) => { setSelectedTicket(t); setCurrentView('TICKET_DETAIL'); }} onCreateTicket={() => setCurrentView('CREATE_TICKET')} onUpdateStatus={handleUpdateStatus} />;
+        return (
+            <TicketList 
+                tickets={tickets} 
+                onSelectTicket={handleSelectTicket} 
+                onCreateTicket={() => setCurrentView('CREATE_TICKET')} 
+                onUpdateStatus={handleUpdateStatus} 
+            />
+        );
+      case 'DASHBOARD':
       default:
         return <Dashboard tickets={tickets} currentUser={currentUser} onCreateTicket={() => setCurrentView('CREATE_TICKET')} />;
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin text-primary-600" size={48} /></div>;
-  if (!currentUser) return <Login onLoginSuccess={() => checkUser()} />;
+  if (loading) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50">
+              <Loader2 className="animate-spin text-primary-600" size={48} />
+          </div>
+      );
+  }
+
+  if (!currentUser) {
+    return <Login onLoginSuccess={() => checkUser()} />;
+  }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar 
         currentView={currentView} 
         onChangeView={setCurrentView} 
         currentUser={currentUser} 
-        tickets={tickets} // Propriedade sincronizada
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
-      <main className="flex-1 transition-all duration-300 md:ml-64 p-4 md:p-8">
-          <div className="md:hidden flex items-center justify-between mb-6 bg-white p-3 rounded-xl border border-gray-200">
-              <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"><Menu /></button>
-              <Logo className="h-8" />
-              <div className="h-8 w-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold">{currentUser.name.charAt(0)}</div>
+      
+      <div className="md:hidden fixed top-0 left-0 w-full bg-white z-30 border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+              <button 
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="p-1 text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                  <Menu size={24} />
+              </button>
+              <div className="flex items-center space-x-2">
+                 <Logo className="h-8 w-auto" />
+                 <span className="text-lg font-bold text-gray-800">AirService</span>
+              </div>
           </div>
-          <div className="max-w-7xl mx-auto">
-             {renderContent()}
+          <div className="h-8 w-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold">
+              {currentUser.name.charAt(0).toUpperCase()}
           </div>
+      </div>
+
+      <main className={`flex-1 p-4 md:p-8 overflow-y-auto h-screen transition-all duration-300 ${isSidebarOpen ? '' : 'ml-0'} md:ml-64 pt-20 md:pt-8`}>
+        <div className="w-full md:w-[95%] mx-auto">
+          <header className="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+                {currentView === 'DASHBOARD' && (currentUser.role === 'ADMIN' ? 'Visão Geral' : 'Dashboard')}
+                {currentView === 'MY_TICKETS' && 'Meus Chamados'}
+                {currentView === 'ALL_TICKETS' && 'Todos os Chamados'}
+                {currentView === 'CREATE_TICKET' && 'Novo Chamado'}
+                {currentView === 'EDIT_TICKET' && 'Editar Chamado'}
+                {currentView === 'TICKET_DETAIL' && 'Detalhes do Chamado'}
+                {currentView === 'USERS' && 'Gestão de Usuários'}
+                {currentView === 'NOTIFICATIONS' && 'Central de Notificações'}
+              </h1>
+            </div>
+            <div className="hidden md:flex items-center space-x-4">
+                <button 
+                    onClick={handleLogout}
+                    className="text-sm text-gray-500 hover:text-gray-700 underline"
+                >
+                    Sair
+                </button>
+                <div className="h-10 w-10 rounded-full bg-gradient-to-r from-primary-500 to-orange-600 flex items-center justify-center text-white font-bold shadow-md">
+                    {currentUser.name.charAt(0).toUpperCase()}
+                </div>
+            </div>
+            <div className="md:hidden w-full flex justify-end">
+                <button 
+                    onClick={handleLogout}
+                    className="text-sm text-gray-500 border border-gray-200 px-3 py-1 rounded-lg"
+                >
+                    Sair
+                </button>
+            </div>
+          </header>
+          {renderContent()}
+        </div>
       </main>
     </div>
   );
