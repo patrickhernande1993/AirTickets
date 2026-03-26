@@ -8,19 +8,20 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
         primary: {
-          50: '#fff1f2', // Rose 50
-          100: '#ffe4e6', // Rose 100
-          200: '#fecdd3',
-          300: '#fda4af',
-          400: '#fb7185',
-          500: '#f43f5e', // Rose 500
-          600: '#e11d48', // Rose 600 (Cor principal da marca - Botões)
-          700: '#be123c', // Rose 700 (Hover e Textos fortes)
-          800: '#9f1239',
-          900: '#881337',
+          50: '#f0f9ff', // Sky 50
+          100: '#e0f2fe', // Sky 100
+          200: '#bae6fd',
+          300: '#7dd3fc',
+          400: '#38bdf8',
+          500: '#0ea5e9', // Sky 500
+          600: '#0284c7', // Sky 600 (Cor principal da marca - Botões)
+          700: '#0369a1', // Sky 700 (Hover e Textos fortes)
+          800: '#075985',
+          900: '#0c4a6e',
         }
       },
       animation: {

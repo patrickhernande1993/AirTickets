@@ -11,6 +11,7 @@ interface SidebarProps {
   currentUser: User;
   isOpen: boolean; // Novo prop para controle mobile
   onClose: () => void; // Novo prop para fechar no mobile
+  isVisible: boolean; // Novo prop para controle desktop
 }
 
 interface NavItem {
@@ -20,7 +21,7 @@ interface NavItem {
   badge?: number;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, currentUser, isOpen, onClose }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, currentUser, isOpen, onClose, isVisible }) => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -89,12 +90,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
     <>
         {/* Sidebar Container */}
         <div className={`
-            fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col h-screen
+            fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col h-screen
             transform transition-transform duration-300 ease-in-out
             ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
-            md:translate-x-0
+            ${isVisible ? 'md:translate-x-0' : 'md:-translate-x-full'}
         `}>
-        <div className="p-6 flex items-center justify-between border-b border-gray-100 h-20">
+        <div className="p-6 flex items-center justify-between border-b border-slate-100 h-20">
             {/* LOGO COMPONENT */}
             <div className="flex items-center space-x-2">
                 <Logo className="h-10 w-auto" />
@@ -107,8 +108,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
         </div>
 
         <div className="px-6 py-4">
-            <div className="bg-gray-50 rounded-lg p-3 flex items-center space-x-3 border border-gray-100">
-                <div className="h-8 w-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-xs">
+            <div className="bg-slate-50 rounded-none p-3 flex items-center space-x-3 border border-slate-200">
+                <div className="h-8 w-8 rounded-none bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-xs border border-primary-200">
                     {currentUser.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="overflow-hidden">
@@ -141,10 +142,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, cur
                     <button
                     key={item.id + item.label}
                     onClick={() => handleItemClick(item.id as ViewState)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-none text-sm font-medium transition-colors duration-200 ${
                         isActive
-                        ? 'bg-primary-50 text-primary-700'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        ? 'bg-slate-100 text-primary-700 border-r-4 border-primary-600'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                     >
                     <div className="flex items-center space-x-3">

@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { Search, Mail, Shield, User as UserIcon, Loader2, Edit, CheckCircle, XCircle, Save, X } from 'lucide-react';
 import { supabase } from '../services/supabase';
+import { ConfirmationModal } from './ConfirmationModal';
 
 interface UserManagementProps {
   currentUser: User;
+  showToast: (message: string, type?: 'success' | 'error') => void;
 }
 
-export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
+export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, showToast }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,6 +21,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   const [editRole, setEditRole] = useState<UserRole>('USER');
   const [editIsActive, setEditIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Confirmation Modal State
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   useEffect(() => {
       fetchUsers();
@@ -49,18 +54,19 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
       setIsEditModalOpen(true);
   };
 
-  const handleSaveUser = async (e: React.FormEvent) => {
-      e.preventDefault();
+  const handleSaveUser = async (e?: React.FormEvent) => {
+      if (e) e.preventDefault();
       if (!selectedUser) return;
       
       // Safety check: don't let admin deactivate themselves or remove admin role if they are the only one (simplified logic)
       if (selectedUser.id === currentUser.id) {
           if (!editIsActive) {
-              alert("Você não pode desativar sua própria conta.");
+              showToast("Você não pode desativar sua própria conta.", "error");
               return;
           }
-          if (editRole !== 'ADMIN') {
-             if (!window.confirm("Tem certeza que deseja remover seus próprios privilégios de Admin?")) return;
+          if (editRole !== 'ADMIN' && !isConfirmModalOpen) {
+              setIsConfirmModalOpen(true);
+              return;
           }
       }
 
@@ -77,14 +83,17 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
           if (error) throw error;
 
+          showToast("Usuário atualizado com sucesso!");
+          
           // IMPORTANT: Refetch users from DB to ensure data was actually saved
           // This handles cases where RLS might silently ignore the update
           await fetchUsers();
 
           setIsEditModalOpen(false);
+          setIsConfirmModalOpen(false);
       } catch (error) {
           console.error("Error updating user:", error);
-          alert("Erro ao atualizar usuário. Verifique se você tem permissão para editar este perfil.");
+          showToast("Erro ao atualizar usuário. Verifique se você tem permissão para editar este perfil.", "error");
       } finally {
           setIsSaving(false);
       }
@@ -98,25 +107,25 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   return (
     <div className="space-y-6">
       {/* Header and Search */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-none border border-slate-200 shadow-sm">
         <div>
-            <h2 className="text-lg font-bold text-gray-900">Gestão de Usuários</h2>
-            <p className="text-sm text-gray-500">Gerencie permissões, nomes e status de acesso.</p>
+            <h2 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Gestão de Usuários</h2>
+            <p className="text-xs text-slate-500 font-mono">Gerencie permissões, nomes e status de acesso.</p>
         </div>
         <div className="relative w-full sm:w-auto">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
             <input 
                 type="text" 
                 placeholder="Buscar usuários..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none w-full"
+                className="pl-10 pr-4 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none w-full text-sm font-mono"
             />
         </div>
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-none border border-slate-200 shadow-sm overflow-hidden">
         {isLoading ? (
             <div className="p-12 flex justify-center">
                 <Loader2 className="animate-spin text-primary-600" size={32} />
@@ -124,25 +133,25 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
         ) : (
             <div className="overflow-x-auto">
                 <table className="w-full text-left">
-                    <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
+                    <thead className="bg-slate-50 text-slate-600 text-[10px] uppercase tracking-wider border-b border-slate-200">
                         <tr>
-                            <th className="px-6 py-3 font-medium">Usuário</th>
-                            <th className="px-6 py-3 font-medium">Função</th>
-                            <th className="px-6 py-3 font-medium">Status</th>
-                            <th className="px-6 py-3 font-medium text-right">Ações</th>
+                            <th className="px-6 py-3 font-semibold">Usuário</th>
+                            <th className="px-6 py-3 font-semibold">Função</th>
+                            <th className="px-6 py-3 font-semibold">Status</th>
+                            <th className="px-6 py-3 font-semibold text-right">Ações</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-slate-200">
                         {filteredUsers.map((user) => (
-                            <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                            <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                                 <td className="px-6 py-4">
                                     <div className="flex items-center">
-                                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold mr-3">
+                                        <div className="h-9 w-9 rounded-none bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 font-bold mr-3 text-sm">
                                             {user.name.charAt(0).toUpperCase()}
                                         </div>
                                         <div>
-                                            <p className="font-medium text-gray-900">{user.name}</p>
-                                            <div className="flex items-center text-sm text-gray-500">
+                                            <p className="font-semibold text-slate-900 text-sm">{user.name}</p>
+                                            <div className="flex items-center text-xs text-slate-500 font-mono">
                                                 <Mail size={12} className="mr-1" />
                                                 {user.email}
                                             </div>
@@ -151,37 +160,37 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                                 </td>
                                 <td className="px-6 py-4">
                                     {user.role === 'ADMIN' ? (
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
-                                            <Shield size={12} className="mr-1" />
-                                            Desenvolvedor / Admin
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
+                                            <Shield size={10} className="mr-1" />
+                                            ADMIN
                                         </span>
                                     ) : (
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                                            <UserIcon size={12} className="mr-1" />
-                                            Usuário Padrão
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider bg-slate-50 text-slate-600 border border-slate-200">
+                                            <UserIcon size={10} className="mr-1" />
+                                            USER
                                         </span>
                                     )}
                                 </td>
                                 <td className="px-6 py-4">
                                     {user.isActive !== false ? (
-                                        <span className="inline-flex items-center text-green-600 text-sm font-medium">
-                                            <CheckCircle size={14} className="mr-1.5" />
-                                            Ativo
+                                        <span className="inline-flex items-center text-green-600 text-[10px] font-bold uppercase tracking-wider">
+                                            <CheckCircle size={12} className="mr-1" />
+                                            ATIVO
                                         </span>
                                     ) : (
-                                        <span className="inline-flex items-center text-red-600 text-sm font-medium">
-                                            <XCircle size={14} className="mr-1.5" />
-                                            Inativo
+                                        <span className="inline-flex items-center text-red-600 text-[10px] font-bold uppercase tracking-wider">
+                                            <XCircle size={12} className="mr-1" />
+                                            INATIVO
                                         </span>
                                     )}
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                     <button 
                                         onClick={() => handleEditClick(user)}
-                                        className="text-gray-400 hover:text-primary-600 hover:bg-primary-50 p-2 rounded-lg transition-colors"
+                                        className="text-slate-400 hover:text-primary-600 hover:bg-slate-100 p-2 rounded-none transition-colors border border-transparent hover:border-slate-200"
                                         title="Editar Usuário"
                                     >
-                                        <Edit size={18} />
+                                        <Edit size={16} />
                                     </button>
                                 </td>
                             </tr>
@@ -189,7 +198,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                     </tbody>
                 </table>
                 {filteredUsers.length === 0 && (
-                    <div className="p-8 text-center text-gray-500">Nenhum usuário encontrado.</div>
+                    <div className="p-8 text-center text-slate-500 font-mono text-sm">Nenhum usuário encontrado.</div>
                 )}
             </div>
         )}
@@ -197,42 +206,42 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
       {/* Edit Modal */}
       {isEditModalOpen && selectedUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
-              <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
-                  <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                      <h3 className="text-lg font-bold text-gray-900">Editar Usuário</h3>
-                      <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                          <X size={20} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+              <div className="bg-white rounded-none shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-slate-200">
+                  <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Editar Usuário</h3>
+                      <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                          <X size={18} />
                       </button>
                   </div>
                   
                   <form onSubmit={handleSaveUser} className="p-6 space-y-5">
                       <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Email</label>
                           <input 
                               type="text" 
                               value={selectedUser.email} 
                               disabled 
-                              className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 text-sm"
+                              className="w-full px-3 py-2 border border-slate-200 rounded-none bg-slate-50 text-slate-500 text-xs font-mono"
                           />
                       </div>
 
                       <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Nome de Exibição</label>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nome de Exibição</label>
                           <input 
                               type="text" 
                               value={editName} 
                               onChange={(e) => setEditName(e.target.value)}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                              className="w-full px-3 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none text-sm"
                               placeholder="Nome completo"
                               required
                           />
                       </div>
 
                       <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Função / Permissão</label>
-                          <div className="flex space-x-4">
-                              <label className={`flex-1 flex items-center justify-center px-4 py-3 rounded-lg border cursor-pointer transition-all ${editRole === 'USER' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Função / Permissão</label>
+                          <div className="flex space-x-2">
+                              <label className={`flex-1 flex items-center justify-center px-4 py-2 rounded-none border cursor-pointer transition-all ${editRole === 'USER' ? 'bg-slate-100 border-slate-400 text-slate-900' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                                   <input 
                                       type="radio" 
                                       name="role" 
@@ -241,10 +250,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                                       onChange={() => setEditRole('USER')}
                                       className="hidden"
                                   />
-                                  <UserIcon size={16} className="mr-2" />
-                                  <span className="text-sm font-medium">Usuário</span>
+                                  <UserIcon size={14} className="mr-2" />
+                                  <span className="text-[10px] font-bold uppercase tracking-wider">Usuário</span>
                               </label>
-                              <label className={`flex-1 flex items-center justify-center px-4 py-3 rounded-lg border cursor-pointer transition-all ${editRole === 'ADMIN' ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                              <label className={`flex-1 flex items-center justify-center px-4 py-2 rounded-none border cursor-pointer transition-all ${editRole === 'ADMIN' ? 'bg-slate-100 border-slate-400 text-slate-900' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                                   <input 
                                       type="radio" 
                                       name="role" 
@@ -253,14 +262,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                                       onChange={() => setEditRole('ADMIN')}
                                       className="hidden"
                                   />
-                                  <Shield size={16} className="mr-2" />
-                                  <span className="text-sm font-medium">Admin</span>
+                                  <Shield size={14} className="mr-2" />
+                                  <span className="text-[10px] font-bold uppercase tracking-wider">Admin</span>
                               </label>
                           </div>
                       </div>
 
                       <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Status da Conta</label>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Status da Conta</label>
                           <label className="flex items-center cursor-pointer">
                               <div className="relative">
                                   <input 
@@ -269,34 +278,34 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                                     checked={editIsActive} 
                                     onChange={(e) => setEditIsActive(e.target.checked)} 
                                   />
-                                  <div className={`block w-14 h-8 rounded-full transition-colors ${editIsActive ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                                  <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${editIsActive ? 'transform translate-x-6' : ''}`}></div>
+                                  <div className={`block w-12 h-6 rounded-none transition-colors ${editIsActive ? 'bg-green-500' : 'bg-slate-300'}`}></div>
+                                  <div className={`dot absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-none transition-transform ${editIsActive ? 'transform translate-x-6' : ''}`}></div>
                               </div>
-                              <span className="ml-3 text-sm font-medium text-gray-700">
+                              <span className="ml-3 text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                                   {editIsActive ? 'Conta Ativa' : 'Conta Bloqueada'}
                               </span>
                           </label>
-                          <p className="text-xs text-gray-500 mt-1 ml-1">
+                          <p className="text-[10px] text-slate-400 mt-1 font-mono">
                               {editIsActive 
                                 ? 'O usuário pode acessar o sistema normalmente.' 
                                 : 'O usuário será impedido de fazer login.'}
                           </p>
                       </div>
 
-                      <div className="pt-4 flex justify-end space-x-3">
+                      <div className="pt-4 flex justify-end space-x-2">
                           <button 
                               type="button"
                               onClick={() => setIsEditModalOpen(false)}
-                              className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
+                              className="px-4 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-none text-[10px] font-bold uppercase tracking-wider transition-colors border border-slate-200"
                           >
                               Cancelar
                           </button>
                           <button 
                               type="submit"
                               disabled={isSaving}
-                              className="px-4 py-2 bg-primary-600 text-white hover:bg-primary-700 rounded-lg text-sm font-medium shadow-sm flex items-center disabled:opacity-70"
+                              className="px-4 py-2 bg-primary-600 text-white hover:bg-primary-700 rounded-none text-[10px] font-bold uppercase tracking-wider shadow-sm flex items-center disabled:opacity-70 transition-colors"
                           >
-                              {isSaving ? <Loader2 className="animate-spin mr-2" size={16} /> : <Save size={16} className="mr-2" />}
+                              {isSaving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Save size={14} className="mr-2" />}
                               Salvar Alterações
                           </button>
                       </div>
@@ -304,6 +313,17 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
               </div>
           </div>
       )}
+
+      <ConfirmationModal 
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={() => handleSaveUser()}
+        title="Remover Privilégios"
+        message="Tem certeza que deseja remover seus próprios privilégios de Admin? Você perderá acesso a esta tela."
+        confirmText="Sim, remover"
+        cancelText="Cancelar"
+        isDanger={true}
+      />
     </div>
   );
 };

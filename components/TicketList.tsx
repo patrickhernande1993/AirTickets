@@ -10,16 +10,23 @@ interface TicketListProps {
   onSelectTicket: (ticket: Ticket) => void;
   onCreateTicket: () => void;
   onUpdateStatus: (id: string, status: TicketStatus) => void;
+  initialStatusFilter?: string;
 }
 
-export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket, onCreateTicket, onUpdateStatus }) => {
+export const TicketList: React.FC<TicketListProps> = ({ 
+  tickets, 
+  onSelectTicket, 
+  onCreateTicket, 
+  onUpdateStatus,
+  initialStatusFilter = 'ALL'
+}) => {
   
   // View Mode
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
 
   // Filtros States
   const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter);
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [requesterFilter, setRequesterFilter] = useState<string>('ALL');
   
@@ -181,20 +188,20 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
     switch(s) {
       case TicketStatus.RESOLVED: 
           return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 whitespace-nowrap">
-                <CheckCircle size={12} className="mr-1" /> Resolvido
+            <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-bold bg-green-50 text-green-700 border border-green-200 uppercase tracking-tight whitespace-nowrap">
+                <CheckCircle size={10} className="mr-1" /> Resolvido
             </span>
           );
       case TicketStatus.IN_PROGRESS: 
           return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 whitespace-nowrap">
-                <Clock size={12} className="mr-1" /> Em Progresso
+            <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 uppercase tracking-tight whitespace-nowrap">
+                <Clock size={10} className="mr-1" /> Em Progresso
             </span>
           );
       default: 
           return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 whitespace-nowrap">
-                <AlertCircle size={12} className="mr-1" /> Aberto
+            <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-tight whitespace-nowrap">
+                <AlertCircle size={10} className="mr-1" /> Aberto
             </span>
           );
     }
@@ -204,13 +211,13 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
     let colorClass = '';
     let label = '';
     switch(p) {
-        case TicketPriority.LOW: colorClass = 'bg-green-50 text-green-700 border-green-100'; label = 'Baixa'; break;
-        case TicketPriority.MEDIUM: colorClass = 'bg-yellow-50 text-yellow-700 border-yellow-100'; label = 'Média'; break;
-        case TicketPriority.HIGH: colorClass = 'bg-orange-50 text-orange-700 border-orange-100'; label = 'Alta'; break;
-        case TicketPriority.CRITICAL: colorClass = 'bg-red-50 text-red-700 border-red-100'; label = 'Crítica'; break;
-        default: colorClass = 'bg-gray-50 text-gray-700'; label = p;
+        case TicketPriority.LOW: colorClass = 'bg-slate-50 text-slate-700 border-slate-200'; label = 'Baixa'; break;
+        case TicketPriority.MEDIUM: colorClass = 'bg-blue-50 text-blue-700 border-blue-200'; label = 'Média'; break;
+        case TicketPriority.HIGH: colorClass = 'bg-orange-50 text-orange-700 border-orange-200'; label = 'Alta'; break;
+        case TicketPriority.CRITICAL: colorClass = 'bg-red-50 text-red-700 border-red-200'; label = 'Crítica'; break;
+        default: colorClass = 'bg-slate-50 text-slate-700'; label = p;
     }
-    return <span className={`px-2 py-1 rounded border text-xs font-medium ${colorClass}`}>{label}</span>;
+    return <span className={`px-1.5 py-0.5 rounded-sm border text-[10px] font-bold uppercase tracking-tighter ${colorClass}`}>{label}</span>;
   };
 
   const formatDate = (date?: Date) => {
@@ -228,7 +235,7 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
   return (
     <div className="space-y-6">
       {/* Header Actions & Filters */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
+      <div className="bg-white p-4 rounded-sm border border-slate-200 space-y-4">
           <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
              <div className="relative flex-1 w-full">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -237,23 +244,23 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
                     placeholder="Buscar por ID, assunto ou descrição..." 
-                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-sm text-sm focus:ring-1 focus:ring-primary-500 outline-none"
                 />
              </div>
              
              <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
                  {/* View Toggle */}
-                 <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+                 <div className="flex bg-slate-100 p-1 rounded-sm border border-slate-200">
                     <button
                         onClick={() => setViewMode('list')}
-                        className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow text-primary-600' : 'text-gray-500 hover:text-gray-700'}`}
+                        className={`p-1.5 rounded-sm transition-all ${viewMode === 'list' ? 'bg-white border border-slate-200 shadow-sm text-primary-600' : 'text-slate-500 hover:text-slate-700'}`}
                         title="Visualização em Lista"
                     >
                         <LayoutList size={18} />
                     </button>
                     <button
                         onClick={() => setViewMode('kanban')}
-                        className={`p-1.5 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-white shadow text-primary-600' : 'text-gray-500 hover:text-gray-700'}`}
+                        className={`p-1.5 rounded-sm transition-all ${viewMode === 'kanban' ? 'bg-white border border-slate-200 shadow-sm text-primary-600' : 'text-slate-500 hover:text-slate-700'}`}
                         title="Visualização em Kanban"
                     >
                         <KanbanSquare size={18} />
@@ -262,7 +269,7 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
 
                  <button 
                     onClick={handleExportXLSX}
-                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-white border border-gray-300 text-green-700 rounded-lg hover:bg-green-50 transition-colors shadow-sm text-sm font-medium whitespace-nowrap"
+                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-sm hover:bg-slate-50 transition-colors text-sm font-medium whitespace-nowrap"
                     title="Exportar dados filtrados para Excel"
                  >
                     <FileSpreadsheet size={18} />
@@ -270,7 +277,7 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                  </button>
                  <button 
                     onClick={onCreateTicket}
-                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-5 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm text-sm font-medium whitespace-nowrap"
+                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-5 py-2 bg-primary-600 text-white rounded-sm hover:bg-primary-700 transition-colors text-sm font-medium whitespace-nowrap"
                 >
                     <Plus size={18} />
                     <span>Novo Chamado</span>
@@ -281,8 +288,8 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
           {/* Advanced Filters Row */}
           <div className="flex flex-col xl:flex-row gap-3 items-start xl:items-center">
              <div className="flex items-center gap-2 w-full xl:w-auto mb-2 xl:mb-0">
-                <Filter size={16} className="text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Filtros:</span>
+                <Filter size={14} className="text-slate-500" />
+                <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Filtros:</span>
              </div>
 
              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 w-full flex-1">
@@ -290,23 +297,23 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                 <select 
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 outline-none bg-white focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-none text-xs text-slate-600 outline-none bg-white focus:border-primary-500 font-medium"
                 >
-                    <option value="ALL">Todos os Status</option>
-                    <option value="OPEN">Aberto</option>
-                    <option value="IN_PROGRESS">Em Progresso</option>
-                    <option value="RESOLVED">Resolvido</option>
+                    <option value="ALL">TODOS OS STATUS</option>
+                    <option value="OPEN">ABERTO</option>
+                    <option value="IN_PROGRESS">EM PROGRESSO</option>
+                    <option value="RESOLVED">RESOLVIDO</option>
                 </select>
 
                 {/* Category Filter */}
                 <select 
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 outline-none bg-white focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-none text-xs text-slate-600 outline-none bg-white focus:border-primary-500 font-medium"
                 >
-                    <option value="ALL">Todas Categorias</option>
+                    <option value="ALL">TODAS CATEGORIAS</option>
                     {uniqueCategories.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
+                        <option key={cat} value={cat}>{cat.toUpperCase()}</option>
                     ))}
                 </select>
 
@@ -314,30 +321,30 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                 <select 
                     value={requesterFilter}
                     onChange={(e) => setRequesterFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 outline-none bg-white focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-none text-xs text-slate-600 outline-none bg-white focus:border-primary-500 font-medium"
                 >
-                    <option value="ALL">Todos Solicitantes</option>
+                    <option value="ALL">TODOS SOLICITANTES</option>
                     {uniqueRequesters.map(req => (
-                        <option key={req} value={req}>{req}</option>
+                        <option key={req} value={req}>{req.toUpperCase()}</option>
                     ))}
                 </select>
 
                 {/* Date Filter Group */}
-                <div className="flex items-center gap-0 border border-gray-200 rounded-lg overflow-hidden w-full">
+                <div className="flex items-center gap-0 border border-slate-200 rounded-none overflow-hidden w-full">
                      <select
                         value={dateType}
                         onChange={(e) => setDateType(e.target.value as any)}
-                        className="bg-gray-50 text-xs font-medium text-gray-600 outline-none px-2 py-2.5 border-r border-gray-200 w-24"
+                        className="bg-slate-50 text-[10px] font-bold text-slate-600 outline-none px-2 py-2.5 border-r border-slate-200 w-24 uppercase tracking-tighter"
                      >
-                         <option value="created">Abertura</option>
-                         <option value="resolved">Resolução</option>
-                         <option value="updated">Atualiz.</option>
+                         <option value="created">ABERTURA</option>
+                         <option value="resolved">RESOLUÇÃO</option>
+                         <option value="updated">ATUALIZ.</option>
                      </select>
                      <input 
                         type="date"
                         value={dateValue}
                         onChange={(e) => setDateValue(e.target.value)}
-                        className="flex-1 px-2 py-2 text-sm text-gray-600 outline-none bg-white"
+                        className="flex-1 px-2 py-2 text-xs text-slate-600 outline-none bg-white font-mono"
                      />
                 </div>
              </div>
@@ -345,7 +352,7 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
              {(searchText || statusFilter !== 'ALL' || categoryFilter !== 'ALL' || requesterFilter !== 'ALL' || dateValue) && (
                  <button 
                     onClick={clearFilters}
-                    className="text-xs text-red-500 font-medium hover:underline whitespace-nowrap px-2"
+                    className="text-[10px] text-red-500 font-bold hover:underline whitespace-nowrap px-2 uppercase tracking-wider"
                  >
                     Limpar Filtros
                  </button>
@@ -361,77 +368,77 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
             onUpdateStatus={onUpdateStatus}
           />
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-none border border-slate-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                    <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 uppercase text-[11px] font-semibold tracking-wider">
+                <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] font-bold tracking-widest">
                         <tr>
-                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('ticketNumber')}>
+                            <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('ticketNumber')}>
                                 <div className="flex items-center">ID <SortIcon field="ticketNumber" /></div>
                             </th>
-                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('title')}>
+                            <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('title')}>
                                 <div className="flex items-center">Assunto <SortIcon field="title" /></div>
                             </th>
-                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('requester')}>
+                            <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('requester')}>
                                 <div className="flex items-center">Solicitante <SortIcon field="requester" /></div>
                             </th>
-                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('category')}>
+                            <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('category')}>
                                 <div className="flex items-center">Categoria <SortIcon field="category" /></div>
                             </th>
-                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('priority')}>
+                            <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('priority')}>
                                 <div className="flex items-center">Prioridade <SortIcon field="priority" /></div>
                             </th>
-                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('createdAt')}>
-                                <div className="flex items-center">Data Abertura <SortIcon field="createdAt" /></div>
+                            <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('createdAt')}>
+                                <div className="flex items-center">Abertura <SortIcon field="createdAt" /></div>
                             </th>
-                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('resolvedAt')}>
-                                <div className="flex items-center">Data Resolução <SortIcon field="resolvedAt" /></div>
+                            <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('resolvedAt')}>
+                                <div className="flex items-center">Resolução <SortIcon field="resolvedAt" /></div>
                             </th>
-                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('updatedAt')}>
+                            <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('updatedAt')}>
                                 <div className="flex items-center">Última At. <SortIcon field="updatedAt" /></div>
                             </th>
-                            <th className="px-6 py-3 cursor-pointer hover:bg-gray-100 text-right" onClick={() => handleSort('status')}>
+                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-100 text-right transition-colors" onClick={() => handleSort('status')}>
                                 <div className="flex items-center justify-end">Status <SortIcon field="status" /></div>
                             </th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-slate-100">
                         {filteredTickets.map((ticket) => (
                             <tr 
                                 key={ticket.id} 
                                 onClick={() => onSelectTicket(ticket)}
-                                className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
+                                className="hover:bg-slate-50 transition-colors cursor-pointer group border-b border-slate-50 last:border-0"
                             >
-                                <td className="px-6 py-4 text-sm font-medium text-gray-500">
+                                <td className="px-4 py-3 text-[10px] font-bold font-mono text-slate-400 border-r border-slate-50">
                                     #{ticket.ticketNumber}
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-4 py-3 border-r border-slate-50">
                                     <div>
-                                        <p className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">{ticket.title}</p>
-                                        <p className="text-xs text-gray-500 truncate max-w-[150px] md:max-w-[300px]">{ticket.description}</p>
+                                        <p className="text-sm font-bold text-slate-800 group-hover:text-primary-600 transition-colors uppercase tracking-tight">{ticket.title}</p>
+                                        <p className="text-xs text-slate-500 truncate max-w-[150px] md:max-w-[300px] leading-relaxed">{ticket.description}</p>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-700 font-medium">
+                                <td className="px-4 py-3 text-[10px] text-slate-600 font-bold uppercase tracking-tight border-r border-slate-50">
                                     {ticket.requester}
                                 </td>
-                                <td className="px-6 py-4">
-                                    <span className="px-2 py-1 bg-gray-100 rounded text-xs font-medium text-gray-600 border border-gray-200">
+                                <td className="px-4 py-3 border-r border-slate-50">
+                                    <span className="px-1.5 py-0.5 bg-slate-50 rounded-none text-[10px] font-bold text-slate-500 border border-slate-200 uppercase tracking-tighter">
                                         {ticket.category}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-4 py-3 border-r border-slate-50">
                                     {getPriorityBadge(ticket.priority)}
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                                <td className="px-4 py-3 text-[10px] font-bold font-mono text-slate-500 whitespace-nowrap border-r border-slate-50">
                                     {formatDate(ticket.createdAt)}
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                                <td className="px-4 py-3 text-[10px] font-bold font-mono text-slate-500 whitespace-nowrap border-r border-slate-50">
                                     {formatDate(ticket.resolvedAt)}
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                                <td className="px-4 py-3 text-[10px] font-bold font-mono text-slate-500 whitespace-nowrap border-r border-slate-50">
                                     {formatDate(ticket.updatedAt)}
                                 </td>
-                                <td className="px-6 py-4 text-right">
+                                <td className="px-4 py-3 text-right">
                                     {getStatusBadge(ticket.status)}
                                 </td>
                             </tr>
@@ -440,12 +447,12 @@ export const TicketList: React.FC<TicketListProps> = ({ tickets, onSelectTicket,
                 </table>
                 
                 {filteredTickets.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <div className="bg-gray-50 p-4 rounded-full mb-3">
-                            <Search size={24} className="text-gray-400" />
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                        <div className="bg-slate-50 p-4 rounded-none border border-slate-100 mb-4">
+                            <Search size={32} className="text-slate-300" />
                         </div>
-                        <p className="text-gray-900 font-medium">Nenhum chamado encontrado.</p>
-                        <p className="text-sm text-gray-500 mt-1">Tente ajustar seus filtros ou crie um novo chamado.</p>
+                        <p className="text-slate-900 font-bold uppercase tracking-wider text-sm">Nenhum chamado encontrado</p>
+                        <p className="text-xs text-slate-500 mt-2 font-mono">Tente ajustar seus filtros ou crie um novo chamado.</p>
                     </div>
                 )}
             </div>

@@ -130,7 +130,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
       <div className="flex justify-end">
           <button 
             onClick={onCreateTicket}
-            className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-sm"
+            className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-sm hover:bg-primary-700 transition-colors font-medium shadow-sm"
           >
               <Plus size={18} />
               <span>Novo Chamado</span>
@@ -138,21 +138,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
       </div>
 
       {/* Welcome Card */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="bg-white rounded-none border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                   Olá, {currentUser.name.split(' ')[0]}! <span className="text-2xl">👋</span>
               </h1>
-              <p className="text-gray-500 mt-1">Visão geral do desempenho do suporte técnico e métricas.</p>
+              <p className="text-slate-500 mt-1">Visão geral do desempenho do suporte técnico e métricas.</p>
           </div>
           
-          <div className="bg-primary-50 rounded-lg p-4 flex items-center gap-4 min-w-[200px] border border-primary-100">
-              <div className="p-2 bg-primary-100 rounded-lg text-primary-600">
+          <div className="bg-slate-50 rounded-none p-4 flex items-center gap-4 min-w-[200px] border border-slate-200">
+              <div className="p-2 bg-primary-100 rounded-none text-primary-600 border border-primary-200">
                   <TrendingUp size={24} />
               </div>
               <div>
-                  <p className="text-xs font-bold text-primary-800 uppercase tracking-wide">TAXA DE RESOLUÇÃO</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.resolutionRate}%</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">TAXA DE RESOLUÇÃO</p>
+                  <p className="text-2xl font-mono font-bold text-slate-900">{stats.resolutionRate}%</p>
               </div>
           </div>
       </div>
@@ -160,89 +160,89 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
       {/* KPI Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between transition-transform hover:-translate-y-1 duration-200">
+        <div className="bg-white p-6 rounded-none border border-slate-200 shadow-sm flex items-center justify-between transition-all hover:border-primary-300">
             <div>
-                <p className="text-sm font-medium text-gray-500">Total de Chamados</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</h3>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total de Chamados</p>
+                <h3 className="text-3xl font-mono font-bold text-slate-900 mt-1">{stats.total}</h3>
             </div>
-            <div className="h-10 w-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-none bg-slate-50 text-slate-600 flex items-center justify-center border border-slate-100">
                 <Activity size={20} />
             </div>
         </div>
 
         {/* Abertos */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between transition-transform hover:-translate-y-1 duration-200">
+        <div className="bg-white p-6 rounded-none border border-slate-200 shadow-sm flex items-center justify-between transition-all hover:border-amber-300">
             <div>
-                <p className="text-sm font-medium text-gray-500">Chamados Abertos</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-1">{stats.open}</h3>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Chamados Abertos</p>
+                <h3 className="text-3xl font-mono font-bold text-slate-900 mt-1">{stats.open}</h3>
             </div>
-            <div className="h-10 w-10 rounded-full bg-yellow-50 text-yellow-600 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-none bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
                 <Clock size={20} />
             </div>
         </div>
 
         {/* Resolvidos */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between transition-transform hover:-translate-y-1 duration-200">
+        <div className="bg-white p-6 rounded-none border border-slate-200 shadow-sm flex items-center justify-between transition-all hover:border-green-300">
             <div>
-                <p className="text-sm font-medium text-gray-500">Resolvidos</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-1">{stats.resolved}</h3>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Resolvidos</p>
+                <h3 className="text-3xl font-mono font-bold text-slate-900 mt-1">{stats.resolved}</h3>
             </div>
-            <div className="h-10 w-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-none bg-green-50 text-green-600 flex items-center justify-center border border-green-100">
                 <CheckCircle size={20} />
             </div>
         </div>
 
         {/* Críticos Ativos */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between transition-transform hover:-translate-y-1 duration-200">
+        <div className="bg-white p-6 rounded-none border border-slate-200 shadow-sm flex items-center justify-between transition-all hover:border-red-300">
             <div>
-                <p className="text-sm font-medium text-gray-500">Críticos Ativos</p>
-                <h3 className="text-3xl font-bold text-gray-900 mt-1">{stats.criticalActive}</h3>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Críticos Ativos</p>
+                <h3 className="text-3xl font-mono font-bold text-slate-900 mt-1">{stats.criticalActive}</h3>
             </div>
-            <div className="h-10 w-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-none bg-red-50 text-red-600 flex items-center justify-center border border-red-100">
                 <AlertTriangle size={20} />
             </div>
         </div>
       </div>
 
       {/* Interactive Chart Section */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+      <div className="bg-white p-6 rounded-none border border-slate-200 shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
                 <div>
-                    <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                    <h3 className="text-lg font-bold text-slate-900 flex items-center uppercase tracking-tight">
                         <CalendarRange className="mr-2 text-primary-600" size={20} />
                         Tendência de Chamados
                     </h3>
-                    <p className="text-sm text-gray-500 mt-1">Comparativo de abertura (Data Criação) vs Resolução (Data Fechamento).</p>
+                    <p className="text-sm text-slate-500 mt-1">Comparativo de abertura (Data Criação) vs Resolução (Data Fechamento).</p>
                 </div>
                 
                 {/* Time Range Selector */}
-                <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+                <div className="flex bg-slate-100 p-1 rounded-none border border-slate-200">
                     <button
                         onClick={() => setTimeRange('WEEK')}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                        className={`px-4 py-1.5 rounded-none text-xs font-bold uppercase tracking-widest transition-all ${
                             timeRange === 'WEEK' 
-                            ? 'bg-white text-primary-600 shadow-sm' 
-                            : 'text-gray-500 hover:text-gray-900'
+                            ? 'bg-white text-primary-600 border border-slate-200 shadow-sm' 
+                            : 'text-slate-500 hover:text-slate-900'
                         }`}
                     >
                         7 Dias
                     </button>
                     <button
                         onClick={() => setTimeRange('MONTH')}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                        className={`px-4 py-1.5 rounded-none text-xs font-bold uppercase tracking-widest transition-all ${
                             timeRange === 'MONTH' 
-                            ? 'bg-white text-primary-600 shadow-sm' 
-                            : 'text-gray-500 hover:text-gray-900'
+                            ? 'bg-white text-primary-600 border border-slate-200 shadow-sm' 
+                            : 'text-slate-500 hover:text-slate-900'
                         }`}
                     >
                         30 Dias
                     </button>
                     <button
                         onClick={() => setTimeRange('YEAR')}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                        className={`px-4 py-1.5 rounded-none text-xs font-bold uppercase tracking-widest transition-all ${
                             timeRange === 'YEAR' 
-                            ? 'bg-white text-primary-600 shadow-sm' 
-                            : 'text-gray-500 hover:text-gray-900'
+                            ? 'bg-white text-primary-600 border border-slate-200 shadow-sm' 
+                            : 'text-slate-500 hover:text-slate-900'
                         }`}
                     >
                         12 Meses
@@ -253,41 +253,42 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
             <div className="h-[350px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barGap={4}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                        <CartesianGrid strokeDasharray="0" vertical={true} stroke="#f1f5f9" />
                         <XAxis 
                             dataKey="name" 
-                            axisLine={false} 
+                            axisLine={{ stroke: '#e2e8f0' }} 
                             tickLine={false} 
-                            tick={{ fill: '#6b7280', fontSize: 12 }} 
+                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }} 
                             dy={10}
                         />
                         <YAxis 
-                            axisLine={false} 
+                            axisLine={{ stroke: '#e2e8f0' }} 
                             tickLine={false} 
-                            tick={{ fill: '#6b7280', fontSize: 12 }} 
+                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }} 
                         />
                         <Tooltip 
-                            cursor={{ fill: '#f9fafb' }}
+                            cursor={{ fill: '#f8fafc' }}
                             contentStyle={{ 
-                                borderRadius: '12px', 
-                                border: '1px solid #e5e7eb', 
-                                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' 
+                                borderRadius: '0px', 
+                                border: '1px solid #e2e8f0', 
+                                boxShadow: 'none',
+                                fontSize: '12px'
                             }}
-                            labelStyle={{ color: '#374151', fontWeight: 'bold', marginBottom: '4px' }}
+                            labelStyle={{ color: '#0f172a', fontWeight: 'bold', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}
                         />
-                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                        <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }} />
                         <Bar 
                             name="Criados" 
                             dataKey="Abertos" 
-                            fill="#f43f5e" 
-                            radius={[4, 4, 0, 0]} 
+                            fill="#0ea5e9" 
+                            radius={[0, 0, 0, 0]} 
                             maxBarSize={40} 
                         />
                         <Bar 
                             name="Resolvidos" 
                             dataKey="Resolvidos" 
                             fill="#10b981" 
-                            radius={[4, 4, 0, 0]} 
+                            radius={[0, 0, 0, 0]} 
                             maxBarSize={40} 
                         />
                     </BarChart>

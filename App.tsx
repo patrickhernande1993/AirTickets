@@ -8,6 +8,7 @@ import { Login } from './components/Login';
 import { UserManagement } from './components/UserManagement';
 import { Notifications } from './components/Notifications';
 import { Dashboard } from './components/Dashboard';
+import { Toast, ToastType } from './components/Toast';
 import { Ticket, ViewState, TicketStatus, User } from './types';
 import { supabase } from './services/supabase';
 import { Loader2, Menu } from 'lucide-react';
@@ -21,8 +22,26 @@ const App: React.FC = () => {
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   
+  // Toast State
+  const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
+    message: '',
+    type: 'success',
+    isVisible: false,
+  });
+
+  const showToast = (message: string, type: ToastType = 'success') => {
+    setToast({ message, type, isVisible: true });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, isVisible: false }));
+  };
+
   // Mobile Sidebar State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  // Desktop Sidebar Visibility State
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
   // Check auth session on load
   useEffect(() => {
@@ -171,7 +190,7 @@ const App: React.FC = () => {
       setCurrentView('DASHBOARD');
   };
 
-  const handleCreateTicket = async (newTicketData: Omit<Ticket, 'id' | 'createdAt' | 'ticketNumber'>) => {
+  const handleCreateTicket = async (newTicketData: Omit<Ticket, 'id' | 'createdAt' | 'ticketNumber'>): Promise<void> => {
     if (!currentUser) return;
 
     try {
@@ -200,6 +219,7 @@ const App: React.FC = () => {
             });
             
             setTicketToEdit(null);
+            showToast('Chamado atualizado com sucesso!');
         } else {
             // Create new ticket
             // ticket_number is generated automatically by Postgres
@@ -241,6 +261,7 @@ const App: React.FC = () => {
                     await supabase.from('notifications').insert(notifications);
                 }
             }
+            showToast('Chamado criado com sucesso!');
         }
         
         await fetchTickets(); // Refresh list
@@ -252,7 +273,8 @@ const App: React.FC = () => {
         }
     } catch (error) {
         console.error("Error saving ticket:", error);
-        alert("Falha ao salvar chamado. Por favor, tente novamente.");
+        showToast("Falha ao salvar chamado. Por favor, tente novamente.", "error");
+        throw error;
     }
   };
 
@@ -298,6 +320,7 @@ const App: React.FC = () => {
         if (error) throw error;
         
         setTickets(tickets.filter(t => t.id !== id));
+        showToast("Chamado excluído com sucesso!");
         if (currentUser?.role === 'USER') {
             setCurrentView('MY_TICKETS');
         } else {
@@ -305,7 +328,7 @@ const App: React.FC = () => {
         }
       } catch (error) {
           console.error("Error deleting ticket:", error);
-          alert("Falha ao excluir chamado.");
+          showToast("Falha ao excluir chamado.", "error");
       }
   };
 
@@ -400,6 +423,7 @@ const App: React.FC = () => {
             onCancel={() => setCurrentView(currentUser.role === 'USER' ? 'MY_TICKETS' : 'ALL_TICKETS')} 
             initialData={currentView === 'EDIT_TICKET' ? ticketToEdit || undefined : undefined}
             currentUser={currentUser}
+            showToast={showToast}
           />
         );
       case 'TICKET_DETAIL':
@@ -421,17 +445,19 @@ const App: React.FC = () => {
            />
         );
       case 'USERS':
-        return currentUser.role === 'ADMIN' ? <UserManagement currentUser={currentUser} /> : <div>Acesso Negado</div>;
+        return currentUser.role === 'ADMIN' ? <UserManagement currentUser={currentUser} showToast={showToast} /> : <div>Acesso Negado</div>;
       case 'NOTIFICATIONS':
         return <Notifications currentUser={currentUser} onSelectNotification={handleSelectNotificationTicket} />;
       case 'MY_TICKETS':
       case 'ALL_TICKETS':
         return (
             <TicketList 
+                key={currentView}
                 tickets={tickets} 
                 onSelectTicket={handleSelectTicket} 
                 onCreateTicket={() => setCurrentView('CREATE_TICKET')} 
                 onUpdateStatus={handleUpdateStatus} 
+                initialStatusFilter={currentView === 'ALL_TICKETS' && currentUser.role === 'ADMIN' ? 'OPEN' : 'ALL'}
             />
         );
       case 'DASHBOARD':
@@ -460,33 +486,42 @@ const App: React.FC = () => {
         currentUser={currentUser} 
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        isVisible={isSidebarVisible}
       />
       
       {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 w-full bg-white z-30 border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      <div className="md:hidden fixed top-0 left-0 w-full bg-white z-30 border-b border-slate-200 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-3">
               <button 
                   onClick={() => setIsSidebarOpen(true)}
-                  className="p-1 text-gray-600 hover:bg-gray-100 rounded-lg"
+                  className="p-1 text-slate-600 hover:bg-slate-100 rounded-none"
               >
                   <Menu size={24} />
               </button>
               <div className="flex items-center space-x-2">
                  <Logo className="h-8 w-auto" />
-                 <span className="text-lg font-bold text-gray-800">AirService</span>
+                 <span className="text-lg font-bold text-slate-800">AirService</span>
               </div>
           </div>
-          <div className="h-8 w-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold">
+          <div className="h-8 w-8 rounded-none border border-primary-600 bg-primary-600 text-white flex items-center justify-center text-xs font-bold">
               {currentUser.name.charAt(0).toUpperCase()}
           </div>
       </div>
 
-      <main className={`flex-1 p-4 md:p-8 overflow-y-auto h-screen transition-all duration-300 ${isSidebarOpen ? '' : 'ml-0'} md:ml-64 pt-20 md:pt-8`}>
+      <main className={`flex-1 p-4 md:p-8 overflow-y-auto h-screen transition-all duration-300 ${isSidebarOpen ? '' : 'ml-0'} ${isSidebarVisible ? 'md:ml-64' : 'md:ml-0'} pt-20 md:pt-8 bg-slate-50`}>
         {/* Changed from max-w-6xl mx-auto to w-[95%] mx-auto to stretch the grid */}
-        <div className="w-full md:w-[95%] mx-auto">
-          <header className="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+        <div className="w-full md:w-[98%] mx-auto">
+          <header className="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
+            <div className="flex items-center space-x-4">
+              {/* Desktop Sidebar Toggle Button */}
+              <button 
+                onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+                className="hidden md:flex p-2 text-slate-500 hover:bg-slate-100 rounded-none border border-slate-200 transition-colors"
+                title={isSidebarVisible ? "Ocultar Menu" : "Mostrar Menu"}
+              >
+                <Menu size={20} />
+              </button>
+              <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
                 {currentView === 'DASHBOARD' && (currentUser.role === 'ADMIN' ? 'Visão Geral' : 'Dashboard')}
                 {currentView === 'MY_TICKETS' && 'Meus Chamados'}
                 {currentView === 'ALL_TICKETS' && 'Todos os Chamados'}
@@ -500,11 +535,11 @@ const App: React.FC = () => {
             <div className="hidden md:flex items-center space-x-4">
                 <button 
                     onClick={handleLogout}
-                    className="text-sm text-gray-500 hover:text-gray-700 underline"
+                    className="text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-slate-700 underline"
                 >
                     Sair
                 </button>
-                <div className="h-10 w-10 rounded-full bg-gradient-to-r from-primary-500 to-orange-600 flex items-center justify-center text-white font-bold shadow-md">
+                <div className="h-10 w-10 rounded-none border-2 border-primary-600 bg-white flex items-center justify-center text-primary-600 font-bold shadow-sm">
                     {currentUser.name.charAt(0).toUpperCase()}
                 </div>
             </div>
@@ -512,7 +547,7 @@ const App: React.FC = () => {
             <div className="md:hidden w-full flex justify-end">
                 <button 
                     onClick={handleLogout}
-                    className="text-sm text-gray-500 border border-gray-200 px-3 py-1 rounded-lg"
+                    className="text-[10px] font-bold uppercase tracking-widest text-slate-500 border border-slate-200 px-3 py-1.5 rounded-none bg-white hover:bg-slate-50 transition-colors"
                 >
                     Sair
                 </button>
@@ -521,6 +556,13 @@ const App: React.FC = () => {
           {renderContent()}
         </div>
       </main>
+
+      <Toast 
+        message={toast.message} 
+        type={toast.type} 
+        isVisible={toast.isVisible} 
+        onClose={hideToast} 
+      />
     </div>
   );
 };
