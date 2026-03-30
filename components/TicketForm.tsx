@@ -27,6 +27,25 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
   const [priority, setPriority] = useState<TicketPriority>(TicketPriority.LOW);
   const [category, setCategory] = useState(CATEGORIES[0]);
   
+  // Requester State for Admins
+  const [users, setUsers] = useState<{id: string, name: string}[]>([]);
+  const [selectedRequesterId, setSelectedRequesterId] = useState(currentUser.id);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
+  useEffect(() => {
+    if (currentUser.role === 'ADMIN') {
+        const fetchUsers = async () => {
+            setIsLoadingUsers(true);
+            const { data, error } = await supabase.from('profiles').select('id, name').order('name');
+            if (!error && data) {
+                setUsers(data);
+            }
+            setIsLoadingUsers(false);
+        };
+        fetchUsers();
+    }
+  }, [currentUser.role]);
+  
   // Attachments State
   const [attachments, setAttachments] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -40,6 +59,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
         setPriority(initialData.priority);
         setCategory(initialData.category);
         setAttachments(initialData.attachments || []);
+        setSelectedRequesterId(initialData.requesterId);
     }
   }, [initialData]);
 
@@ -105,12 +125,16 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    
+    const selectedUser = users.find(u => u.id === selectedRequesterId);
+    const requesterName = selectedUser ? selectedUser.name : currentUser.name;
+
     try {
       await onSave({
         title,
         description,
-        requester: currentUser.name, // Always use logged user name
-        requesterId: currentUser.id, // Always use logged user ID
+        requester: requesterName,
+        requesterId: selectedRequesterId,
         priority,
         category,
         status: initialData ? initialData.status : TicketStatus.OPEN,
@@ -184,12 +208,39 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
              <div className="space-y-4">
                 <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Solicitante</label>
-                    <input
-                        type="text"
-                        value={currentUser.name}
-                        disabled
-                        className="w-full px-4 py-2 border border-slate-200 rounded-none bg-slate-50 text-slate-500 cursor-not-allowed font-mono text-sm"
-                    />
+                    {currentUser.role === 'ADMIN' ? (
+                       <div className="relative">
+                           <select
+                               value={selectedRequesterId}
+                               onChange={(e) => setSelectedRequesterId(e.target.value)}
+                               className="w-full px-4 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none bg-white appearance-none cursor-pointer hover:border-primary-400 transition-colors text-sm font-medium"
+                               disabled={isLoadingUsers}
+                           >
+                               {isLoadingUsers ? (
+                                   <option value={currentUser.id}>Carregando usuários...</option>
+                               ) : (
+                                   <>
+                                     {!users.find(u => u.id === currentUser.id) && (
+                                         <option value={currentUser.id}>{currentUser.name}</option>
+                                     )}
+                                     {users.map(u => (
+                                         <option key={u.id} value={u.id}>{u.name}</option>
+                                     ))}
+                                   </>
+                               )}
+                           </select>
+                           <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                               <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                           </div>
+                       </div>
+                    ) : (
+                        <input
+                            type="text"
+                            value={currentUser.name}
+                            disabled
+                            className="w-full px-4 py-2 border border-slate-200 rounded-none bg-slate-50 text-slate-500 cursor-not-allowed font-mono text-sm"
+                        />
+                    )}
                 </div>
                 <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Categoria</label>

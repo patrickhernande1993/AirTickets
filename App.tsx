@@ -228,8 +228,8 @@ const App: React.FC = () => {
                 .insert([{
                     title: newTicketData.title,
                     description: newTicketData.description,
-                    requester_name: currentUser?.name, 
-                    requester_id: currentUser?.id,
+                    requester_name: newTicketData.requester, 
+                    requester_id: newTicketData.requesterId,
                     priority: newTicketData.priority,
                     category: newTicketData.category,
                     status: 'OPEN',
