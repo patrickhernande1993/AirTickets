@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Ticket, TicketPriority, TicketStatus, User } from '../types';
-import { Loader2, ArrowLeft, Paperclip, X, FileText, Check } from 'lucide-react';
+import { Loader2, ArrowLeft, Paperclip, X, FileText, Check, Activity } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -26,6 +26,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TicketPriority>(TicketPriority.LOW);
   const [category, setCategory] = useState(CATEGORIES[0]);
+  const [isProcessingAi, setIsProcessingAi] = useState(false);
   
   // Date states
   const nowStr = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -133,6 +134,34 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
 
   const removeAttachment = (urlToRemove: string) => {
       setAttachments(prev => prev.filter(url => url !== urlToRemove));
+  };
+
+  const handleAiAssist = async () => {
+    if (!title || !description) return;
+    setIsProcessingAi(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('process-ticket-ai', {
+        body: { title, description }
+      });
+      if (error) throw error;
+      
+      if (data.category && CATEGORIES.includes(data.category)) {
+          setCategory(data.category);
+      }
+      
+      if (data.priority && Object.values(TicketPriority).includes(data.priority as TicketPriority)) {
+          setPriority(data.priority as TicketPriority);
+      }
+      
+      if (data.summary) {
+          showToast(`Sugestão AirAssist: ${data.summary}`, 'success');
+      }
+    } catch (err) {
+      console.error("AirAssist Error:", err);
+      showToast("Não foi possível processar a IA agora. Tente novamente.", "error");
+    } finally {
+      setIsProcessingAi(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -301,16 +330,36 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
              </div>
 
              <div className="space-y-4">
-                <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Assunto</label>
-                    <input
-                        type="text"
-                        required
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        className="w-full px-4 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-slate-400 text-sm font-medium"
-                        placeholder="Ex: Erro ao acessar o ERP"
-                    />
+                <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Assunto</label>
+                        <input
+                            type="text"
+                            required
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="w-full px-4 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-slate-400 text-sm font-medium"
+                            placeholder="Ex: Erro ao acessar o ERP"
+                        />
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleAiAssist}
+                        disabled={isProcessingAi || !title || !description}
+                        className={`px-3 py-2 border border-primary-200 rounded-none flex items-center gap-2 transition-all text-[10px] font-bold uppercase tracking-widest
+                            ${(isProcessingAi || !title || !description) 
+                                ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed' 
+                                : 'bg-primary-50 text-primary-600 hover:bg-primary-100 border-primary-200 shadow-sm'}
+                        `}
+                        title="Usar IA para sugerir Categoria e Prioridade"
+                    >
+                        {isProcessingAi ? (
+                            <Loader2 size={14} className="animate-spin text-primary-500" />
+                        ) : (
+                            <Activity size={14} className="text-primary-600" />
+                        )}
+                        <span>AirAssist</span>
+                    </button>
                 </div>
              </div>
           </div>
