@@ -277,7 +277,7 @@ const App: React.FC = () => {
                 });
 
                 // NOTIFICATION LOGIC: Notify all Admins
-                const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'ADMIN');
+                const { data: admins } = await supabase.from('profiles').select('id, email').eq('role', 'ADMIN');
                 if (admins && admins.length > 0) {
                     const notifications = admins.map(admin => ({
                         user_id: admin.id,
@@ -288,9 +288,9 @@ const App: React.FC = () => {
                     await supabase.from('notifications').insert(notifications);
                 }
 
-                // EMAIL NOTIFICATION LOGIC: Notify the requester
+                // EMAIL NOTIFICATION LOGIC: Notify the requester + Copy to Admin
                 try {
-                    // Buscar o e-mail do solicitante caso não tenhamos (ex: Admin abrindo para outro)
+                    // Buscar o e-mail do solicitante
                     const { data: profile } = await supabase
                         .from('profiles')
                         .select('email, name')
@@ -298,8 +298,12 @@ const App: React.FC = () => {
                         .single();
 
                     if (profile && profile.email) {
+                        // Escolher um e-mail de admin para cópia (o primeiro da lista)
+                        const adminEmail = admins?.find(a => a.email)?.email;
+
                         await sendTicketOpeningEmail({
                             to: profile.email,
+                            cc: adminEmail,
                             ticketNumber: newTicket.ticket_number,
                             title: newTicketData.title,
                             requesterName: profile.name || newTicketData.requester

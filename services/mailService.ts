@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 
 interface SendTicketEmailParams {
   to: string;
+  cc?: string;
   ticketNumber: number;
   title: string;
   requesterName: string;
@@ -17,11 +18,11 @@ export const sendTicketResolvedEmail = async (params: SendTicketEmailParams) => 
   return sendTicketEmail({ ...params, type: 'resolved' });
 };
 
-const sendTicketEmail = async ({ to, ticketNumber, title, requesterName, type }: SendTicketEmailParams) => {
+const sendTicketEmail = async ({ to, cc, ticketNumber, title, requesterName, type }: SendTicketEmailParams) => {
   try {
-    console.log(`Invocando Edge Function para e-mail (${type}):`, { to, ticketNumber, title });
+    console.log(`Invocando Edge Function para e-mail (${type}):`, { to, cc, ticketNumber, title });
     const { data, error } = await supabase.functions.invoke('send-ticket-email', {
-      body: { to, ticketNumber, title, requesterName, type },
+      body: { to, cc, ticketNumber, title, requesterName, type },
     });
 
     if (error) {

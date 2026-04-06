@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { to, ticketNumber, title, requesterName, type = 'opened' } = await req.json()
+    const { to, cc, ticketNumber, title, requesterName, type = 'opened' } = await req.json()
 
     // Credenciais do Azure AD vinda dos Secrets
     const AZURE_TENANT_ID = Deno.env.get('AZURE_TENANT_ID')
@@ -57,7 +57,7 @@ serve(async (req) => {
         ? 'Seu chamado foi marcado como **resolvido** pela nossa equipe.' 
         : 'Seu chamado foi registrado com sucesso em nosso sistema.';
 
-    const mailBody = {
+    const mailBody: any = {
       message: {
         subject: subject,
         body: {
@@ -88,6 +88,17 @@ serve(async (req) => {
         ],
       },
       saveToSentItems: 'true',
+    }
+
+    // Adicionar CC se presente
+    if (cc) {
+      mailBody.message.ccRecipients = [
+        {
+          emailAddress: {
+            address: cc,
+          },
+        },
+      ]
     }
 
     const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${USER_EMAIL}/sendMail`, {
