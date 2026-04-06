@@ -274,26 +274,30 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
                         </div>
                     </div>
                 </div>
-                <div>
-                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Abertura</label>
-                     <input
-                         type="datetime-local"
-                         required
-                         value={createdAtStr}
-                         onChange={(e) => setCreatedAtStr(e.target.value)}
-                         className="w-full px-4 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none bg-white transition-colors text-sm font-medium"
-                     />
-                </div>
-                <div>
-                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 text-slate-400">Fechamento (Opcional)</label>
-                     <input
-                         type="datetime-local"
-                         value={resolvedAtStr}
-                         onChange={(e) => setResolvedAtStr(e.target.value)}
-                         className="w-full px-4 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none bg-white transition-colors text-sm font-medium"
-                         placeholder="Apenas se Resolvido"
-                     />
-                </div>
+                {currentUser.role === 'ADMIN' && (
+                  <>
+                    <div>
+                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Abertura</label>
+                         <input
+                             type="datetime-local"
+                             required
+                             value={createdAtStr}
+                             onChange={(e) => setCreatedAtStr(e.target.value)}
+                             className="w-full px-4 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none bg-white transition-colors text-sm font-medium"
+                         />
+                    </div>
+                    <div>
+                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 text-slate-400">Fechamento (Opcional)</label>
+                         <input
+                             type="datetime-local"
+                             value={resolvedAtStr}
+                             onChange={(e) => setResolvedAtStr(e.target.value)}
+                             className="w-full px-4 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none bg-white transition-colors text-sm font-medium"
+                             placeholder="Apenas se Resolvido"
+                         />
+                    </div>
+                  </>
+                )}
              </div>
 
              <div className="space-y-4">
