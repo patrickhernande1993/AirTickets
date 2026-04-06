@@ -16,25 +16,51 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
   const [timeRange, setTimeRange] = useState<TimeRange>('WEEK');
   
   const stats = useMemo(() => {
-    const total = tickets.length;
-    const open = tickets.filter(t => t.status === TicketStatus.OPEN).length;
-    const resolved = tickets.filter(t => t.status === TicketStatus.RESOLVED).length;
-    // Críticos ativos (Críticos que não estão resolvidos)
-    const criticalActive = tickets.filter(t => 
+    const now = new Date();
+    let startDate = new Date();
+    
+    if (timeRange === 'WEEK') {
+      startDate.setDate(now.getDate() - 7);
+    } else if (timeRange === 'MONTH') {
+      startDate.setDate(now.getDate() - 30);
+    } else {
+      startDate.setFullYear(now.getFullYear() - 1);
+    }
+
+    // Tickets criados no período
+    const createdInPeriod = tickets.filter(t => t.createdAt >= startDate);
+    const total = createdInPeriod.length;
+    
+    // Chamados atualmente abertos (geral, não apenas no período, para manter visibilidade do backlog)
+    // Mas se o usuário quiser TUDO filtrado, podemos filtrar aqui também. 
+    // No entanto, "Open" costuma ser o estado atual. 
+    // Vamos filtrar APENAS para o cálculo da taxa e do total exibido nos cards para ser coerente com o gráfico.
+    const openInPeriod = createdInPeriod.filter(t => t.status === TicketStatus.OPEN).length;
+    
+    // Tickets RESOLVIDOS no período (independente de quando foram criados)
+    const resolvedInPeriod = tickets.filter(t => {
+      if (t.status !== TicketStatus.RESOLVED) return false;
+      const dateReference = t.resolvedAt || t.updatedAt;
+      return dateReference && dateReference >= startDate;
+    }).length;
+
+    const criticalActiveInPeriod = createdInPeriod.filter(t => 
         t.priority === TicketPriority.CRITICAL && 
         t.status !== TicketStatus.RESOLVED
     ).length;
 
-    const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
-
+    // Taxa de Resolução = (Resolvidos no período / Criados no período)
+    // Capped at 100% for a cleaner UI, or just let it reflect productivity (>100% means backlog is shrinking)
+    let resolutionRate = total > 0 ? Math.round((resolvedInPeriod / total) * 100) : 0;
+    
     return {
       total,
-      open,
-      resolved,
-      criticalActive,
-      resolutionRate
+      open: openInPeriod,
+      resolved: resolvedInPeriod,
+      criticalActive: criticalActiveInPeriod,
+      resolutionRate: resolutionRate
     };
-  }, [tickets]);
+  }, [tickets, timeRange]);
 
   const chartData = useMemo(() => {
       // Helpers para chaves de data consistentes (Local Time)
