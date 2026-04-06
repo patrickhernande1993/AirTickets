@@ -339,6 +339,14 @@ const App: React.FC = () => {
                         // Se for o mesmo e-mail, não precisa de CC
                         const ccEmail = adminEmail === profile.email ? undefined : adminEmail;
 
+                        console.log("Enviando e-mail de abertura:", {
+                            to: profile.email,
+                            cc: ccEmail,
+                            ticketNumber: newTicket.ticket_number,
+                            adminRole: currentUser.role,
+                            adminEmail: currentUser.email
+                        });
+
                         await sendTicketOpeningEmail({
                             to: profile.email,
                             cc: ccEmail,
