@@ -233,6 +233,25 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       setCommentAttachments(prev => prev.filter(url => url !== urlToRemove));
   };
 
+  const handleDeleteComment = async (commentId: string) => {
+      if (!isAdmin) return;
+      if (!window.confirm("Tem certeza que deseja excluir esta mensagem?")) return;
+
+      try {
+          const { error } = await supabase
+            .from('comments')
+            .delete()
+            .eq('id', commentId);
+
+          if (error) throw error;
+          
+          setComments(prev => prev.filter(c => c.id !== commentId));
+      } catch (error) {
+          console.error("Error deleting comment:", error);
+          alert("Erro ao excluir mensagem");
+      }
+  };
+
   const handlePaste = async (e: React.ClipboardEvent) => {
       const items = e.clipboardData.items;
       for (let i = 0; i < items.length; i++) {
@@ -452,7 +471,16 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                                         <div className={`flex items-center text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-widest ${isMe ? 'justify-end' : 'justify-start'}`}>
                                             <span className="mr-2">{comment.userName}</span>
                                             {isStaff && <span className="bg-primary-100 text-primary-700 px-1.5 py-0.5 rounded-none text-[8px] mr-2 border border-primary-200">STAFF</span>}
-                                            <span className="font-mono">{comment.createdAt.toLocaleString('pt-BR')}</span>
+                                            <span className="font-mono mr-2">{comment.createdAt.toLocaleString('pt-BR')}</span>
+                                            {isAdmin && (
+                                                <button 
+                                                    onClick={() => handleDeleteComment(comment.id)}
+                                                    className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                                                    title="Excluir Mensagem"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            )}
                                         </div>
                                         <div className={`p-3 rounded-none text-sm font-medium ${
                                             isMe 
