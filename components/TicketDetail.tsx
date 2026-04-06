@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Ticket, TicketStatus, User, Comment, AuditLog } from '../types';
-import { ArrowLeft, CheckCircle, Clock, User as UserIcon, Calendar, Tag, Trash2, Edit, Send, MessageSquare, FileText, Paperclip } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, User as UserIcon, Calendar, Tag, Trash2, Edit, Send, MessageSquare, FileText, Paperclip, Loader2, X } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ConfirmationModal } from './ConfirmationModal';
+import { v4 as uuidv4 } from 'uuid';
 
 interface TicketDetailProps {
   ticket: Ticket;
@@ -20,6 +21,11 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(true);
   const commentsEndRef = useRef<HTMLDivElement>(null);
+
+  // Attachment State for Response
+  const [commentAttachments, setCommentAttachments] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Audit Logs State
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -77,7 +83,8 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
               content: c.content,
               createdAt: new Date(c.created_at),
               userName: c.profiles?.name || 'Desconhecido',
-              userRole: c.profiles?.role || 'USER'
+              userRole: c.profiles?.role || 'USER',
+              attachments: c.attachments || []
           }));
           setComments(formattedComments);
       }
@@ -119,17 +126,22 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
           userName: currentUser.name,
           userRole: currentUser.role,
           content: commentText,
-          createdAt: new Date()
+          createdAt: new Date(),
+          attachments: [...commentAttachments] // Added
       };
+
+      const attachmentsToSend = [...commentAttachments]; // Capture current state
 
       setComments(prev => [...prev, optimisticComment]);
       setNewComment(''); 
+      setCommentAttachments([]); 
 
       try {
           const { error } = await supabase.from('comments').insert({
               ticket_id: ticket.id,
               user_id: currentUser.id,
-              content: commentText
+              content: commentText,
+              attachments: attachmentsToSend // Use captured attachments
           });
 
           if (error) throw error;
@@ -161,9 +173,82 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
       } catch (error) {
           console.error("Error sending comment:", error);
-          alert("Erro ao enviar mensagem");
+          alert("Erro ao enviar mensagem: " + (error as any).message);
           setComments(prev => prev.filter(c => c.id !== tempId));
           setNewComment(commentText); 
+      }
+  };
+
+  const handleCommentFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files || e.target.files.length === 0) return;
+      
+      setIsUploading(true);
+      setUploadProgress(0);
+
+      const file = e.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `comment_${Date.now()}_${uuidv4()}.${fileExt}`;
+      const filePath = `comments/${ticket.id}/${fileName}`;
+
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+            if (prev >= 90) return prev;
+            return prev + 10;
+        });
+      }, 100);
+
+      try {
+          const { error: uploadError } = await supabase.storage
+            .from('attachments')
+            .upload(filePath, file);
+
+          if (uploadError) throw uploadError;
+
+          clearInterval(progressInterval);
+          setUploadProgress(100);
+
+          const { data } = supabase.storage.from('attachments').getPublicUrl(filePath);
+          
+          if (data) {
+              setTimeout(() => {
+                  setCommentAttachments(prev => [...prev, data.publicUrl]);
+                  setIsUploading(false);
+                  setUploadProgress(0);
+              }, 500);
+          } else {
+              setIsUploading(false);
+          }
+      } catch (error: any) {
+          console.error('Error uploading file:', error);
+          alert(`Erro ao fazer upload: ${error.message}`);
+          setIsUploading(false);
+          setUploadProgress(0);
+      } finally {
+          clearInterval(progressInterval);
+          e.target.value = ''; 
+      }
+  };
+
+  const removeCommentAttachment = (urlToRemove: string) => {
+      setCommentAttachments(prev => prev.filter(url => url !== urlToRemove));
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent) => {
+      const items = e.clipboardData.items;
+      for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf("image") !== -1) {
+              const file = items[i].getAsFile();
+              if (file) {
+                  // Simulate the file event to reuse existing logic
+                  const mockEvent = {
+                      target: {
+                          files: [file],
+                          value: ''
+                      }
+                  } as unknown as React.ChangeEvent<HTMLInputElement>;
+                  await handleCommentFileUpload(mockEvent);
+              }
+          }
       }
   };
 
@@ -270,9 +355,16 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             </div>
             <div className="flex items-center">
                 <Calendar size={14} className="mr-2 text-slate-400" />
-                <span>Criado em:</span>
+                <span>Abertura:</span>
                 <span className="ml-1 text-slate-900 font-mono">{ticket.createdAt.toLocaleDateString('pt-BR')} {ticket.createdAt.toLocaleTimeString('pt-BR')}</span>
             </div>
+            {ticket.resolvedAt && (
+                <div className="flex items-center">
+                    <CheckCircle size={14} className="mr-2 text-green-500" />
+                    <span>Fechamento:</span>
+                    <span className="ml-1 text-slate-900 font-mono">{ticket.resolvedAt.toLocaleDateString('pt-BR')} {ticket.resolvedAt.toLocaleTimeString('pt-BR')}</span>
+                </div>
+            )}
             <div className="flex items-center">
                 <Tag size={14} className="mr-2 text-slate-400" />
                 <span>Categoria:</span>
@@ -368,6 +460,26 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                                             : 'bg-white border border-slate-200 text-slate-800 shadow-sm'
                                         }`}>
                                             {comment.content}
+                                            {comment.attachments && comment.attachments.length > 0 && (
+                                                <div className="mt-2 space-y-1">
+                                                    {comment.attachments.map((url, idx) => (
+                                                        <a 
+                                                            key={idx} 
+                                                            href={url} 
+                                                            target="_blank" 
+                                                            rel="noreferrer"
+                                                            className={`flex items-center space-x-2 px-2 py-1 border rounded-none text-[10px] uppercase font-bold tracking-tight transition-colors ${
+                                                                isMe 
+                                                                ? 'bg-primary-700 border-primary-500 text-white hover:bg-primary-800' 
+                                                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                                                            }`}
+                                                        >
+                                                            <FileText size={12} />
+                                                            <span>Anexo {idx + 1}</span>
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div className={`w-8 h-8 rounded-none flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-5 border ${
@@ -385,17 +497,57 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                 </div>
 
                 <div className="p-4 bg-white border-t border-slate-200">
-                    <form onSubmit={handleSendComment} className="flex gap-2">
-                        <input
-                            type="text"
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            placeholder="Escreva uma mensagem técnica..."
-                            className="flex-1 px-4 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none text-sm font-medium"
-                        />
+                    {/* Comment Attachments Preview */}
+                    {commentAttachments.length > 0 && (
+                        <div className="mb-3 flex flex-wrap gap-2">
+                            {commentAttachments.map((url, index) => (
+                                <div key={index} className="flex items-center bg-slate-50 border border-slate-200 px-2 py-1 rounded-none group">
+                                    <FileText size={12} className="text-slate-400 mr-2" />
+                                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tight mr-2">Anexo {index + 1}</span>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => removeCommentAttachment(url)}
+                                        className="text-slate-400 hover:text-red-500"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSendComment} className="flex gap-2 items-center">
+                        <div className="flex-1 relative">
+                            <input
+                                type="text"
+                                value={newComment}
+                                onChange={(e) => setNewComment(e.target.value)}
+                                onPaste={handlePaste}
+                                placeholder="Escreva uma mensagem técnica (ou cole um print)..."
+                                className="w-full px-4 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none text-sm font-medium"
+                                disabled={isUploading}
+                            />
+                            {isUploading && (
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center bg-white px-2">
+                                     <Loader2 size={14} className="animate-spin text-primary-600 mr-2" />
+                                     <span className="text-[10px] font-mono font-bold text-primary-600">{uploadProgress}%</span>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <label className={`p-2 border cursor-pointer transition-colors ${isUploading ? 'bg-slate-50 border-slate-200 text-slate-400' : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-100 hover:text-primary-600'}`}>
+                            <Paperclip size={18} />
+                            <input 
+                                type="file" 
+                                className="hidden" 
+                                onChange={handleCommentFileUpload}
+                                disabled={isUploading}
+                            />
+                        </label>
+
                         <button 
                             type="submit" 
-                            disabled={!newComment.trim()}
+                            disabled={!newComment.trim() || isUploading}
                             className="px-4 py-2 bg-primary-600 text-white rounded-none hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             <Send size={18} />

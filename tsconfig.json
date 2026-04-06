@@ -16,6 +16,7 @@
 
     /* Linting - Disabled strict unused checks for smoother deployment */
     "strict": true,
+    "types": ["vite/client"],
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true

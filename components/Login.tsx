@@ -136,7 +136,12 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs rounded-none flex flex-col items-start">
                 <div className="flex items-center font-bold uppercase tracking-tight">
                     <AlertCircle size={14} className="mr-2 flex-shrink-0" />
-                    {error === "Invalid login credentials" ? "Credenciais inválidas" : error}
+                    {error === "Invalid login credentials" ? "Credenciais inválidas" : 
+                     error === "User already registered" ? "Este e-mail já está cadastrado." :
+                     error === "Email rate limit exceeded" ? "Limite de envios atingido. Tente novamente em alguns minutos." :
+                     error.includes("Email not confirmed") ? "E-mail não confirmado. Verifique seu e-mail." :
+                     error.includes("Error sending confirmation email") ? "Erro ao enviar e-mail de confirmação. Verifique a configuração de SMTP no Supabase." :
+                     error}
                 </div>
                 {needsConfirmation && (
                     <button 

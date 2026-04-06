@@ -13,6 +13,7 @@ import { Ticket, ViewState, TicketStatus, User } from './types';
 import { supabase } from './services/supabase';
 import { Loader2, Menu } from 'lucide-react';
 import { Logo } from './components/Logo';
+import { sendTicketOpeningEmail } from './services/mailService';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -190,7 +191,7 @@ const App: React.FC = () => {
       setCurrentView('DASHBOARD');
   };
 
-  const handleCreateTicket = async (newTicketData: Omit<Ticket, 'id' | 'createdAt' | 'ticketNumber'>): Promise<void> => {
+  const handleCreateTicket = async (newTicketData: Omit<Ticket, 'id' | 'ticketNumber'>): Promise<void> => {
     if (!currentUser) return;
 
     try {
@@ -204,7 +205,9 @@ const App: React.FC = () => {
                     priority: newTicketData.priority,
                     category: newTicketData.category,
                     status: newTicketData.status,
-                    attachments: newTicketData.attachments
+                    attachments: newTicketData.attachments,
+                    created_at: newTicketData.createdAt.toISOString(),
+                    resolved_at: newTicketData.resolvedAt ? newTicketData.resolvedAt.toISOString() : null
                 })
                 .eq('id', ticketToEdit.id);
 
@@ -232,8 +235,10 @@ const App: React.FC = () => {
                     requester_id: newTicketData.requesterId,
                     priority: newTicketData.priority,
                     category: newTicketData.category,
-                    status: 'OPEN',
-                    attachments: newTicketData.attachments
+                    status: newTicketData.status || 'OPEN',
+                    attachments: newTicketData.attachments,
+                    created_at: newTicketData.createdAt.toISOString(),
+                    resolved_at: newTicketData.resolvedAt ? newTicketData.resolvedAt.toISOString() : null
                 }])
                 .select()
                 .single();
@@ -259,6 +264,28 @@ const App: React.FC = () => {
                         ticket_id: newTicket.id
                     }));
                     await supabase.from('notifications').insert(notifications);
+                }
+
+                // EMAIL NOTIFICATION LOGIC: Notify the requester
+                try {
+                    // Buscar o e-mail do solicitante caso não tenhamos (ex: Admin abrindo para outro)
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('email, name')
+                        .eq('id', newTicketData.requesterId)
+                        .single();
+
+                    if (profile && profile.email) {
+                        await sendTicketOpeningEmail({
+                            to: profile.email,
+                            ticketNumber: newTicket.ticket_number,
+                            title: newTicketData.title,
+                            requesterName: profile.name || newTicketData.requester
+                        });
+                    }
+                } catch (emailError) {
+                    console.error("Falha ao enviar e-mail de notificação:", emailError);
+                    // Não travamos o fluxo do app se o e-mail falhar
                 }
             }
             showToast('Chamado criado com sucesso!');

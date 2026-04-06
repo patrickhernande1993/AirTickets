@@ -6,7 +6,7 @@ import { supabase } from '../services/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 interface TicketFormProps {
-  onSave: (ticket: Omit<Ticket, 'id' | 'createdAt' | 'ticketNumber'>) => Promise<void>;
+  onSave: (ticket: Omit<Ticket, 'id' | 'ticketNumber'>) => Promise<void>;
   onCancel: () => void;
   initialData?: Ticket; // Optional for Edit mode
   currentUser: User; // Obrigatório para pegar o nome automaticamente
@@ -26,6 +26,11 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TicketPriority>(TicketPriority.LOW);
   const [category, setCategory] = useState(CATEGORIES[0]);
+  
+  // Date states
+  const nowStr = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  const [createdAtStr, setCreatedAtStr] = useState(nowStr);
+  const [resolvedAtStr, setResolvedAtStr] = useState('');
   
   // Requester State for Admins
   const [users, setUsers] = useState<{id: string, name: string}[]>([]);
@@ -60,6 +65,14 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
         setCategory(initialData.category);
         setAttachments(initialData.attachments || []);
         setSelectedRequesterId(initialData.requesterId);
+        
+        const localCreated = new Date(initialData.createdAt.getTime() - initialData.createdAt.getTimezoneOffset() * 60000);
+        setCreatedAtStr(localCreated.toISOString().slice(0, 16));
+        
+        if (initialData.resolvedAt) {
+            const localResolved = new Date(initialData.resolvedAt.getTime() - initialData.resolvedAt.getTimezoneOffset() * 60000);
+            setResolvedAtStr(localResolved.toISOString().slice(0, 16));
+        }
     }
   }, [initialData]);
 
@@ -138,7 +151,9 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
         priority,
         category,
         status: initialData ? initialData.status : TicketStatus.OPEN,
-        attachments: attachments
+        attachments: attachments,
+        createdAt: new Date(createdAtStr),
+        resolvedAt: resolvedAtStr ? new Date(resolvedAtStr) : undefined
       });
     } catch (error) {
       console.error('Error in TicketForm handleSubmit:', error);
@@ -258,6 +273,26 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
                             <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                         </div>
                     </div>
+                </div>
+                <div>
+                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Abertura</label>
+                     <input
+                         type="datetime-local"
+                         required
+                         value={createdAtStr}
+                         onChange={(e) => setCreatedAtStr(e.target.value)}
+                         className="w-full px-4 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none bg-white transition-colors text-sm font-medium"
+                     />
+                </div>
+                <div>
+                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 text-slate-400">Fechamento (Opcional)</label>
+                     <input
+                         type="datetime-local"
+                         value={resolvedAtStr}
+                         onChange={(e) => setResolvedAtStr(e.target.value)}
+                         className="w-full px-4 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none bg-white transition-colors text-sm font-medium"
+                         placeholder="Apenas se Resolvido"
+                     />
                 </div>
              </div>
 

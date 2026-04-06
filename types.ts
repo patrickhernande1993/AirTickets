@@ -47,6 +47,7 @@ export interface Comment {
   userRole: UserRole;
   content: string;
   createdAt: Date;
+  attachments?: string[];
 }
 
 export interface Notification {
