@@ -566,19 +566,20 @@ const App: React.FC = () => {
 
       <main className="flex-1 p-4 md:p-8 overflow-y-auto bg-slate-50">
         <div className="max-w-7xl mx-auto w-full">
-          {/* Header for Page Title */}
-          <header className="mb-6 md:mb-8 border-b border-slate-200 pb-4">
-             <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-                {currentView === 'DASHBOARD' && (currentUser.role === 'ADMIN' ? 'Visão Geral' : 'Dashboard')}
-                {currentView === 'MY_TICKETS' && 'Meus Chamados'}
-                {currentView === 'ALL_TICKETS' && 'Todos os Chamados'}
-                {currentView === 'CREATE_TICKET' && 'Novo Chamado'}
-                {currentView === 'EDIT_TICKET' && 'Editar Chamado'}
-                {currentView === 'TICKET_DETAIL' && 'Detalhes do Chamado'}
-                {currentView === 'USERS' && 'Gestão de Usuários'}
-                {currentView === 'NOTIFICATIONS' && 'Central de Notificações'}
-              </h1>
-          </header>
+          {/* Header for Page Title - Hidden on Dashboard to save space as requested */}
+          {currentView !== 'DASHBOARD' && (
+            <header className="mb-6 md:mb-8 border-b border-slate-200 pb-4">
+               <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+                  {currentView === 'MY_TICKETS' && 'Meus Chamados'}
+                  {currentView === 'ALL_TICKETS' && 'Todos os Chamados'}
+                  {currentView === 'CREATE_TICKET' && 'Novo Chamado'}
+                  {currentView === 'EDIT_TICKET' && 'Editar Chamado'}
+                  {currentView === 'TICKET_DETAIL' && 'Detalhes do Chamado'}
+                  {currentView === 'USERS' && 'Gestão de Usuários'}
+                  {currentView === 'NOTIFICATIONS' && 'Central de Notificações'}
+                </h1>
+            </header>
+          )}
           
           {renderContent()}
         </div>

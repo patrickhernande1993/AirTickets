@@ -152,34 +152,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
   return (
     <div className="space-y-6">
       
-      {/* Top Action Row */}
-      <div className="flex justify-end">
-          <button 
-            onClick={onCreateTicket}
-            className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-sm hover:bg-primary-700 transition-colors font-medium shadow-sm"
-          >
-              <Plus size={18} />
-              <span>Novo Chamado</span>
-          </button>
-      </div>
-
-      {/* Welcome Card */}
+      {/* Welcome Card & Main Actions */}
       <div className="bg-white rounded-none border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-          <div>
+          <div className="flex-1">
               <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                   Olá, {currentUser.name.split(' ')[0]}! <span className="text-2xl">👋</span>
               </h1>
               <p className="text-slate-500 mt-1">Visão geral do desempenho do suporte técnico e métricas.</p>
           </div>
           
-          <div className="bg-slate-50 rounded-none p-4 flex items-center gap-4 min-w-[200px] border border-slate-200">
-              <div className="p-2 bg-primary-100 rounded-none text-primary-600 border border-primary-200">
-                  <TrendingUp size={24} />
+          <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+              {/* Resolution Rate Compact */}
+              <div className="bg-slate-50 rounded-none p-3 px-4 flex items-center gap-3 border border-slate-200 min-w-[160px]">
+                  <div className="p-1.5 bg-primary-100 rounded-none text-primary-600 border border-primary-200">
+                      <TrendingUp size={20} />
+                  </div>
+                  <div>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Resolução</p>
+                      <p className="text-xl font-mono font-bold text-slate-900">{stats.resolutionRate}%</p>
+                  </div>
               </div>
-              <div>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">TAXA DE RESOLUÇÃO</p>
-                  <p className="text-2xl font-mono font-bold text-slate-900">{stats.resolutionRate}%</p>
-              </div>
+
+              {/* Action Button Integrated */}
+              <button 
+                onClick={onCreateTicket}
+                className="flex items-center justify-center space-x-2 px-6 py-3 bg-primary-600 text-white rounded-sm hover:bg-primary-700 transition-colors font-bold shadow-sm w-full sm:w-auto uppercase tracking-widest text-xs"
+              >
+                  <Plus size={18} />
+                  <span>Novo Chamado</span>
+              </button>
           </div>
       </div>
 
