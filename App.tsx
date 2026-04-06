@@ -359,9 +359,10 @@ const App: React.FC = () => {
         } else {
             setCurrentView('ALL_TICKETS'); // Return to list view after edit/create
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error saving ticket:", error);
-        showToast("Falha ao salvar chamado. Por favor, tente novamente.", "error");
+        const errorMessage = error.message || error.details || "Erro desconhecido";
+        showToast(`Falha ao salvar chamado: ${errorMessage}`, "error");
         throw error;
     }
   };
