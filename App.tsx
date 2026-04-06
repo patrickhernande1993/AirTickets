@@ -223,6 +223,28 @@ const App: React.FC = () => {
             
             setTicketToEdit(null);
             showToast('Chamado atualizado com sucesso!');
+
+            // EMAIL NOTIFICATION: If status was changed to RESOLVED during edit
+            if (newTicketData.status === TicketStatus.RESOLVED) {
+                try {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('email, name')
+                        .eq('id', newTicketData.requesterId)
+                        .single();
+
+                    if (profile && profile.email) {
+                        await sendTicketResolvedEmail({
+                            to: profile.email,
+                            ticketNumber: ticketToEdit.ticketNumber,
+                            title: newTicketData.title,
+                            requesterName: profile.name || newTicketData.requester
+                        });
+                    }
+                } catch (emailError) {
+                    console.error("Falha ao enviar e-mail de resolução na edição:", emailError);
+                }
+            }
         } else {
             // Create new ticket
             // ticket_number is generated automatically by Postgres
