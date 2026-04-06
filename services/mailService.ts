@@ -6,13 +6,22 @@ interface SendTicketEmailParams {
   ticketNumber: number;
   title: string;
   requesterName: string;
+  type?: 'opened' | 'resolved';
 }
 
-export const sendTicketOpeningEmail = async ({ to, ticketNumber, title, requesterName }: SendTicketEmailParams) => {
+export const sendTicketOpeningEmail = async (params: SendTicketEmailParams) => {
+  return sendTicketEmail({ ...params, type: 'opened' });
+};
+
+export const sendTicketResolvedEmail = async (params: SendTicketEmailParams) => {
+  return sendTicketEmail({ ...params, type: 'resolved' });
+};
+
+const sendTicketEmail = async ({ to, ticketNumber, title, requesterName, type }: SendTicketEmailParams) => {
   try {
-    console.log('Invocando Edge Function para e-mail:', { to, ticketNumber, title });
+    console.log(`Invocando Edge Function para e-mail (${type}):`, { to, ticketNumber, title });
     const { data, error } = await supabase.functions.invoke('send-ticket-email', {
-      body: { to, ticketNumber, title, requesterName },
+      body: { to, ticketNumber, title, requesterName, type },
     });
 
     if (error) {

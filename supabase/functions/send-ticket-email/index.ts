@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { to, ticketNumber, title, requesterName } = await req.json()
+    const { to, ticketNumber, title, requesterName, type = 'opened' } = await req.json()
 
     // Credenciais do Azure AD vinda dos Secrets
     const AZURE_TENANT_ID = Deno.env.get('AZURE_TENANT_ID')
@@ -23,7 +23,7 @@ serve(async (req) => {
       throw new Error('Configurações do Azure (Tenant/Client/Secret/User) não encontradas nos Secrets.')
     }
 
-    console.log(`[LOG] Iniciando fluxo Graph API para #${ticketNumber}`)
+    console.log(`[LOG] Iniciando fluxo Graph API para #${ticketNumber} (${type})`)
 
     // 1. Obter Token de Acesso via OAuth2
     const tokenResponse = await fetch(`https://login.microsoftonline.com/${AZURE_TENANT_ID}/oauth2/v2.0/token`, {
@@ -45,24 +45,35 @@ serve(async (req) => {
     const accessToken = tokenData.access_token
     console.log('[LOG] Token obtido com sucesso.')
 
-    // 2. Preparar e Enviar E-mail via Graph API
+    // 2. Definir Template baseado no tipo
+    const isResolved = type === 'resolved';
+    const subject = isResolved 
+        ? `Chamado #${ticketNumber} Resolvido` 
+        : `Chamado #${ticketNumber} Aberto com Sucesso`;
+    
+    const headerColor = isResolved ? '#10b981' : '#0078d4';
+    const statusText = isResolved ? 'Chamado Resolvido' : 'Chamado Aberto';
+    const messageText = isResolved 
+        ? 'Seu chamado foi marcado como **resolvido** pela nossa equipe.' 
+        : 'Seu chamado foi registrado com sucesso em nosso sistema.';
+
     const mailBody = {
       message: {
-        subject: `Chamado #${ticketNumber} Aberto com Sucesso`,
+        subject: subject,
         body: {
           contentType: 'HTML',
           content: `
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 20px;">
-              <h2 style="color: #0f172a; border-bottom: 2px solid #0078d4; padding-bottom: 10px;">Chamado Aberto - AirService</h2>
+              <h2 style="color: #0f172a; border-bottom: 2px solid ${headerColor}; padding-bottom: 10px;">${statusText} - AirService</h2>
               <p>Olá <strong>${requesterName}</strong>,</p>
-              <p>Seu chamado foi registrado com sucesso em nosso sistema.</p>
-              <div style="background-color: #f8fafc; padding: 15px; border-left: 4px solid #0078d4; margin: 20px 0;">
+              <p>${messageText}</p>
+              <div style="background-color: #f8fafc; padding: 15px; border-left: 4px solid ${headerColor}; margin: 20px 0;">
                 <p style="margin: 0; font-size: 14px; color: #64748b;">Número:</p>
                 <p style="margin: 5px 0 0 0; font-size: 18px; font-weight: bold; color: #1e293b;">#${ticketNumber}</p>
                 <p style="margin: 15px 0 0 0; font-size: 14px; color: #64748b;">Assunto:</p>
                 <p style="margin: 5px 0 0 0; font-size: 16px; color: #1e293b;">${title}</p>
               </div>
-              <p>Nossa equipe técnica já foi notificada.</p>
+              ${isResolved ? '<p>Esperamos ter ajudado! Se houver algo mais, estamos à disposição.</p>' : '<p>Nossa equipe técnica já foi notificada.</p>'}
               <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;">
               <p style="font-size: 12px; color: #94a3b8; text-align: center;">Enviado via Microsoft Graph API.</p>
             </div>
@@ -93,7 +104,7 @@ serve(async (req) => {
       throw new Error(`Erro ao enviar via Graph API: ${JSON.stringify(errorData)}`)
     }
 
-    console.log(`[LOG] E-mail enviado com sucesso via Graph API!`)
+    console.log(`[LOG] E-mail (${type}) enviado com sucesso via Graph API!`)
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -101,7 +112,7 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    console.error(`[ERRO RESEND]: ${error.message}`)
+    console.error(`[ERRO GRAPH]: ${error.message}`)
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,

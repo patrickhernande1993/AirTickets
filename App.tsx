@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import { Sidebar } from './components/Sidebar';
 import { TicketList } from './components/TicketList';
 import { TicketForm } from './components/TicketForm';
 import { TicketDetail } from './components/TicketDetail';
@@ -12,9 +11,9 @@ import { Dashboard } from './components/Dashboard';
 import { Toast, ToastType } from './components/Toast';
 import { Ticket, ViewState, TicketStatus, User } from './types';
 import { supabase } from './services/supabase';
-import { Loader2, Menu } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Logo } from './components/Logo';
-import { sendTicketOpeningEmail } from './services/mailService';
+import { sendTicketOpeningEmail, sendTicketResolvedEmail } from './services/mailService';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -432,6 +431,30 @@ const App: React.FC = () => {
                         ticket_id: id
                     });
                 }
+            }
+        }
+
+        // EMAIL NOTIFICATION LOGIC: Notify if Resolved (Moved outside for all views)
+        if (status === TicketStatus.RESOLVED) {
+            try {
+                // Fetch requester email and ticket details
+                const { data: ticketData } = await supabase
+                    .from('tickets')
+                    .select('title, ticket_number, requester_id, profiles:requester_id(email, name)')
+                    .eq('id', id)
+                    .single();
+                
+                if (ticketData && (ticketData as any).profiles?.email) {
+                    const prof = (ticketData as any).profiles;
+                    await sendTicketResolvedEmail({
+                        to: prof.email,
+                        ticketNumber: ticketData.ticket_number,
+                        title: ticketData.title,
+                        requesterName: prof.name || 'Usuário'
+                    });
+                }
+            } catch (emailError) {
+                console.error("Falha ao enviar e-mail de resolução:", emailError);
             }
         }
     } catch (error) {
