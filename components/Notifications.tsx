@@ -7,9 +7,10 @@ import { Bell, Check, Trash2, Loader2, CheckCheck } from 'lucide-react';
 interface NotificationsProps {
   currentUser: User;
   onSelectNotification: (ticketId: string) => void;
+  onRefreshNotifications: () => void;
 }
 
-export const Notifications: React.FC<NotificationsProps> = ({ currentUser, onSelectNotification }) => {
+export const Notifications: React.FC<NotificationsProps> = ({ currentUser, onSelectNotification, onRefreshNotifications }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +52,10 @@ export const Notifications: React.FC<NotificationsProps> = ({ currentUser, onSel
     // 2. DB Update
     const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', id);
 
+    if (!error) {
+        onRefreshNotifications();
+    }
+
     // 3. Rollback if error
     if (error) {
         console.error("Error marking as read:", error);
@@ -66,6 +71,10 @@ export const Notifications: React.FC<NotificationsProps> = ({ currentUser, onSel
 
     // 2. DB Update
     const { error } = await supabase.from('notifications').delete().eq('id', id);
+
+    if (!error) {
+        onRefreshNotifications();
+    }
 
     // 3. Rollback if error
     if (error) {
@@ -89,6 +98,8 @@ export const Notifications: React.FC<NotificationsProps> = ({ currentUser, onSel
       if (error) {
           console.error("Error marking all as read:", error);
           setNotifications(originalNotifications);
+      } else {
+          onRefreshNotifications();
       }
   };
 

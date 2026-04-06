@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   
   // Toast State
   const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
@@ -60,6 +61,40 @@ const App: React.FC = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Notifications Sync
+  useEffect(() => {
+    if (!currentUser) return;
+
+    fetchUnreadCount();
+
+    const channel = supabase
+      .channel('public:notifications_app')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'notifications', 
+        filter: `user_id=eq.${currentUser.id}` 
+      }, () => {
+        fetchUnreadCount();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser?.id]);
+
+  const fetchUnreadCount = async () => {
+    if (!currentUser) return;
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .eq('is_read', false);
+    
+    setUnreadNotificationsCount(count || 0);
+  };
 
   // Fetch tickets whenever user changes or view updates
   useEffect(() => {
@@ -524,7 +559,7 @@ const App: React.FC = () => {
       case 'USERS':
         return currentUser.role === 'ADMIN' ? <UserManagement currentUser={currentUser} showToast={showToast} /> : <div>Acesso Negado</div>;
       case 'NOTIFICATIONS':
-        return <Notifications currentUser={currentUser} onSelectNotification={handleSelectNotificationTicket} />;
+        return <Notifications currentUser={currentUser} onSelectNotification={handleSelectNotificationTicket} onRefreshNotifications={fetchUnreadCount} />;
       case 'MY_TICKETS':
       case 'ALL_TICKETS':
         return (
@@ -562,6 +597,7 @@ const App: React.FC = () => {
         onChangeView={setCurrentView}
         currentUser={currentUser}
         onLogout={handleLogout}
+        unreadCount={unreadNotificationsCount}
       />
 
       <main className="flex-1 p-4 md:p-8 overflow-y-auto bg-slate-50">

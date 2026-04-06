@@ -10,6 +10,7 @@ interface TopNavProps {
   onChangeView: (view: ViewState) => void;
   currentUser: User;
   onLogout: () => void;
+  unreadCount: number;
 }
 
 interface NavItem {
@@ -19,39 +20,8 @@ interface NavItem {
   badge?: number;
 }
 
-export const TopNav: React.FC<TopNavProps> = ({ currentView, onChangeView, currentUser, onLogout }) => {
-  const [unreadCount, setUnreadCount] = useState(0);
+export const TopNav: React.FC<TopNavProps> = ({ currentView, onChangeView, currentUser, onLogout, unreadCount }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    fetchUnreadNotifications();
-    
-    const channel = supabase
-      .channel('public:notifications_top')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'notifications', 
-        filter: `user_id=eq.${currentUser.id}` 
-      }, () => {
-        fetchUnreadNotifications();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    }
-  }, [currentUser.id]);
-
-  const fetchUnreadNotifications = async () => {
-    const { count } = await supabase
-      .from('notifications')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', currentUser.id)
-      .eq('is_read', false);
-    
-    setUnreadCount(count || 0);
-  };
 
   const navItems: NavItem[] = [
     { id: 'DASHBOARD', label: currentUser.role === 'USER' ? 'Visão Geral' : 'Dashboard', icon: LayoutDashboard },
