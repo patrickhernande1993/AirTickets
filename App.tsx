@@ -333,12 +333,15 @@ const App: React.FC = () => {
                         .single();
 
                     if (profile && profile.email) {
-                        // Escolher um e-mail de admin para cópia (o primeiro da lista)
-                        const adminEmail = admins?.find(a => a.email)?.email;
+                        // Priorizar o e-mail do Admin logado para o CC
+                        let adminEmail = (currentUser.role === 'ADMIN') ? currentUser.email : admins?.find(a => a.email)?.email;
+                        
+                        // Se for o mesmo e-mail, não precisa de CC
+                        const ccEmail = adminEmail === profile.email ? undefined : adminEmail;
 
                         await sendTicketOpeningEmail({
                             to: profile.email,
-                            cc: adminEmail,
+                            cc: ccEmail,
                             ticketNumber: newTicket.ticket_number,
                             title: newTicketData.title,
                             requesterName: profile.name || newTicketData.requester
