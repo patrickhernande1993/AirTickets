@@ -5,6 +5,7 @@ import { TicketList } from './components/TicketList';
 import { TicketForm } from './components/TicketForm';
 import { TicketDetail } from './components/TicketDetail';
 import { Login } from './components/Login';
+import { TopNav } from './components/TopNav';
 import { UserManagement } from './components/UserManagement';
 import { Notifications } from './components/Notifications';
 import { Dashboard } from './components/Dashboard';
@@ -38,10 +39,10 @@ const App: React.FC = () => {
     setToast(prev => ({ ...prev, isVisible: false }));
   };
 
-  // Mobile Sidebar State
+  // Mobile Sidebar State (No longer needed, but keeping for logic compatibility if any)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
-  // Desktop Sidebar Visibility State
+  // Desktop Sidebar Visibility State (No longer needed)
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
   // Check auth session on load
@@ -506,49 +507,19 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar 
-        currentView={currentView} 
-        onChangeView={setCurrentView} 
-        currentUser={currentUser} 
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        isVisible={isSidebarVisible}
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <TopNav 
+        currentView={currentView}
+        onChangeView={setCurrentView}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
-      
-      {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 w-full bg-white z-30 border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-              <button 
-                  onClick={() => setIsSidebarOpen(true)}
-                  className="p-1 text-slate-600 hover:bg-slate-100 rounded-none"
-              >
-                  <Menu size={24} />
-              </button>
-              <div className="flex items-center space-x-2">
-                 <Logo className="h-8 w-auto" />
-                 <span className="text-lg font-bold text-slate-800">AirService</span>
-              </div>
-          </div>
-          <div className="h-8 w-8 rounded-none border border-primary-600 bg-primary-600 text-white flex items-center justify-center text-xs font-bold">
-              {currentUser.name.charAt(0).toUpperCase()}
-          </div>
-      </div>
 
-      <main className={`flex-1 p-4 md:p-8 overflow-y-auto h-screen transition-all duration-300 ${isSidebarOpen ? '' : 'ml-0'} ${isSidebarVisible ? 'md:ml-64' : 'md:ml-0'} pt-20 md:pt-8 bg-slate-50`}>
-        {/* Changed from max-w-6xl mx-auto to w-[95%] mx-auto to stretch the grid */}
-        <div className="w-full md:w-[98%] mx-auto">
-          <header className="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
-            <div className="flex items-center space-x-4">
-              {/* Desktop Sidebar Toggle Button */}
-              <button 
-                onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-                className="hidden md:flex p-2 text-slate-500 hover:bg-slate-100 rounded-none border border-slate-200 transition-colors"
-                title={isSidebarVisible ? "Ocultar Menu" : "Mostrar Menu"}
-              >
-                <Menu size={20} />
-              </button>
-              <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto bg-slate-50">
+        <div className="max-w-7xl mx-auto w-full">
+          {/* Header for Page Title */}
+          <header className="mb-6 md:mb-8 border-b border-slate-200 pb-4">
+             <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
                 {currentView === 'DASHBOARD' && (currentUser.role === 'ADMIN' ? 'Visão Geral' : 'Dashboard')}
                 {currentView === 'MY_TICKETS' && 'Meus Chamados'}
                 {currentView === 'ALL_TICKETS' && 'Todos os Chamados'}
@@ -558,28 +529,8 @@ const App: React.FC = () => {
                 {currentView === 'USERS' && 'Gestão de Usuários'}
                 {currentView === 'NOTIFICATIONS' && 'Central de Notificações'}
               </h1>
-            </div>
-            <div className="hidden md:flex items-center space-x-4">
-                <button 
-                    onClick={handleLogout}
-                    className="text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-slate-700 underline"
-                >
-                    Sair
-                </button>
-                <div className="h-10 w-10 rounded-none border-2 border-primary-600 bg-white flex items-center justify-center text-primary-600 font-bold shadow-sm">
-                    {currentUser.name.charAt(0).toUpperCase()}
-                </div>
-            </div>
-            {/* Mobile Logout (shown below header on mobile) */}
-            <div className="md:hidden w-full flex justify-end">
-                <button 
-                    onClick={handleLogout}
-                    className="text-[10px] font-bold uppercase tracking-widest text-slate-500 border border-slate-200 px-3 py-1.5 rounded-none bg-white hover:bg-slate-50 transition-colors"
-                >
-                    Sair
-                </button>
-            </div>
           </header>
+          
           {renderContent()}
         </div>
       </main>
