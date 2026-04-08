@@ -92,13 +92,14 @@ serve(async (req) => {
 
     // Adicionar CC se presente
     if (cc) {
-      mailBody.message.ccRecipients = [
-        {
+      const ccList = Array.isArray(cc) ? cc : cc.split(',').map((e: string) => e.trim()).filter(Boolean);
+      if (ccList.length > 0) {
+        mailBody.message.ccRecipients = ccList.map((email: string) => ({
           emailAddress: {
-            address: cc,
+            address: email,
           },
-        },
-      ]
+        }));
+      }
     }
 
     const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${USER_EMAIL}/sendMail`, {

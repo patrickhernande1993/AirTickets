@@ -333,23 +333,19 @@ const App: React.FC = () => {
                         .single();
 
                     if (profile && profile.email) {
-                        // Priorizar o e-mail do Admin logado para o CC
-                        let adminEmail = (currentUser.role === 'ADMIN') ? currentUser.email : admins?.find(a => a.email)?.email;
-                        
-                        // Se for o mesmo e-mail, não precisa de CC
-                        const ccEmail = adminEmail === profile.email ? undefined : adminEmail;
+                        // Garantir que a cópia (CC) vá especificamente para a TI
+                        const ccEmailString = profile.email !== 'ti@grupoairslaid.com.br' ? 'ti@grupoairslaid.com.br' : undefined;
 
                         console.log("Enviando e-mail de abertura:", {
                             to: profile.email,
-                            cc: ccEmail,
+                            cc: ccEmailString,
                             ticketNumber: newTicket.ticket_number,
                             adminRole: currentUser.role,
-                            adminEmail: currentUser.email
                         });
 
                         await sendTicketOpeningEmail({
                             to: profile.email,
-                            cc: ccEmail,
+                            cc: ccEmailString,
                             ticketNumber: newTicket.ticket_number,
                             title: newTicketData.title,
                             requesterName: profile.name || newTicketData.requester
