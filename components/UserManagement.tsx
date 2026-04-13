@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { Search, Mail, Shield, User as UserIcon, Loader2, Edit, CheckCircle, XCircle, Save, X } from 'lucide-react';
-import { supabase } from '../services/supabase';
+import { supabase, supabaseUrl } from '../services/supabase';
 import { ConfirmationModal } from './ConfirmationModal';
 
 interface UserManagementProps {
@@ -18,6 +18,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [editName, setEditName] = useState('');
+  const [editPassword, setEditPassword] = useState('');
   const [editRole, setEditRole] = useState<UserRole>('USER');
   const [editIsActive, setEditIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -51,6 +52,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
       setEditName(user.name);
       setEditRole(user.role);
       setEditIsActive(user.isActive !== false);
+      setEditPassword('');
       setIsEditModalOpen(true);
   };
 
@@ -72,6 +74,30 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
 
       setIsSaving(true);
       try {
+          if (editPassword) {
+              const { data: sessionData } = await supabase.auth.getSession();
+              const token = sessionData.session?.access_token;
+              
+              if (!token) throw new Error("Não foi possível obter o token de sessão.");
+
+              const response = await fetch(`${supabaseUrl}/functions/v1/update-user-password`, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                  },
+                  body: JSON.stringify({
+                      userId: selectedUser.id,
+                      newPassword: editPassword
+                  })
+              });
+
+              if (!response.ok) {
+                  const errorData = await response.json();
+                  throw new Error(errorData.error || "Erro ao alterar a senha.");
+              }
+          }
+
           const { error } = await supabase
             .from('profiles')
             .update({
@@ -235,6 +261,17 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
                               className="w-full px-3 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none text-sm"
                               placeholder="Nome completo"
                               required
+                          />
+                      </div>
+
+                      <div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nova Senha</label>
+                          <input 
+                              type="password" 
+                              value={editPassword} 
+                              onChange={(e) => setEditPassword(e.target.value)}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none text-sm"
+                              placeholder="Deixe em branco para não alterar"
                           />
                       </div>
 
