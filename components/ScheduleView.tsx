@@ -65,15 +65,24 @@ const TicketCard: React.FC<{
   const p = PRIORITY_CONFIG[ticket.priority];
   const s = STATUS_CONFIG[ticket.status];
   const StatusIcon = s.icon;
+  const isResolved = ticket.status === TicketStatus.RESOLVED;
 
   return (
     <div
-      className={`group relative bg-white border rounded-xl transition-all duration-200 hover:shadow-md cursor-pointer ${
-        isScheduled
-          ? 'border-primary-200 bg-primary-50/30'
-          : 'border-slate-200 hover:border-slate-300'
+      className={`group relative border rounded-xl transition-all duration-200 hover:shadow-md cursor-pointer ${
+        isResolved
+          ? 'bg-green-50/50 border-green-200 shadow-sm'
+          : isScheduled
+            ? 'border-primary-200 bg-primary-50/30'
+            : 'bg-white border-slate-200 hover:border-slate-300'
       } ${compact ? 'p-2.5' : 'p-3.5'}`}
     >
+      {isResolved && (
+        <div className="absolute top-2 right-10 flex items-center gap-1 bg-green-100 text-green-700 text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-green-200 z-10">
+          <CheckCircle size={10} />
+          RESOLVIDO
+        </div>
+      )}
       <div className="flex items-start gap-2.5">
         <PriorityDot priority={ticket.priority} />
         <div className="flex-1 min-w-0">
@@ -83,7 +92,7 @@ const TicketCard: React.FC<{
               {p?.label}
             </span>
           </div>
-          <p className={`font-medium text-slate-800 leading-snug truncate ${compact ? 'text-xs' : 'text-sm'}`}>
+          <p className={`font-medium leading-snug truncate ${compact ? 'text-xs' : 'text-sm'} ${isResolved ? 'text-slate-500' : 'text-slate-800'}`}>
             {ticket.title}
           </p>
           <div className="flex items-center gap-2 mt-1">
@@ -101,7 +110,7 @@ const TicketCard: React.FC<{
           )}
         </div>
         {/* Action Buttons */}
-        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 z-20">
           <button
             onClick={(e) => { e.stopPropagation(); onView(ticket); }}
             title="Ver chamado"
