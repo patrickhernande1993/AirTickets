@@ -10,7 +10,7 @@ interface TicketListProps {
   tickets: Ticket[];
   onSelectTicket: (ticket: Ticket) => void;
   onCreateTicket: () => void;
-  onUpdateStatus: (id: string, status: TicketStatus) => void;
+  onUpdateStatus: (id: string, status: TicketStatus, resolution?: string) => void;
   initialStatusFilter?: string;
 }
 

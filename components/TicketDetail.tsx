@@ -11,7 +11,7 @@ interface TicketDetailProps {
   ticket: Ticket;
   currentUser: User;
   onBack: () => void;
-  onUpdateStatus: (id: string, status: TicketStatus) => void;
+  onUpdateStatus: (id: string, status: TicketStatus, resolution?: string) => void;
   onDelete: (id: string) => void;
   onEdit: (ticket: Ticket) => void;
 }
