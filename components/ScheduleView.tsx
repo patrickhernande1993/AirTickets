@@ -311,106 +311,106 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
       {/* Main layout: Calendar + Side Panel */}
       <div className="flex flex-col xl:flex-row gap-4">
 
-        {/* ── Calendar ── */}
-        <div className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-          {/* Month navigator */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-            <button
-              onClick={() => changeMonth(-1)}
-              className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <h3 className="font-semibold text-slate-800 text-base tracking-tight">
-              {MONTH_NAMES[calendarDate.getMonth()]} {calendarDate.getFullYear()}
-            </h3>
-            <button
-              onClick={() => changeMonth(1)}
-              className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
-            >
-              <ChevronRight size={18} />
-            </button>
+        {/* ── Left Column: Calendar + Selected Day ── */}
+        <div className="flex-1 flex flex-col gap-4">
+          
+          {/* Calendar */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            {/* Month navigator */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <button
+                onClick={() => changeMonth(-1)}
+                className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <h3 className="font-semibold text-slate-800 text-base tracking-tight">
+                {MONTH_NAMES[calendarDate.getMonth()]} {calendarDate.getFullYear()}
+              </h3>
+              <button
+                onClick={() => changeMonth(1)}
+                className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+
+            {/* Weekday headers */}
+            <div className="grid grid-cols-7 px-3 pt-3">
+              {WEEKDAYS.map(d => (
+                <div key={d} className="text-center text-[11px] font-semibold text-slate-400 uppercase tracking-wide pb-2">
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            {/* Day grid */}
+            <div className="grid grid-cols-7 px-3 pb-4 gap-y-1">
+              {calendarDays.map(({ key, date, isCurrentMonth }) => {
+                const dayTickets = calendarMap.get(key) || [];
+                const isToday = key === todayKey;
+                const isSelected = key === selectedDayKey;
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedDayKey(key)}
+                    className={`relative flex flex-col items-center rounded-xl py-1.5 px-0.5 mx-0.5 transition-all duration-150 min-h-[52px] group
+                      ${!isCurrentMonth ? 'opacity-30 pointer-events-none' : ''}
+                      ${isSelected
+                        ? 'bg-primary-600 shadow-md shadow-primary-200'
+                        : isToday
+                          ? 'bg-primary-50 border-2 border-primary-300'
+                          : isWeekend
+                            ? 'hover:bg-slate-50'
+                            : 'hover:bg-slate-50'
+                      }
+                    `}
+                  >
+                    <span className={`text-sm font-semibold leading-none
+                      ${isSelected ? 'text-white' : isToday ? 'text-primary-700' : 'text-slate-700'}
+                    `}>
+                      {date.getDate()}
+                    </span>
+
+                    {/* Ticket badges */}
+                    {dayTickets.length > 0 && (
+                      <div className="flex flex-wrap justify-center gap-0.5 mt-1.5 px-0.5">
+                        {dayTickets.slice(0, 3).map(t => (
+                          <span
+                            key={t.id}
+                            className={`w-1.5 h-1.5 rounded-full flex-shrink-0
+                              ${isSelected ? 'bg-white/80' : PRIORITY_CONFIG[t.priority]?.dot || 'bg-slate-400'}
+                            `}
+                          />
+                        ))}
+                        {dayTickets.length > 3 && (
+                          <span className={`text-[9px] font-bold leading-none ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
+                            +{dayTickets.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap items-center gap-4 px-5 py-3 border-t border-slate-100 bg-slate-50/50">
+              <span className="text-[11px] text-slate-400 font-medium">Prioridade:</span>
+              {Object.entries(PRIORITY_CONFIG).map(([k, v]) => (
+                <div key={k} className="flex items-center gap-1">
+                  <span className={`w-2 h-2 rounded-full ${v.dot}`} />
+                  <span className="text-[11px] text-slate-500">{v.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
-
-          {/* Weekday headers */}
-          <div className="grid grid-cols-7 px-3 pt-3">
-            {WEEKDAYS.map(d => (
-              <div key={d} className="text-center text-[11px] font-semibold text-slate-400 uppercase tracking-wide pb-2">
-                {d}
-              </div>
-            ))}
-          </div>
-
-          {/* Day grid */}
-          <div className="grid grid-cols-7 px-3 pb-4 gap-y-1">
-            {calendarDays.map(({ key, date, isCurrentMonth }) => {
-              const dayTickets = calendarMap.get(key) || [];
-              const isToday = key === todayKey;
-              const isSelected = key === selectedDayKey;
-              const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-
-              return (
-                <button
-                  key={key}
-                  onClick={() => setSelectedDayKey(key)}
-                  className={`relative flex flex-col items-center rounded-xl py-1.5 px-0.5 mx-0.5 transition-all duration-150 min-h-[52px] group
-                    ${!isCurrentMonth ? 'opacity-30 pointer-events-none' : ''}
-                    ${isSelected
-                      ? 'bg-primary-600 shadow-md shadow-primary-200'
-                      : isToday
-                        ? 'bg-primary-50 border-2 border-primary-300'
-                        : isWeekend
-                          ? 'hover:bg-slate-50'
-                          : 'hover:bg-slate-50'
-                    }
-                  `}
-                >
-                  <span className={`text-sm font-semibold leading-none
-                    ${isSelected ? 'text-white' : isToday ? 'text-primary-700' : 'text-slate-700'}
-                  `}>
-                    {date.getDate()}
-                  </span>
-
-                  {/* Ticket badges */}
-                  {dayTickets.length > 0 && (
-                    <div className="flex flex-wrap justify-center gap-0.5 mt-1.5 px-0.5">
-                      {dayTickets.slice(0, 3).map(t => (
-                        <span
-                          key={t.id}
-                          className={`w-1.5 h-1.5 rounded-full flex-shrink-0
-                            ${isSelected ? 'bg-white/80' : PRIORITY_CONFIG[t.priority]?.dot || 'bg-slate-400'}
-                          `}
-                        />
-                      ))}
-                      {dayTickets.length > 3 && (
-                        <span className={`text-[9px] font-bold leading-none ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
-                          +{dayTickets.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Legend */}
-          <div className="flex flex-wrap items-center gap-4 px-5 py-3 border-t border-slate-100 bg-slate-50/50">
-            <span className="text-[11px] text-slate-400 font-medium">Prioridade:</span>
-            {Object.entries(PRIORITY_CONFIG).map(([k, v]) => (
-              <div key={k} className="flex items-center gap-1">
-                <span className={`w-2 h-2 rounded-full ${v.dot}`} />
-                <span className="text-[11px] text-slate-500">{v.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Side Panel ── */}
-        <div className="xl:w-96 flex flex-col gap-3">
 
           {/* Selected Day Panel */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex-1">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50">
               <div className="flex items-center gap-2">
                 <CalendarDays size={16} className="text-primary-600" />
@@ -427,13 +427,13 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               </span>
             </div>
 
-            <div className="p-3 flex flex-col gap-2 min-h-[120px] max-h-80 overflow-y-auto">
+            <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3 min-h-[120px] max-h-[400px] overflow-y-auto">
               {selectedDayTickets.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="col-span-full flex flex-col items-center justify-center py-8 text-center">
                   <CalendarDays size={32} className="text-slate-300 mb-2" />
                   <p className="text-sm text-slate-400 font-medium">Nenhum chamado agendado</p>
                   {isAdmin && (
-                    <p className="text-xs text-slate-400 mt-1">Adicione chamados abaixo usando o botão <strong>Agendar</strong></p>
+                    <p className="text-xs text-slate-400 mt-1">Adicione chamados à direita usando o botão <strong>Agendar</strong></p>
                   )}
                 </div>
               ) : (
@@ -451,6 +451,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               )}
             </div>
           </div>
+        </div>
+
+        {/* ── Side Panel ── */}
+        <div className="xl:w-96 flex flex-col gap-3">
+
+
 
           {/* Pool Panel (Admin only: unscheduled open tickets) */}
           {isAdmin && (
