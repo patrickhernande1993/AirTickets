@@ -176,7 +176,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
               {/* Action Button Integrated */}
               <button 
                 onClick={onCreateTicket}
-                className="flex items-center justify-center space-x-2 px-6 py-3 bg-primary-600 text-white rounded-sm hover:bg-primary-700 transition-colors font-bold shadow-sm w-full sm:w-auto uppercase tracking-widest text-xs"
+                className="flex items-center justify-center space-x-2 px-6 py-3 bg-primary-600 text-white rounded-none hover:bg-primary-700 transition-colors font-bold shadow-sm w-full sm:w-auto uppercase tracking-widest text-xs"
               >
                   <Plus size={18} />
                   <span>Novo Chamado</span>

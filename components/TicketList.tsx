@@ -188,19 +188,19 @@ export const TicketList: React.FC<TicketListProps> = ({
     switch(s) {
       case TicketStatus.RESOLVED: 
           return (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-bold bg-green-50 text-green-700 border border-green-200 uppercase tracking-tight whitespace-nowrap">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-bold bg-green-50 text-green-700 border border-green-200 uppercase tracking-tight whitespace-nowrap">
                 <CheckCircle size={10} className="mr-1" /> Resolvido
             </span>
           );
       case TicketStatus.IN_PROGRESS: 
           return (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 uppercase tracking-tight whitespace-nowrap">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 uppercase tracking-tight whitespace-nowrap">
                 <Clock size={10} className="mr-1" /> Em Progresso
             </span>
           );
       default: 
           return (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-tight whitespace-nowrap">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-tight whitespace-nowrap">
                 <AlertCircle size={10} className="mr-1" /> Aberto
             </span>
           );
@@ -217,7 +217,7 @@ export const TicketList: React.FC<TicketListProps> = ({
         case TicketPriority.CRITICAL: colorClass = 'bg-red-50 text-red-700 border-red-200'; label = 'Crítica'; break;
         default: colorClass = 'bg-slate-50 text-slate-700'; label = p;
     }
-    return <span className={`px-1.5 py-0.5 rounded-sm border text-[10px] font-bold uppercase tracking-tighter ${colorClass}`}>{label}</span>;
+    return <span className={`px-1.5 py-0.5 rounded-none border text-[10px] font-bold uppercase tracking-tighter ${colorClass}`}>{label}</span>;
   };
 
   const formatDate = (date?: Date) => {
@@ -235,7 +235,7 @@ export const TicketList: React.FC<TicketListProps> = ({
   return (
     <div className="space-y-6">
       {/* Header Actions & Filters */}
-      <div className="bg-white p-4 rounded-sm border border-slate-200 space-y-4">
+      <div className="bg-white p-4 rounded-none border border-slate-200 space-y-4">
           <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
              <div className="relative flex-1 w-full">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -244,23 +244,23 @@ export const TicketList: React.FC<TicketListProps> = ({
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
                     placeholder="Buscar por ID, assunto ou descrição..." 
-                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-sm text-sm focus:ring-1 focus:ring-primary-500 outline-none"
+                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-none text-sm focus:ring-1 focus:ring-primary-500 outline-none"
                 />
              </div>
              
              <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
                  {/* View Toggle */}
-                 <div className="flex bg-slate-100 p-1 rounded-sm border border-slate-200">
+                 <div className="flex bg-slate-100 p-1 rounded-none border border-slate-200">
                     <button
                         onClick={() => setViewMode('list')}
-                        className={`p-1.5 rounded-sm transition-all ${viewMode === 'list' ? 'bg-white border border-slate-200 shadow-sm text-primary-600' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`p-1.5 rounded-none transition-all ${viewMode === 'list' ? 'bg-white border border-slate-200 shadow-sm text-primary-600' : 'text-slate-500 hover:text-slate-700'}`}
                         title="Visualização em Lista"
                     >
                         <LayoutList size={18} />
                     </button>
                     <button
                         onClick={() => setViewMode('kanban')}
-                        className={`p-1.5 rounded-sm transition-all ${viewMode === 'kanban' ? 'bg-white border border-slate-200 shadow-sm text-primary-600' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`p-1.5 rounded-none transition-all ${viewMode === 'kanban' ? 'bg-white border border-slate-200 shadow-sm text-primary-600' : 'text-slate-500 hover:text-slate-700'}`}
                         title="Visualização em Kanban"
                     >
                         <KanbanSquare size={18} />
@@ -269,7 +269,7 @@ export const TicketList: React.FC<TicketListProps> = ({
 
                  <button 
                     onClick={handleExportXLSX}
-                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-sm hover:bg-slate-50 transition-colors text-sm font-medium whitespace-nowrap"
+                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-none hover:bg-slate-50 transition-colors text-sm font-medium whitespace-nowrap"
                     title="Exportar dados filtrados para Excel"
                  >
                     <FileSpreadsheet size={18} />
@@ -277,7 +277,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                  </button>
                  <button 
                     onClick={onCreateTicket}
-                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-5 py-2 bg-primary-600 text-white rounded-sm hover:bg-primary-700 transition-colors text-sm font-medium whitespace-nowrap"
+                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-5 py-2 bg-primary-600 text-white rounded-none hover:bg-primary-700 transition-colors text-sm font-medium whitespace-nowrap"
                 >
                     <Plus size={18} />
                     <span>Novo Chamado</span>

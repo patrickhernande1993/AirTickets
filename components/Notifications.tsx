@@ -130,7 +130,7 @@ export const Notifications: React.FC<NotificationsProps> = ({ currentUser, onSel
         {notifications.length > 0 && notifications.some(n => !n.isRead) && (
             <button 
                 onClick={handleMarkAllAsRead}
-                className="text-sm font-medium text-primary-600 hover:text-primary-800 hover:bg-primary-50 px-3 py-1.5 rounded-lg transition-colors flex items-center"
+                className="text-sm font-medium text-primary-600 hover:text-primary-800 hover:bg-primary-50 px-3 py-1.5 rounded-none transition-colors flex items-center"
             >
                 <CheckCheck size={16} className="mr-1" />
                 Marcar todas como lidas
@@ -138,10 +138,10 @@ export const Notifications: React.FC<NotificationsProps> = ({ currentUser, onSel
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-none border border-gray-200 shadow-sm overflow-hidden">
         {notifications.length === 0 ? (
           <div className="p-12 text-center text-gray-500">
-            <div className="bg-gray-100 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
+            <div className="bg-gray-100 rounded-none h-16 w-16 flex items-center justify-center mx-auto mb-4">
                 <Bell size={24} className="text-gray-400" />
             </div>
             <p>Você não tem notificações.</p>
@@ -160,7 +160,7 @@ export const Notifications: React.FC<NotificationsProps> = ({ currentUser, onSel
                   >
                     <div className="flex items-center mb-1 flex-wrap gap-2">
                         {!notification.isRead && (
-                            <span className="h-2 w-2 bg-blue-600 rounded-full flex-shrink-0" title="Não lida"></span>
+                            <span className="h-2 w-2 bg-blue-600 rounded-none flex-shrink-0" title="Não lida"></span>
                         )}
                         <h4 className={`text-sm font-medium ${!notification.isRead ? 'text-blue-900' : 'text-gray-900'}`}>
                         {notification.title}
@@ -178,7 +178,7 @@ export const Notifications: React.FC<NotificationsProps> = ({ currentUser, onSel
                     {!notification.isRead && (
                         <button 
                             onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notification.id); }}
-                            className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-white transition-colors"
+                            className="p-2 text-gray-400 hover:text-blue-600 rounded-none hover:bg-white transition-colors"
                             title="Marcar como lida"
                         >
                             <Check size={16} />
@@ -186,7 +186,7 @@ export const Notifications: React.FC<NotificationsProps> = ({ currentUser, onSel
                     )}
                     <button 
                         onClick={(e) => { e.stopPropagation(); handleDelete(notification.id); }}
-                        className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-white transition-colors"
+                        className="p-2 text-gray-400 hover:text-red-600 rounded-none hover:bg-white transition-colors"
                         title="Excluir notificação"
                     >
                         <Trash2 size={16} />

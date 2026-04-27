@@ -29,7 +29,7 @@ export const Toast: React.FC<ToastProps> = ({ message, type, isVisible, onClose 
           initial={{ opacity: 0, y: 50, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-          className="fixed bottom-6 right-6 z-50 flex items-center p-4 rounded-lg shadow-2xl min-w-[300px] border border-white/20 backdrop-blur-md"
+          className="fixed bottom-6 right-6 z-50 flex items-center p-4 rounded-none shadow-2xl min-w-[300px] border border-white/20 backdrop-blur-md"
           style={{
             backgroundColor: type === 'success' ? 'rgba(16, 185, 129, 0.9)' : 'rgba(239, 68, 68, 0.9)',
             color: 'white'
@@ -47,7 +47,7 @@ export const Toast: React.FC<ToastProps> = ({ message, type, isVisible, onClose 
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-white/20 rounded-full transition-colors"
+            className="p-1 hover:bg-white/20 rounded-none transition-colors"
           >
             <X size={18} />
           </button>
