@@ -475,7 +475,8 @@ const App: React.FC = () => {
                     ...t,
                     status,
                     resolvedAt: updates.resolved_at ? new Date(updates.resolved_at) : t.resolvedAt,
-                    updatedAt: new Date() // Optimistic update for Last Update
+                    updatedAt: new Date(), // Optimistic update for Last Update
+                    resolution: updates.resolution || t.resolution
                 };
             }
             return t;
@@ -486,7 +487,8 @@ const App: React.FC = () => {
                 ...selectedTicket, 
                 status,
                 resolvedAt: updates.resolved_at ? new Date(updates.resolved_at) : selectedTicket.resolvedAt,
-                updatedAt: new Date()
+                updatedAt: new Date(),
+                resolution: updates.resolution || selectedTicket.resolution
             };
             setSelectedTicket(updatedTicket);
             
