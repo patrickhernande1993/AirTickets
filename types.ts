@@ -38,6 +38,7 @@ export interface Ticket {
   resolvedAt?: Date; // Data de resolução
   attachments?: string[]; // URLs dos arquivos anexados
   scheduledDate?: Date; // Data agendada para atendimento
+  resolution?: string; // Texto da resolução do chamado
 }
 
 export interface Comment {

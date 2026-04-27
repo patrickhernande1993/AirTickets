@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Ticket, TicketStatus, TicketPriority, User as AppUser } from '../types';
 import { supabase } from '../services/supabase';
+import { ResolutionModal } from './ResolutionModal';
 
 interface ScheduleViewProps {
   tickets: Ticket[];
@@ -13,6 +14,7 @@ interface ScheduleViewProps {
   onRefresh: () => Promise<void>;
   showToast: (message: string, type?: 'success' | 'error') => void;
   onSelectTicket: (ticket: Ticket) => void;
+  onUpdateStatus: (id: string, status: TicketStatus, resolution?: string) => Promise<void>;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -139,7 +141,12 @@ const TicketCard: React.FC<{
   );
 };
 
-const TicketModal: React.FC<{ ticket: Ticket; onClose: () => void; isAdmin: boolean }> = ({ ticket, onClose, isAdmin }) => {
+const TicketModal: React.FC<{ 
+  ticket: Ticket; 
+  onClose: () => void; 
+  isAdmin: boolean;
+  onStatusChange: (status: TicketStatus) => void;
+}> = ({ ticket, onClose, isAdmin, onStatusChange }) => {
   const p = PRIORITY_CONFIG[ticket.priority];
   const s = STATUS_CONFIG[ticket.status];
   const StatusIcon = s.icon;
@@ -225,6 +232,15 @@ const TicketModal: React.FC<{ ticket: Ticket; onClose: () => void; isAdmin: bool
               Dica: Clique no botão azul para ver o histórico completo e interagir.
            </p>
            <div className="flex gap-2">
+             {isAdmin && ticket.status !== TicketStatus.RESOLVED && (
+               <button
+                 onClick={() => onStatusChange(TicketStatus.RESOLVED)}
+                 className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-none font-bold hover:bg-green-700 transition-colors text-sm shadow-md shadow-green-100"
+               >
+                 <CheckCircle size={16} />
+                 Resolvido
+               </button>
+             )}
              <button 
                 onClick={onClose}
                 className="px-5 py-2.5 bg-white border border-slate-200 rounded-none font-bold text-slate-600 hover:bg-slate-100 transition-colors text-sm shadow-sm"
@@ -246,6 +262,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   onRefresh,
   showToast,
   onSelectTicket,
+  onUpdateStatus,
 }) => {
   const isAdmin = currentUser.role === 'ADMIN';
   const today = useMemo(() => new Date(), []);
@@ -255,6 +272,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   const [selectedDayKey, setSelectedDayKey] = useState<string>(todayKey);
   const [saving, setSaving] = useState<string | null>(null); // ticket id being saved
   const [modalTicket, setModalTicket] = useState<Ticket | null>(null);
+  const [isResolutionModalOpen, setIsResolutionModalOpen] = useState(false);
 
   // Filter tickets visible to this user
   const visibleTickets = useMemo(() => {
@@ -628,6 +646,27 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
           ticket={modalTicket} 
           onClose={() => setModalTicket(null)} 
           isAdmin={isAdmin}
+          onStatusChange={(status) => {
+            if (status === TicketStatus.RESOLVED) {
+              setIsResolutionModalOpen(true);
+            } else {
+              onUpdateStatus(modalTicket.id, status);
+            }
+          }}
+        />
+      )}
+
+      {/* Resolution Modal */}
+      {modalTicket && (
+        <ResolutionModal
+          isOpen={isResolutionModalOpen}
+          onClose={() => setIsResolutionModalOpen(false)}
+          onConfirm={(resolution) => {
+            onUpdateStatus(modalTicket.id, TicketStatus.RESOLVED, resolution);
+            setIsResolutionModalOpen(false);
+            setModalTicket(null); // Close main modal too after resolving
+          }}
+          ticketNumber={modalTicket.ticketNumber}
         />
       )}
     </div>

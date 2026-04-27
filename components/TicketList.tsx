@@ -4,6 +4,7 @@ import { Ticket, TicketPriority, TicketStatus } from '../types';
 import { AlertCircle, CheckCircle, Clock, Search, Plus, Filter, ArrowUpDown, FileSpreadsheet, LayoutList, KanbanSquare } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { TicketKanban } from './TicketKanban';
+import { ResolutionModal } from './ResolutionModal';
 
 interface TicketListProps {
   tickets: Ticket[];
@@ -20,6 +21,9 @@ export const TicketList: React.FC<TicketListProps> = ({
   onUpdateStatus,
   initialStatusFilter = 'ALL'
 }) => {
+  // Modal State
+  const [isResolutionModalOpen, setIsResolutionModalOpen] = useState(false);
+  const [ticketToResolve, setTicketToResolve] = useState<Ticket | null>(null);
   
   // View Mode
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
@@ -365,7 +369,17 @@ export const TicketList: React.FC<TicketListProps> = ({
           <TicketKanban 
             tickets={filteredTickets} 
             onSelectTicket={onSelectTicket}
-            onUpdateStatus={onUpdateStatus}
+            onUpdateStatus={(id, status) => {
+                if (status === TicketStatus.RESOLVED) {
+                    const ticket = tickets.find(t => t.id === id);
+                    if (ticket) {
+                        setTicketToResolve(ticket);
+                        setIsResolutionModalOpen(true);
+                    }
+                } else {
+                    onUpdateStatus(id, status);
+                }
+            }}
           />
       ) : (
         <div className="bg-white rounded-none border border-slate-200 overflow-hidden shadow-sm">
@@ -457,6 +471,21 @@ export const TicketList: React.FC<TicketListProps> = ({
                 )}
             </div>
         </div>
+      )}
+      {ticketToResolve && (
+        <ResolutionModal
+            isOpen={isResolutionModalOpen}
+            onClose={() => {
+                setIsResolutionModalOpen(false);
+                setTicketToResolve(null);
+            }}
+            onConfirm={(resolution) => {
+                onUpdateStatus(ticketToResolve.id, TicketStatus.RESOLVED, resolution);
+                setIsResolutionModalOpen(false);
+                setTicketToResolve(null);
+            }}
+            ticketNumber={ticketToResolve.ticketNumber}
+        />
       )}
     </div>
   );

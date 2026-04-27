@@ -215,6 +215,7 @@ const App: React.FC = () => {
               resolvedAt: t.resolved_at ? new Date(t.resolved_at) : undefined,
               attachments: t.attachments || [],
               scheduledDate: t.scheduled_date ? new Date(t.scheduled_date + 'T12:00:00') : undefined,
+              resolution: t.resolution,
           }));
 
           setTickets(formattedTickets);
@@ -275,7 +276,8 @@ const App: React.FC = () => {
                             to: profile.email,
                             ticketNumber: ticketToEdit.ticketNumber,
                             title: newTicketData.title,
-                            requesterName: profile.name || newTicketData.requester
+                            requesterName: profile.name || newTicketData.requester,
+                            resolution: newTicketData.resolution
                         });
                     }
                 } catch (emailError) {
@@ -435,16 +437,17 @@ const App: React.FC = () => {
       setCurrentView('EDIT_TICKET');
   };
 
-  const handleUpdateStatus = async (id: string, status: TicketStatus) => {
+  const handleUpdateStatus = async (id: string, status: TicketStatus, resolution?: string) => {
     if (!currentUser) return;
-
+    
     try {
         // Prepare update data
         const updates: any = { status };
         
-        // Logic for Resolved Date
+        // Logic for Resolved Date and Resolution Text
         if (status === TicketStatus.RESOLVED) {
             updates.resolved_at = new Date().toISOString();
+            if (resolution) updates.resolution = resolution;
         } else {
             // If reopening, maybe clear resolved_at? 
             // updates.resolved_at = null; // Optional: Uncomment if reopening should clear the date
@@ -521,7 +524,8 @@ const App: React.FC = () => {
                         to: prof.email,
                         ticketNumber: ticketData.ticket_number,
                         title: ticketData.title,
-                        requesterName: prof.name || 'Usuário'
+                        requesterName: prof.name || 'Usuário',
+                        resolution: resolution
                     });
                 }
             } catch (emailError) {
@@ -578,6 +582,7 @@ const App: React.FC = () => {
             onRefresh={fetchTickets}
             showToast={showToast}
             onSelectTicket={handleSelectTicket}
+            onUpdateStatus={handleUpdateStatus}
           />
         );
       case 'MY_TICKETS':

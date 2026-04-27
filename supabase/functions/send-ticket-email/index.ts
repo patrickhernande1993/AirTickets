@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { to, cc, ticketNumber, title, requesterName, type = 'opened' } = await req.json()
+    const { to, cc, ticketNumber, title, requesterName, type = 'opened', resolution } = await req.json()
 
     // Credenciais do Azure AD vinda dos Secrets
     const AZURE_TENANT_ID = Deno.env.get('AZURE_TENANT_ID')
@@ -73,6 +73,12 @@ serve(async (req) => {
                 <p style="margin: 15px 0 0 0; font-size: 14px; color: #64748b;">Assunto:</p>
                 <p style="margin: 5px 0 0 0; font-size: 16px; color: #1e293b;">${title}</p>
               </div>
+              ${isResolved && resolution ? `
+              <div style="background-color: #f0fdf4; padding: 15px; border-left: 4px solid #10b981; margin: 20px 0;">
+                <p style="margin: 0; font-size: 12px; font-weight: bold; color: #15803d; text-transform: uppercase; letter-spacing: 0.05em;">Resolução:</p>
+                <p style="margin: 8px 0 0 0; font-size: 14px; color: #166534; line-height: 1.5; white-space: pre-wrap;">${resolution}</p>
+              </div>
+              ` : ''}
               ${isResolved ? '<p>Esperamos ter ajudado! Se houver algo mais, estamos à disposição.</p>' : '<p>Nossa equipe técnica já foi notificada.</p>'}
               <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;">
               <p style="font-size: 12px; color: #94a3b8; text-align: center;">Enviado via Microsoft Graph API.</p>

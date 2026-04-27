@@ -4,6 +4,7 @@ import { Ticket, TicketStatus, User, Comment, AuditLog } from '../types';
 import { ArrowLeft, CheckCircle, Clock, User as UserIcon, Calendar, Tag, Trash2, Edit, Send, MessageSquare, FileText, Paperclip, Loader2, X } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ConfirmationModal } from './ConfirmationModal';
+import { ResolutionModal } from './ResolutionModal';
 import { v4 as uuidv4 } from 'uuid';
 
 interface TicketDetailProps {
@@ -32,6 +33,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
 
   // Modal State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isResolutionModalOpen, setIsResolutionModalOpen] = useState(false);
 
   const isAdmin = currentUser.role === 'ADMIN';
   const isOwner = currentUser.id === ticket.requesterId;
@@ -366,6 +368,16 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             isDanger={true}
         />
 
+        <ResolutionModal
+            isOpen={isResolutionModalOpen}
+            onClose={() => setIsResolutionModalOpen(false)}
+            onConfirm={(resolution) => {
+                onUpdateStatus(ticket.id, TicketStatus.RESOLVED, resolution);
+                setIsResolutionModalOpen(false);
+            }}
+            ticketNumber={ticket.ticketNumber}
+        />
+
         <div className="mt-6 flex flex-wrap gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
             <div className="flex items-center">
                 <UserIcon size={14} className="mr-2 text-slate-400" />
@@ -395,6 +407,15 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Descrição do Problema</h3>
             <p className="text-slate-700 whitespace-pre-wrap leading-relaxed text-sm font-medium">{ticket.description}</p>
         </div>
+
+        {ticket.resolution && (
+            <div className="mt-4 p-4 bg-green-50 rounded-none border border-green-200">
+                <h3 className="text-[10px] font-bold text-green-700 uppercase tracking-widest mb-2 flex items-center">
+                    <CheckCircle size={14} className="mr-1" /> Resolução do Chamado
+                </h3>
+                <p className="text-green-800 whitespace-pre-wrap leading-relaxed text-sm font-medium">{ticket.resolution}</p>
+            </div>
+        )}
 
         {/* Attachments View */}
         {ticket.attachments && ticket.attachments.length > 0 && (
@@ -427,7 +448,13 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                     {[TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED].map((status) => (
                         <button
                             key={status}
-                            onClick={() => onUpdateStatus(ticket.id, status)}
+                            onClick={() => {
+                                if (status === TicketStatus.RESOLVED) {
+                                    setIsResolutionModalOpen(true);
+                                } else {
+                                    onUpdateStatus(ticket.id, status);
+                                }
+                            }}
                             className={`px-3 py-1.5 rounded-none text-[10px] font-bold uppercase tracking-widest transition-all ${
                                 ticket.status === status 
                                 ? 'bg-white text-primary-600 border border-slate-200 shadow-sm' 

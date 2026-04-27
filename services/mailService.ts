@@ -8,6 +8,7 @@ interface SendTicketEmailParams {
   title: string;
   requesterName: string;
   type?: 'opened' | 'resolved';
+  resolution?: string;
 }
 
 export const sendTicketOpeningEmail = async (params: SendTicketEmailParams) => {
@@ -18,11 +19,11 @@ export const sendTicketResolvedEmail = async (params: SendTicketEmailParams) => 
   return sendTicketEmail({ ...params, type: 'resolved' });
 };
 
-const sendTicketEmail = async ({ to, cc, ticketNumber, title, requesterName, type }: SendTicketEmailParams) => {
+const sendTicketEmail = async ({ to, cc, ticketNumber, title, requesterName, type, resolution }: SendTicketEmailParams) => {
   try {
     console.log(`Invocando Edge Function para e-mail (${type}):`, { to, cc, ticketNumber, title });
     const { data, error } = await supabase.functions.invoke('send-ticket-email', {
-      body: { to, cc, ticketNumber, title, requesterName, type },
+      body: { to, cc, ticketNumber, title, requesterName, type, resolution },
     });
 
     if (error) {
