@@ -69,6 +69,7 @@ const TicketCard: React.FC<{
 
   return (
     <div
+      onClick={() => onView(ticket)}
       className={`group relative border rounded-xl transition-all duration-200 hover:shadow-md cursor-pointer ${
         isResolved
           ? 'bg-green-50/50 border-green-200 shadow-sm'
@@ -111,13 +112,6 @@ const TicketCard: React.FC<{
         </div>
         {/* Action Buttons */}
         <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 z-20">
-          <button
-            onClick={(e) => { e.stopPropagation(); onView(ticket); }}
-            title="Ver chamado"
-            className="p-1 rounded-lg text-slate-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
-          >
-            <ArrowRight size={14} />
-          </button>
           {isAdmin && !isScheduled && onSchedule && (
             <button
               onClick={(e) => { e.stopPropagation(); onSchedule(ticket); }}
@@ -136,11 +130,113 @@ const TicketCard: React.FC<{
               <X size={14} />
             </button>
           )}
+          <div className="p-1 rounded-lg text-slate-400 group-hover:text-primary-600 transition-colors">
+            <ArrowRight size={14} />
+          </div>
         </div>
       </div>
     </div>
   );
 };
+
+const TicketModal: React.FC<{ ticket: Ticket; onClose: () => void; isAdmin: boolean }> = ({ ticket, onClose, isAdmin }) => {
+  const p = PRIORITY_CONFIG[ticket.priority];
+  const s = STATUS_CONFIG[ticket.status];
+  const StatusIcon = s.icon;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
+      <div 
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-6 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
+          <div>
+             <div className="flex items-center gap-2 mb-1">
+               <span className="text-xs font-mono text-slate-400 font-bold">#{ticket.ticketNumber}</span>
+               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${p?.badge}`}>
+                 {p?.label}
+               </span>
+             </div>
+             <h2 className="text-xl font-bold text-slate-900">{ticket.title}</h2>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400 hover:text-slate-600 bg-slate-100"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Solicitante</p>
+                 <div className="flex items-center gap-2.5 text-sm font-semibold text-slate-700">
+                    <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600">
+                       <User size={16} />
+                    </div>
+                    {ticket.requester}
+                 </div>
+              </div>
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Status do Atendimento</p>
+                 <div className="flex items-center gap-2.5 text-sm font-semibold">
+                    <div className={`w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm ${s.color}`}>
+                       <StatusIcon size={16} />
+                    </div>
+                    <span className={s.color}>{s.label}</span>
+                 </div>
+              </div>
+           </div>
+           
+           <div className="space-y-2">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Descrição do Problema</p>
+              <div className="bg-slate-50 rounded-2xl p-5 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-medium border border-slate-100">
+                 {ticket.description}
+              </div>
+           </div>
+
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {ticket.category && (
+                <div className="space-y-1 px-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Categoria</p>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                     <Tag size={14} className="text-slate-400" />
+                     {ticket.category}
+                  </div>
+                </div>
+              )}
+              <div className="space-y-1 px-1">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Data de Abertura</p>
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                   <Calendar size={14} className="text-slate-400" />
+                   {ticket.createdAt.toLocaleDateString('pt-BR')} às {ticket.createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+           </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
+           <p className="text-[10px] text-slate-400 font-medium">
+              Dica: Clique no botão azul para ver o histórico completo e interagir.
+           </p>
+           <div className="flex gap-2">
+             <button 
+                onClick={onClose}
+                className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors text-sm shadow-sm"
+             >
+                Fechar
+             </button>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
@@ -158,6 +254,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   const [calendarDate, setCalendarDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDayKey, setSelectedDayKey] = useState<string>(todayKey);
   const [saving, setSaving] = useState<string | null>(null); // ticket id being saved
+  const [modalTicket, setModalTicket] = useState<Ticket | null>(null);
 
   // Filter tickets visible to this user
   const visibleTickets = useMemo(() => {
@@ -452,7 +549,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                       ticket={ticket}
                       isScheduled
                       onUnschedule={isAdmin ? handleUnschedule : undefined}
-                      onView={onSelectTicket}
+                      onView={(t) => setModalTicket(t)}
                       isAdmin={isAdmin}
                     />
                   </div>
@@ -492,7 +589,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                       <TicketCard
                         ticket={ticket}
                         onSchedule={handleSchedule}
-                        onView={onSelectTicket}
+                        onView={(t) => setModalTicket(t)}
                         isAdmin={isAdmin}
                         compact
                       />
@@ -524,6 +621,15 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* Ticket Modal */}
+      {modalTicket && (
+        <TicketModal 
+          ticket={modalTicket} 
+          onClose={() => setModalTicket(null)} 
+          isAdmin={isAdmin}
+        />
+      )}
     </div>
   );
 };
