@@ -95,7 +95,7 @@ export const TopNav: React.FC<TopNavProps> = ({ currentView, onChangeView, curre
             >
               <Bell size={20} />
               {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 block h-4 w-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white">
+                <span className="absolute top-1.5 right-1.5 block h-4 w-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-none border-2 border-white">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -166,7 +166,7 @@ export const TopNav: React.FC<TopNavProps> = ({ currentView, onChangeView, curre
                 Notificações
               </div>
               {unreadCount > 0 && (
-                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-none">
                   {unreadCount}
                 </span>
               )}

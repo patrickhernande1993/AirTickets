@@ -50,7 +50,7 @@ const STATUS_CONFIG: Record<TicketStatus, { label: string; icon: React.ElementTy
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
 const PriorityDot: React.FC<{ priority: TicketPriority }> = ({ priority }) => (
-  <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_CONFIG[priority]?.dot || 'bg-gray-400'}`} />
+  <span className={`inline-block w-2 h-2 rounded-none flex-shrink-0 ${PRIORITY_CONFIG[priority]?.dot || 'bg-gray-400'}`} />
 );
 
 const TicketCard: React.FC<{
@@ -70,7 +70,7 @@ const TicketCard: React.FC<{
   return (
     <div
       onClick={() => onView(ticket)}
-      className={`group relative border rounded-xl transition-all duration-200 hover:shadow-md cursor-pointer ${
+      className={`group relative border rounded-none transition-all duration-200 hover:shadow-md cursor-pointer ${
         isResolved
           ? 'bg-green-50/50 border-green-200 shadow-sm'
           : isScheduled
@@ -79,7 +79,7 @@ const TicketCard: React.FC<{
       } ${compact ? 'p-2.5' : 'p-3.5'}`}
     >
       {isResolved && (
-        <div className="absolute top-2 right-10 flex items-center gap-1 bg-green-100 text-green-700 text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-green-200 z-10">
+        <div className="absolute top-2 right-10 flex items-center gap-1 bg-green-100 text-green-700 text-[9px] font-bold px-1.5 py-0.5 rounded-none border border-green-200 z-10">
           <CheckCircle size={10} />
           RESOLVIDO
         </div>
@@ -89,7 +89,7 @@ const TicketCard: React.FC<{
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
             <span className="text-xs font-mono text-slate-400">#{ticket.ticketNumber}</span>
-            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${p?.badge}`}>
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-none border ${p?.badge}`}>
               {p?.label}
             </span>
           </div>
@@ -116,7 +116,7 @@ const TicketCard: React.FC<{
             <button
               onClick={(e) => { e.stopPropagation(); onSchedule(ticket); }}
               title="Agendar para este dia"
-              className="p-1 rounded-lg text-slate-400 hover:text-green-600 hover:bg-green-50 transition-colors"
+              className="p-1 rounded-none text-slate-400 hover:text-green-600 hover:bg-green-50 transition-colors"
             >
               <CalendarDays size={14} />
             </button>
@@ -125,12 +125,12 @@ const TicketCard: React.FC<{
             <button
               onClick={(e) => { e.stopPropagation(); onUnschedule(ticket); }}
               title="Remover do calendário"
-              className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+              className="p-1 rounded-none text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
             >
               <X size={14} />
             </button>
           )}
-          <div className="p-1 rounded-lg text-slate-400 group-hover:text-primary-600 transition-colors">
+          <div className="p-1 rounded-none text-slate-400 group-hover:text-primary-600 transition-colors">
             <ArrowRight size={14} />
           </div>
         </div>
@@ -147,7 +147,7 @@ const TicketModal: React.FC<{ ticket: Ticket; onClose: () => void; isAdmin: bool
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
       <div 
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
+        className="bg-white rounded-none shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -155,7 +155,7 @@ const TicketModal: React.FC<{ ticket: Ticket; onClose: () => void; isAdmin: bool
           <div>
              <div className="flex items-center gap-2 mb-1">
                <span className="text-xs font-mono text-slate-400 font-bold">#{ticket.ticketNumber}</span>
-               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${p?.badge}`}>
+               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-none border ${p?.badge}`}>
                  {p?.label}
                </span>
              </div>
@@ -163,7 +163,7 @@ const TicketModal: React.FC<{ ticket: Ticket; onClose: () => void; isAdmin: bool
           </div>
           <button 
             onClick={onClose}
-            className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400 hover:text-slate-600 bg-slate-100"
+            className="p-2 hover:bg-slate-200 rounded-none transition-colors text-slate-400 hover:text-slate-600 bg-slate-100"
           >
             <X size={20} />
           </button>
@@ -172,19 +172,19 @@ const TicketModal: React.FC<{ ticket: Ticket; onClose: () => void; isAdmin: bool
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+              <div className="bg-slate-50 rounded-none p-4 border border-slate-100">
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Solicitante</p>
                  <div className="flex items-center gap-2.5 text-sm font-semibold text-slate-700">
-                    <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600">
+                    <div className="w-8 h-8 rounded-none bg-primary-100 flex items-center justify-center text-primary-600">
                        <User size={16} />
                     </div>
                     {ticket.requester}
                  </div>
               </div>
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+              <div className="bg-slate-50 rounded-none p-4 border border-slate-100">
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Status do Atendimento</p>
                  <div className="flex items-center gap-2.5 text-sm font-semibold">
-                    <div className={`w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm ${s.color}`}>
+                    <div className={`w-8 h-8 rounded-none bg-white border border-slate-200 flex items-center justify-center shadow-sm ${s.color}`}>
                        <StatusIcon size={16} />
                     </div>
                     <span className={s.color}>{s.label}</span>
@@ -194,7 +194,7 @@ const TicketModal: React.FC<{ ticket: Ticket; onClose: () => void; isAdmin: bool
            
            <div className="space-y-2">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Descrição do Problema</p>
-              <div className="bg-slate-50 rounded-2xl p-5 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-medium border border-slate-100">
+              <div className="bg-slate-50 rounded-none p-5 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-medium border border-slate-100">
                  {ticket.description}
               </div>
            </div>
@@ -227,7 +227,7 @@ const TicketModal: React.FC<{ ticket: Ticket; onClose: () => void; isAdmin: bool
            <div className="flex gap-2">
              <button 
                 onClick={onClose}
-                className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors text-sm shadow-sm"
+                className="px-5 py-2.5 bg-white border border-slate-200 rounded-none font-bold text-slate-600 hover:bg-slate-100 transition-colors text-sm shadow-sm"
              >
                 Fechar
              </button>
@@ -406,7 +406,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               : 'Veja quando seus chamados serão atendidos'}
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+        <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-none px-3 py-2">
           <Info size={14} className="text-primary-500 flex-shrink-0" />
           {isAdmin
             ? 'Clique num dia e depois em "+ Agendar" para programar um chamado'
@@ -421,12 +421,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         <div className="flex-1 flex flex-col gap-4">
           
           {/* Calendar */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-none shadow-sm overflow-hidden">
             {/* Month navigator */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <button
                 onClick={() => changeMonth(-1)}
-                className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                className="p-2 rounded-none text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
               >
                 <ChevronLeft size={18} />
               </button>
@@ -435,7 +435,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               </h3>
               <button
                 onClick={() => changeMonth(1)}
-                className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                className="p-2 rounded-none text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
               >
                 <ChevronRight size={18} />
               </button>
@@ -462,7 +462,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                   <button
                     key={key}
                     onClick={() => setSelectedDayKey(key)}
-                    className={`relative flex flex-col items-center rounded-xl py-1.5 px-0.5 mx-0.5 transition-all duration-150 min-h-[52px] group
+                    className={`relative flex flex-col items-center rounded-none py-1.5 px-0.5 mx-0.5 transition-all duration-150 min-h-[52px] group
                       ${!isCurrentMonth ? 'opacity-30 pointer-events-none' : ''}
                       ${isSelected
                         ? 'bg-primary-600 shadow-md shadow-primary-200'
@@ -486,7 +486,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                         {dayTickets.slice(0, 3).map(t => (
                           <span
                             key={t.id}
-                            className={`w-1.5 h-1.5 rounded-full flex-shrink-0
+                            className={`w-1.5 h-1.5 rounded-none flex-shrink-0
                               ${isSelected ? 'bg-white/80' : PRIORITY_CONFIG[t.priority]?.dot || 'bg-slate-400'}
                             `}
                           />
@@ -508,7 +508,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               <span className="text-[11px] text-slate-400 font-medium">Prioridade:</span>
               {Object.entries(PRIORITY_CONFIG).map(([k, v]) => (
                 <div key={k} className="flex items-center gap-1">
-                  <span className={`w-2 h-2 rounded-full ${v.dot}`} />
+                  <span className={`w-2 h-2 rounded-none ${v.dot}`} />
                   <span className="text-[11px] text-slate-500">{v.label}</span>
                 </div>
               ))}
@@ -516,7 +516,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
           </div>
 
           {/* Selected Day Panel */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-none shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50">
               <div className="flex items-center gap-2">
                 <CalendarDays size={16} className="text-primary-600" />
@@ -524,7 +524,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                   {selectedDayFormatted}
                 </span>
               </div>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-none
                 ${selectedDayKey === todayKey
                   ? 'bg-primary-100 text-primary-700'
                   : 'bg-slate-100 text-slate-500'}
@@ -566,12 +566,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
 
           {/* Pool Panel (Admin only: unscheduled open tickets) */}
           {isAdmin && (
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="bg-white border border-slate-200 rounded-none shadow-sm overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50/50">
                 <Inbox size={15} className="text-amber-500" />
                 <span className="text-sm font-semibold text-slate-800">Chamados sem data</span>
                 {poolTickets.length > 0 && (
-                  <span className="ml-auto text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                  <span className="ml-auto text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-none">
                     {poolTickets.length}
                   </span>
                 )}
@@ -611,7 +611,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
 
           {/* Info panel for regular users */}
           {!isAdmin && scheduledTickets.length === 0 && (
-            <div className="bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-5 flex flex-col items-center text-center gap-2">
+            <div className="bg-slate-50 border border-dashed border-slate-300 rounded-none p-5 flex flex-col items-center text-center gap-2">
               <AlertTriangle size={28} className="text-slate-300" />
               <p className="text-sm font-medium text-slate-500">Nenhum chamado agendado</p>
               <p className="text-xs text-slate-400">
