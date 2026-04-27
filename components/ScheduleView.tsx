@@ -533,7 +533,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               </span>
             </div>
 
-            <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3 min-h-[120px] max-h-[400px] overflow-y-auto">
+            <div className="p-3 grid grid-cols-1 md:grid-cols-3 gap-3 min-h-[120px] max-h-[400px] overflow-y-auto">
               {selectedDayTickets.length === 0 ? (
                 <div className="col-span-full flex flex-col items-center justify-center py-8 text-center">
                   <CalendarDays size={32} className="text-slate-300 mb-2" />
