@@ -14,6 +14,7 @@ import { supabase } from './services/supabase';
 import { Loader2 } from 'lucide-react';
 import { Logo } from './components/Logo';
 import { sendTicketOpeningEmail, sendTicketResolvedEmail } from './services/mailService';
+import { ScheduleView } from './components/ScheduleView';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -212,7 +213,8 @@ const App: React.FC = () => {
               createdAt: new Date(t.created_at),
               updatedAt: t.updated_at ? new Date(t.updated_at) : new Date(t.created_at),
               resolvedAt: t.resolved_at ? new Date(t.resolved_at) : undefined,
-              attachments: t.attachments || []
+              attachments: t.attachments || [],
+              scheduledDate: t.scheduled_date ? new Date(t.scheduled_date + 'T12:00:00') : undefined,
           }));
 
           setTickets(formattedTickets);
@@ -568,6 +570,16 @@ const App: React.FC = () => {
         return currentUser.role === 'ADMIN' ? <UserManagement currentUser={currentUser} showToast={showToast} /> : <div>Acesso Negado</div>;
       case 'NOTIFICATIONS':
         return <Notifications currentUser={currentUser} onSelectNotification={handleSelectNotificationTicket} onRefreshNotifications={fetchUnreadCount} />;
+      case 'AGENDA':
+        return (
+          <ScheduleView
+            tickets={tickets}
+            currentUser={currentUser}
+            onRefresh={fetchTickets}
+            showToast={showToast}
+            onSelectTicket={handleSelectTicket}
+          />
+        );
       case 'MY_TICKETS':
       case 'ALL_TICKETS':
         return (
@@ -621,6 +633,7 @@ const App: React.FC = () => {
                   {currentView === 'TICKET_DETAIL' && 'Detalhes do Chamado'}
                   {currentView === 'USERS' && 'Gestão de Usuários'}
                   {currentView === 'NOTIFICATIONS' && 'Central de Notificações'}
+                  {currentView === 'AGENDA' && 'Agenda de Atendimento'}
                 </h1>
             </header>
           )}

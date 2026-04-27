@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { LayoutDashboard, Users, Ticket as TicketIcon, List, Bell, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, Ticket as TicketIcon, List, Bell, LogOut, Menu, X, CalendarDays } from 'lucide-react';
 import { ViewState, User } from '../types';
 import { supabase } from '../services/supabase';
 import { Logo } from './Logo';
@@ -31,6 +31,7 @@ export const TopNav: React.FC<TopNavProps> = ({ currentView, onChangeView, curre
     navItems.push({ id: 'MY_TICKETS', label: 'Meus Chamados', icon: List });
   } else {
     navItems.push({ id: 'ALL_TICKETS', label: 'Todos os Chamados', icon: TicketIcon });
+    navItems.push({ id: 'AGENDA', label: 'Agenda', icon: CalendarDays });
     navItems.push({ id: 'USERS', label: 'Gestão de Usuários', icon: Users });
   }
 

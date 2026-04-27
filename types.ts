@@ -37,6 +37,7 @@ export interface Ticket {
   updatedAt?: Date; // Última atualização
   resolvedAt?: Date; // Data de resolução
   attachments?: string[]; // URLs dos arquivos anexados
+  scheduledDate?: Date; // Data agendada para atendimento
 }
 
 export interface Comment {
@@ -78,4 +79,4 @@ export interface ITicketStats {
   resolved: number;
 }
 
-export type ViewState = 'DASHBOARD' | 'CREATE_TICKET' | 'TICKET_DETAIL' | 'MY_TICKETS' | 'ALL_TICKETS' | 'USERS' | 'EDIT_TICKET' | 'NOTIFICATIONS';
+export type ViewState = 'DASHBOARD' | 'CREATE_TICKET' | 'TICKET_DETAIL' | 'MY_TICKETS' | 'ALL_TICKETS' | 'USERS' | 'EDIT_TICKET' | 'NOTIFICATIONS' | 'AGENDA';
