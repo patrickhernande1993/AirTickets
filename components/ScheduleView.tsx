@@ -199,12 +199,24 @@ const TicketModal: React.FC<{
               </div>
            </div>
            
-           <div className="space-y-2">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Descrição do Problema</p>
-              <div className="bg-slate-50 rounded-none p-5 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-medium border border-slate-100">
-                 {ticket.description}
+            <div className="space-y-2">
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Descrição do Problema</p>
+               <div className="bg-slate-50 rounded-none p-5 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-medium border border-slate-100">
+                  {ticket.description}
+               </div>
+            </div>
+
+            {ticket.resolution && (
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-green-700 uppercase tracking-widest px-1 flex items-center gap-1">
+                  <CheckCircle size={12} />
+                  Resolução do Chamado
+                </p>
+                <div className="bg-green-50 rounded-none p-5 text-sm text-green-800 leading-relaxed whitespace-pre-wrap font-semibold border border-green-100">
+                  {ticket.resolution}
+                </div>
               </div>
-           </div>
+            )}
 
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {ticket.category && (
