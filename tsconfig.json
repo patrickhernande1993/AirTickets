@@ -19,7 +19,8 @@
     "types": ["vite/client"],
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "types": ["vite/client"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules", "supabase"]

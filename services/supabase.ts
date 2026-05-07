@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Hardcoded credentials as provided by user request. 
-// In a production environment, these should be environment variables (import.meta.env.VITE_SUPABASE_URL, etc.)
-export const supabaseUrl = 'https://nhvuwtmlftrdtpdolstg.supabase.co';
-export const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5odnV3dG1sZnRyZHRwZG9sc3RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzNDYwNjksImV4cCI6MjA3ODkyMjA2OX0.R02jwfweyL6LD_ftB5m1DtnmH5TbUddqtXZxhLh8Ulg';
+// Usando variáveis de ambiente para maior flexibilidade e segurança
+export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+export const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Supabase credentials missing in .env file!');
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
