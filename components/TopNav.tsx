@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { LayoutDashboard, Users, Ticket as TicketIcon, List, Bell, LogOut, Menu, X, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, Users, Ticket as TicketIcon, List, Bell, LogOut, Menu, X, CalendarDays, BookOpen, Monitor, Repeat, AlertTriangle } from 'lucide-react';
 import { ViewState, User } from '../types';
 import { supabase } from '../services/supabase';
 import { Logo } from './Logo';
@@ -32,7 +32,11 @@ export const TopNav: React.FC<TopNavProps> = ({ currentView, onChangeView, curre
   } else {
     navItems.push({ id: 'ALL_TICKETS', label: 'Todos os Chamados', icon: TicketIcon });
     navItems.push({ id: 'AGENDA', label: 'Agenda', icon: CalendarDays });
-    navItems.push({ id: 'USERS', label: 'Gestão de Usuários', icon: Users });
+    navItems.push({ id: 'KNOWLEDGE_BASE', label: 'Base de Conhecimento', icon: BookOpen });
+    navItems.push({ id: 'RECURRING', label: 'Recorrentes', icon: Repeat });
+    navItems.push({ id: 'ESCALATION', label: 'Escalonamento', icon: AlertTriangle });
+    navItems.push({ id: 'USERS', label: 'Usuários', icon: Users });
+    navItems.push({ id: 'KIOSK', label: 'Modo Quiosque', icon: Monitor });
   }
 
   const handleItemClick = (view: ViewState) => {
@@ -42,7 +46,7 @@ export const TopNav: React.FC<TopNavProps> = ({ currentView, onChangeView, curre
 
   const isActive = (itemId: string) => {
     if (currentView === itemId) return true;
-    
+
     // Sub-view logic
     if (['TICKET_DETAIL', 'CREATE_TICKET', 'EDIT_TICKET'].includes(currentView)) {
         if (currentUser.role === 'ADMIN' && itemId === 'ALL_TICKETS') return true;
@@ -61,20 +65,20 @@ export const TopNav: React.FC<TopNavProps> = ({ currentView, onChangeView, curre
               <Logo className="h-9 w-auto" />
               <span className="text-xl font-bold text-slate-800 tracking-tight hidden sm:block">AirService</span>
             </div>
-            
+
             {/* Desktop Navigation */}
-            <div className="hidden md:ml-8 md:flex md:space-x-4">
-              {navItems.map((item) => (
+            <div className="hidden md:ml-6 md:flex md:space-x-1 overflow-x-auto">
+              {navItems.filter(item => item.id !== 'KIOSK').map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleItemClick(item.id as ViewState)}
-                  className={`inline-flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors duration-200 ${
+                  className={`inline-flex items-center px-3 py-2 text-xs font-medium border-b-2 transition-colors duration-200 whitespace-nowrap ${
                     isActive(item.id)
                       ? 'border-primary-600 text-primary-700 bg-primary-50/50'
                       : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
                   }`}
                 >
-                  <item.icon size={18} className="mr-2" />
+                  <item.icon size={15} className="mr-1.5" />
                   {item.label}
                 </button>
               ))}
@@ -82,13 +86,13 @@ export const TopNav: React.FC<TopNavProps> = ({ currentView, onChangeView, curre
           </div>
 
           {/* Right: User Information & Logout */}
-          <div className="flex items-center space-x-2 sm:space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             {/* Notifications Bell Icon */}
             <button
               onClick={() => handleItemClick('NOTIFICATIONS')}
               className={`relative p-2 transition-colors rounded-none ${
-                  currentView === 'NOTIFICATIONS' 
-                  ? 'text-primary-600 bg-primary-50' 
+                  currentView === 'NOTIFICATIONS'
+                  ? 'text-primary-600 bg-primary-50'
                   : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
               }`}
               title="Notificações"
@@ -101,6 +105,17 @@ export const TopNav: React.FC<TopNavProps> = ({ currentView, onChangeView, curre
               )}
             </button>
 
+            {/* Kiosk button for admin (desktop) */}
+            {currentUser.role === 'ADMIN' && (
+              <button
+                onClick={() => handleItemClick('KIOSK')}
+                className={`hidden md:flex items-center p-2 transition-colors rounded-none ${currentView === 'KIOSK' ? 'text-primary-600 bg-primary-50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                title="Modo Quiosque"
+              >
+                <Monitor size={20} />
+              </button>
+            )}
+
             <div className="hidden md:flex items-center space-x-3 pr-4 border-r border-slate-200 ml-2">
                <div className="text-right">
                   <p className="text-sm font-semibold text-slate-900 leading-tight">{currentUser.name}</p>
@@ -111,7 +126,7 @@ export const TopNav: React.FC<TopNavProps> = ({ currentView, onChangeView, curre
                </div>
             </div>
 
-            <button 
+            <button
               onClick={onLogout}
               className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors rounded-none"
               title="Sair"

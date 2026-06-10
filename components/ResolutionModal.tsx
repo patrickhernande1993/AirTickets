@@ -24,7 +24,7 @@ export const ResolutionModal: React.FC<ResolutionModalProps> = ({ isOpen, onClos
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div className="bg-white rounded-none shadow-2xl w-full max-w-lg border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
         {/* Header */}
         <div className="bg-green-600 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
@@ -46,7 +46,7 @@ export const ResolutionModal: React.FC<ResolutionModalProps> = ({ isOpen, onClos
             autoFocus
             value={resolution}
             onChange={(e) => setResolution(e.target.value)}
-            className="w-full h-40 p-4 border border-slate-300 rounded-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none text-sm font-medium resize-none"
+            className="w-full h-40 p-4 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none text-sm font-medium resize-none"
             placeholder="Ex: Problema resolvido através da atualização de firmware e reinicialização do serviço..."
             required
           />
@@ -56,14 +56,14 @@ export const ResolutionModal: React.FC<ResolutionModalProps> = ({ isOpen, onClos
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 border border-slate-300 text-slate-600 font-bold uppercase tracking-widest text-xs hover:bg-slate-50 transition-colors rounded-none"
+              className="px-6 py-2.5 border border-slate-300 text-slate-600 font-bold uppercase tracking-widest text-xs hover:bg-slate-50 transition-colors rounded-lg"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={!resolution.trim()}
-              className="flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white font-bold uppercase tracking-widest text-xs hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-green-200 rounded-none"
+              className="flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white font-bold uppercase tracking-widest text-xs hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-green-200 rounded-lg"
             >
               <Send size={16} />
               Confirmar Resolução

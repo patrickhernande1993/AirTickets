@@ -15,6 +15,13 @@ import { Loader2 } from 'lucide-react';
 import { Logo } from './components/Logo';
 import { sendTicketOpeningEmail, sendTicketResolvedEmail } from './services/mailService';
 import { ScheduleView } from './components/ScheduleView';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
+import { KnowledgeBase } from './components/KnowledgeBase';
+import { KioskMode } from './components/KioskMode';
+import { Sidebar } from './components/Sidebar';
+import { RecurringTickets, checkAndRunRecurringTickets } from './components/RecurringTickets';
+import { EscalationRules, checkEscalationRules } from './components/EscalationRules';
+import { AuditLogView } from './components/AuditLogView';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -24,7 +31,7 @@ const App: React.FC = () => {
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
-  
+
   // Toast State
   const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
     message: '',
@@ -42,9 +49,16 @@ const App: React.FC = () => {
 
   // Mobile Sidebar State (No longer needed, but keeping for logic compatibility if any)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
+
   // Desktop Sidebar Visibility State (No longer needed)
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+
+  // Register service worker (PWA)
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(console.error);
+    }
+  }, []);
 
   // Check auth session on load
   useEffect(() => {
@@ -71,11 +85,11 @@ const App: React.FC = () => {
 
     const channel = supabase
       .channel('public:notifications_app')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'notifications', 
-        filter: `user_id=eq.${currentUser.id}` 
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${currentUser.id}`
       }, () => {
         fetchUnreadCount();
       })
@@ -86,6 +100,26 @@ const App: React.FC = () => {
     };
   }, [currentUser?.id]);
 
+  // Run recurring tickets check on startup
+  useEffect(() => {
+    if (!currentUser) return;
+    checkAndRunRecurringTickets(currentUser.id).catch(console.error);
+  }, [currentUser?.id]);
+
+  // Escalation rules check every 15 minutes
+  useEffect(() => {
+    if (!currentUser || tickets.length === 0) return;
+
+    const runCheck = () => {
+      checkEscalationRules(tickets, currentUser.id, (msg) => showToast(msg, 'error')).catch(console.error);
+    };
+
+    runCheck(); // Run immediately on load
+
+    const interval = setInterval(runCheck, 15 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [currentUser?.id, tickets.length]);
+
   const fetchUnreadCount = async () => {
     if (!currentUser) return;
     const { count } = await supabase
@@ -93,7 +127,7 @@ const App: React.FC = () => {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', currentUser.id)
       .eq('is_read', false);
-    
+
     setUnreadNotificationsCount(count || 0);
   };
 
@@ -118,7 +152,7 @@ const App: React.FC = () => {
           // 1. Get Auth Metadata to ensure we have the real name entered during sign up
           const { data: authUser } = await supabase.auth.getUser();
           const metaName = authUser.user?.user_metadata?.full_name;
-          
+
           // Fallback name logic: Metadata > Email
           const displayName = metaName || email.split('@')[0];
 
@@ -128,23 +162,23 @@ const App: React.FC = () => {
             .select('*')
             .eq('id', userId)
             .maybeSingle();
-          
+
           // 3. SELF-HEALING: If profile is missing but Auth exists, create it now.
           if (!data) {
             console.log("Profile missing for authenticated user. Creating default 'USER' profile...");
-            
+
             const { data: newProfile, error: createError } = await supabase
                 .from('profiles')
-                .insert([{ 
-                    id: userId, 
-                    email: email, 
+                .insert([{
+                    id: userId,
+                    email: email,
                     name: displayName, // Uses the real name from registration if available
                     role: 'USER', // Enforced default role
                     is_active: true
                 }])
                 .select()
                 .single();
-            
+
             if (createError) {
                 console.error("Failed to auto-create profile:", createError);
                 throw createError;
@@ -179,7 +213,8 @@ const App: React.FC = () => {
                 name: data.name, // Use DB name (which we ensured matches metadata on creation)
                 email: data.email || email,
                 role: data.role,
-                isActive: data.is_active
+                isActive: data.is_active,
+                sector: data.sector
             });
           }
       } catch (error) {
@@ -216,6 +251,7 @@ const App: React.FC = () => {
               attachments: t.attachments || [],
               scheduledDate: t.scheduled_date ? new Date(t.scheduled_date + 'T12:00:00') : undefined,
               resolution: t.resolution,
+              sector: t.sector,
           }));
 
           setTickets(formattedTickets);
@@ -245,7 +281,8 @@ const App: React.FC = () => {
                     status: newTicketData.status,
                     attachments: newTicketData.attachments,
                     created_at: newTicketData.createdAt.toISOString(),
-                    resolved_at: newTicketData.resolvedAt ? newTicketData.resolvedAt.toISOString() : null
+                    resolved_at: newTicketData.resolvedAt ? newTicketData.resolvedAt.toISOString() : null,
+                    sector: newTicketData.sector
                 })
                 .eq('id', ticketToEdit.id);
 
@@ -258,7 +295,7 @@ const App: React.FC = () => {
                 action: 'EDITED',
                 details: 'Detalhes do chamado editados'
             });
-            
+
             setTicketToEdit(null);
             showToast('Chamado atualizado com sucesso!');
 
@@ -292,14 +329,15 @@ const App: React.FC = () => {
                 .insert([{
                     title: newTicketData.title,
                     description: newTicketData.description,
-                    requester_name: newTicketData.requester, 
+                    requester_name: newTicketData.requester,
                     requester_id: newTicketData.requesterId,
                     priority: newTicketData.priority,
                     category: newTicketData.category,
                     status: newTicketData.status || 'OPEN',
                     attachments: newTicketData.attachments,
                     created_at: newTicketData.createdAt.toISOString(),
-                    resolved_at: newTicketData.resolvedAt ? newTicketData.resolvedAt.toISOString() : null
+                    resolved_at: newTicketData.resolvedAt ? newTicketData.resolvedAt.toISOString() : null,
+                    sector: newTicketData.sector
                 }])
                 .select()
                 .single();
@@ -364,9 +402,9 @@ const App: React.FC = () => {
             }
             showToast('Chamado criado com sucesso!');
         }
-        
+
         await fetchTickets(); // Refresh list
-        
+
         if (currentUser?.role === 'USER') {
             setCurrentView('MY_TICKETS');
         } else {
@@ -384,7 +422,7 @@ const App: React.FC = () => {
     setSelectedTicket(ticket);
     setCurrentView('TICKET_DETAIL');
   };
-  
+
   const handleSelectNotificationTicket = async (ticketId: string) => {
       // Find the ticket in the current list or fetch it
       const existing = tickets.find(t => t.id === ticketId);
@@ -408,7 +446,8 @@ const App: React.FC = () => {
                 createdAt: new Date(data.created_at),
                 updatedAt: data.updated_at ? new Date(data.updated_at) : new Date(data.created_at),
                 resolvedAt: data.resolved_at ? new Date(data.resolved_at) : undefined,
-                attachments: data.attachments || []
+                attachments: data.attachments || [],
+                sector: data.sector
              };
              setSelectedTicket(formatted);
              setCurrentView('TICKET_DETAIL');
@@ -420,7 +459,7 @@ const App: React.FC = () => {
       try {
         const { error } = await supabase.from('tickets').delete().eq('id', id);
         if (error) throw error;
-        
+
         setTickets(tickets.filter(t => t.id !== id));
         showToast("Chamado excluído com sucesso!");
         if (currentUser?.role === 'USER') {
@@ -441,17 +480,17 @@ const App: React.FC = () => {
 
   const handleUpdateStatus = async (id: string, status: TicketStatus, resolution?: string) => {
     if (!currentUser) return;
-    
+
     try {
         // Prepare update data
         const updates: any = { status };
-        
+
         // Logic for Resolved Date and Resolution Text
         if (status === TicketStatus.RESOLVED) {
             updates.resolved_at = new Date().toISOString();
             if (resolution) updates.resolution = resolution;
         } else {
-            // If reopening, maybe clear resolved_at? 
+            // If reopening, maybe clear resolved_at?
             // updates.resolved_at = null; // Optional: Uncomment if reopening should clear the date
         }
 
@@ -485,21 +524,21 @@ const App: React.FC = () => {
         }));
 
         if (selectedTicket && selectedTicket.id === id) {
-            const updatedTicket = { 
-                ...selectedTicket, 
+            const updatedTicket = {
+                ...selectedTicket,
                 status,
                 resolvedAt: updates.resolved_at ? new Date(updates.resolved_at) : selectedTicket.resolvedAt,
                 updatedAt: new Date(),
                 resolution: updates.resolution || selectedTicket.resolution
             };
             setSelectedTicket(updatedTicket);
-            
+
             // NOTIFICATION LOGIC: Notify the requester if status changes
             // If I am an admin changing a user's ticket
             if (currentUser.role === 'ADMIN') {
                 const { data: profile } = await supabase.from('profiles').select('name').eq('id', currentUser.id).single();
                 const adminName = profile?.name || 'Admin';
-                
+
                 // Don't notify if I am the requester too
                 if (selectedTicket.requesterId !== currentUser.id) {
                     await supabase.from('notifications').insert({
@@ -553,13 +592,18 @@ const App: React.FC = () => {
   const renderContent = () => {
     if (!currentUser) return null;
 
+    // Kiosk mode — full screen overlay
+    if (currentView === 'KIOSK') {
+      return <KioskMode onExit={() => setCurrentView('DASHBOARD')} />;
+    }
+
     switch (currentView) {
       case 'CREATE_TICKET':
       case 'EDIT_TICKET':
         return (
-          <TicketForm 
-            onSave={handleCreateTicket} 
-            onCancel={() => setCurrentView(currentUser.role === 'USER' ? 'MY_TICKETS' : 'ALL_TICKETS')} 
+          <TicketForm
+            onSave={handleCreateTicket}
+            onCancel={() => setCurrentView(currentUser.role === 'USER' ? 'MY_TICKETS' : 'ALL_TICKETS')}
             initialData={currentView === 'EDIT_TICKET' ? ticketToEdit || undefined : undefined}
             currentUser={currentUser}
             showToast={showToast}
@@ -567,7 +611,7 @@ const App: React.FC = () => {
         );
       case 'TICKET_DETAIL':
         return selectedTicket ? (
-          <TicketDetail 
+          <TicketDetail
             ticket={selectedTicket}
             currentUser={currentUser}
             onBack={() => setCurrentView(currentUser.role === 'USER' ? 'MY_TICKETS' : 'ALL_TICKETS')}
@@ -576,17 +620,17 @@ const App: React.FC = () => {
             onEdit={handleEditTicket}
           />
         ) : (
-           <TicketList 
-                tickets={tickets} 
-                onSelectTicket={handleSelectTicket} 
-                onCreateTicket={() => setCurrentView('CREATE_TICKET')} 
-                onUpdateStatus={handleUpdateStatus} 
+           <TicketList
+                tickets={tickets}
+                onSelectTicket={handleSelectTicket}
+                onCreateTicket={() => setCurrentView('CREATE_TICKET')}
+                onUpdateStatus={handleUpdateStatus}
            />
         );
       case 'USERS':
         return currentUser.role === 'ADMIN' ? <UserManagement currentUser={currentUser} showToast={showToast} /> : <div>Acesso Negado</div>;
       case 'NOTIFICATIONS':
-        return <Notifications currentUser={currentUser} onSelectNotification={handleSelectNotificationTicket} onRefreshNotifications={fetchUnreadCount} />;
+        return <Notifications currentUser={currentUser} onSelectNotification={handleSelectNotificationTicket} onRefreshNotifications={fetchUnreadCount} onUnreadCountChange={setUnreadNotificationsCount} />;
       case 'AGENDA':
         return (
           <ScheduleView
@@ -598,15 +642,23 @@ const App: React.FC = () => {
             onUpdateStatus={handleUpdateStatus}
           />
         );
+      case 'KNOWLEDGE_BASE':
+        return <KnowledgeBase currentUser={currentUser} />;
+      case 'RECURRING':
+        return currentUser.role === 'ADMIN' ? <RecurringTickets currentUser={currentUser} showToast={showToast} /> : <div>Acesso Negado</div>;
+      case 'ESCALATION':
+        return currentUser.role === 'ADMIN' ? <EscalationRules currentUser={currentUser} showToast={showToast} /> : <div>Acesso Negado</div>;
+      case 'AUDIT_LOG':
+        return currentUser.role === 'ADMIN' ? <AuditLogView onSelectTicket={handleSelectTicket} /> : <div>Acesso Negado</div>;
       case 'MY_TICKETS':
       case 'ALL_TICKETS':
         return (
-            <TicketList 
+            <TicketList
                 key={currentView}
-                tickets={tickets} 
-                onSelectTicket={handleSelectTicket} 
-                onCreateTicket={() => setCurrentView('CREATE_TICKET')} 
-                onUpdateStatus={handleUpdateStatus} 
+                tickets={tickets}
+                onSelectTicket={handleSelectTicket}
+                onCreateTicket={() => setCurrentView('CREATE_TICKET')}
+                onUpdateStatus={handleUpdateStatus}
                 initialStatusFilter={currentView === 'ALL_TICKETS' && currentUser.role === 'ADMIN' ? 'OPEN' : 'ALL'}
             />
         );
@@ -628,9 +680,38 @@ const App: React.FC = () => {
     return <Login onLoginSuccess={() => checkUser()} />;
   }
 
+  // Kiosk mode renders as a full-screen overlay without TopNav
+  if (currentView === 'KIOSK') {
+    return (
+      <>
+        <KioskMode onExit={() => setCurrentView('DASHBOARD')} />
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          isVisible={toast.isVisible}
+          onClose={hideToast}
+        />
+      </>
+    );
+  }
+
+  const pageTitle: Partial<Record<ViewState, string>> = {
+    MY_TICKETS: 'Meus Chamados',
+    ALL_TICKETS: 'Todos os Chamados',
+    CREATE_TICKET: 'Novo Chamado',
+    EDIT_TICKET: 'Editar Chamado',
+    TICKET_DETAIL: 'Detalhes do Chamado',
+    USERS: 'Gestão de Usuários',
+    NOTIFICATIONS: 'Central de Notificações',
+    AGENDA: 'Agenda de Atendimento',
+    KNOWLEDGE_BASE: 'Base de Conhecimento',
+    RECURRING: 'Chamados Recorrentes',
+    ESCALATION: 'Regras de Escalonamento',
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <TopNav 
+    <div className="min-h-screen bg-slate-50 flex">
+      <Sidebar
         currentView={currentView}
         onChangeView={setCurrentView}
         currentUser={currentUser}
@@ -638,33 +719,31 @@ const App: React.FC = () => {
         unreadCount={unreadNotificationsCount}
       />
 
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto bg-slate-50">
-        <div className="max-w-7xl mx-auto w-full">
-          {/* Header for Page Title - Hidden on Dashboard to save space as requested */}
-          {currentView !== 'DASHBOARD' && (
-            <header className="mb-6 md:mb-8 border-b border-slate-200 pb-4">
-               <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-                  {currentView === 'MY_TICKETS' && 'Meus Chamados'}
-                  {currentView === 'ALL_TICKETS' && 'Todos os Chamados'}
-                  {currentView === 'CREATE_TICKET' && 'Novo Chamado'}
-                  {currentView === 'EDIT_TICKET' && 'Editar Chamado'}
-                  {currentView === 'TICKET_DETAIL' && 'Detalhes do Chamado'}
-                  {currentView === 'USERS' && 'Gestão de Usuários'}
-                  {currentView === 'NOTIFICATIONS' && 'Central de Notificações'}
-                  {currentView === 'AGENDA' && 'Agenda de Atendimento'}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <main className="flex-1 p-6 overflow-y-auto overflow-x-hidden bg-slate-50">
+          <div className="w-full animate-fade-in">
+            {/* Page title — oculto no Dashboard e em views com título próprio */}
+            {!['DASHBOARD', 'AGENDA', 'KNOWLEDGE_BASE', 'RECURRING', 'ESCALATION', 'AUDIT_LOG'].includes(currentView) && (
+              <header className="mb-6">
+                <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+                  {pageTitle[currentView] || ''}
                 </h1>
-            </header>
-          )}
-          
-          {renderContent()}
-        </div>
-      </main>
+                <div className="h-px bg-slate-200 mt-3" />
+              </header>
+            )}
 
-      <Toast 
-        message={toast.message} 
-        type={toast.type} 
-        isVisible={toast.isVisible} 
-        onClose={hideToast} 
+            {renderContent()}
+          </div>
+        </main>
+      </div>
+
+      <PWAInstallPrompt />
+
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
       />
     </div>
   );

@@ -3,6 +3,7 @@ import { User, UserRole } from '../types';
 import { Search, Mail, Shield, User as UserIcon, Loader2, Edit, CheckCircle, XCircle, Save, X } from 'lucide-react';
 import { supabase, supabaseUrl } from '../services/supabase';
 import { ConfirmationModal } from './ConfirmationModal';
+import { SECTORS } from '../services/sectors';
 
 interface UserManagementProps {
   currentUser: User;
@@ -21,6 +22,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
   const [editPassword, setEditPassword] = useState('');
   const [editRole, setEditRole] = useState<UserRole>('USER');
   const [editIsActive, setEditIsActive] = useState(true);
+  const [editSector, setEditSector] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   // Confirmation Modal State
@@ -41,7 +43,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
               email: u.email,
               name: u.name,
               role: u.role,
-              isActive: u.is_active !== false // Default to true if null
+              isActive: u.is_active !== false,
+              sector: u.sector || undefined
           })));
       }
       setIsLoading(false);
@@ -53,6 +56,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
       setEditRole(user.role);
       setEditIsActive(user.isActive !== false);
       setEditPassword('');
+      setEditSector(user.sector || '');
       setIsEditModalOpen(true);
   };
 
@@ -103,7 +107,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
             .update({
                 name: editName,
                 role: editRole,
-                is_active: editIsActive
+                is_active: editIsActive,
+                sector: editSector || null
             })
             .eq('id', selectedUser.id);
 
@@ -133,7 +138,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
   return (
     <div className="space-y-6">
       {/* Header and Search */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-none border border-slate-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-lg border border-slate-100 shadow-card">
         <div>
             <h2 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Gestão de Usuários</h2>
             <p className="text-xs text-slate-500 font-mono">Gerencie permissões, nomes e status de acesso.</p>
@@ -145,13 +150,13 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
                 placeholder="Buscar usuários..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none w-full text-sm font-mono"
+                className="pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none w-full text-sm font-mono"
             />
         </div>
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-none border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-lg border border-slate-100 shadow-card overflow-hidden">
         {isLoading ? (
             <div className="p-12 flex justify-center">
                 <Loader2 className="animate-spin text-primary-600" size={32} />
@@ -162,6 +167,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
                     <thead className="bg-slate-50 text-slate-600 text-[10px] uppercase tracking-wider border-b border-slate-200">
                         <tr>
                             <th className="px-6 py-3 font-semibold">Usuário</th>
+                            <th className="px-6 py-3 font-semibold">Setor</th>
                             <th className="px-6 py-3 font-semibold">Função</th>
                             <th className="px-6 py-3 font-semibold">Status</th>
                             <th className="px-6 py-3 font-semibold text-right">Ações</th>
@@ -172,7 +178,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
                             <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                                 <td className="px-6 py-4">
                                     <div className="flex items-center">
-                                        <div className="h-9 w-9 rounded-none bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 font-bold mr-3 text-sm">
+                                        <div className="h-9 w-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 font-bold mr-3 text-sm">
                                             {user.name.charAt(0).toUpperCase()}
                                         </div>
                                         <div>
@@ -185,13 +191,22 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
+                                    {user.sector ? (
+                                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                                            {user.sector}
+                                        </span>
+                                    ) : (
+                                        <span className="text-slate-300 text-xs">—</span>
+                                    )}
+                                </td>
+                                <td className="px-6 py-4">
                                     {user.role === 'ADMIN' ? (
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
                                             <Shield size={10} className="mr-1" />
                                             ADMIN
                                         </span>
                                     ) : (
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider bg-slate-50 text-slate-600 border border-slate-200">
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-slate-50 text-slate-600 border border-slate-200">
                                             <UserIcon size={10} className="mr-1" />
                                             USER
                                         </span>
@@ -213,7 +228,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
                                 <td className="px-6 py-4 text-right">
                                     <button 
                                         onClick={() => handleEditClick(user)}
-                                        className="text-slate-400 hover:text-primary-600 hover:bg-slate-100 p-2 rounded-none transition-colors border border-transparent hover:border-slate-200"
+                                        className="text-slate-400 hover:text-primary-600 hover:bg-slate-100 p-2 rounded-lg transition-colors border border-transparent hover:border-slate-200"
                                         title="Editar Usuário"
                                     >
                                         <Edit size={16} />
@@ -233,7 +248,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
       {/* Edit Modal */}
       {isEditModalOpen && selectedUser && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-              <div className="bg-white rounded-none shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-slate-200">
+              <div className="bg-white rounded-lg shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-slate-200">
                   <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                       <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Editar Usuário</h3>
                       <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -248,7 +263,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
                               type="text" 
                               value={selectedUser.email} 
                               disabled 
-                              className="w-full px-3 py-2 border border-slate-200 rounded-none bg-slate-50 text-slate-500 text-xs font-mono"
+                              className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-xs font-mono"
                           />
                       </div>
 
@@ -258,7 +273,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
                               type="text" 
                               value={editName} 
                               onChange={(e) => setEditName(e.target.value)}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none text-sm"
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none text-sm"
                               placeholder="Nome completo"
                               required
                           />
@@ -270,7 +285,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
                               type="password" 
                               value={editPassword} 
                               onChange={(e) => setEditPassword(e.target.value)}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none text-sm"
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none text-sm"
                               placeholder="Deixe em branco para não alterar"
                           />
                       </div>
@@ -278,7 +293,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
                       <div>
                           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Função / Permissão</label>
                           <div className="flex space-x-2">
-                              <label className={`flex-1 flex items-center justify-center px-4 py-2 rounded-none border cursor-pointer transition-all ${editRole === 'USER' ? 'bg-slate-100 border-slate-400 text-slate-900' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                              <label className={`flex-1 flex items-center justify-center px-4 py-2 rounded-lg border cursor-pointer transition-all ${editRole === 'USER' ? 'bg-slate-100 border-slate-400 text-slate-900' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                                   <input 
                                       type="radio" 
                                       name="role" 
@@ -290,7 +305,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
                                   <UserIcon size={14} className="mr-2" />
                                   <span className="text-[10px] font-bold uppercase tracking-wider">Usuário</span>
                               </label>
-                              <label className={`flex-1 flex items-center justify-center px-4 py-2 rounded-none border cursor-pointer transition-all ${editRole === 'ADMIN' ? 'bg-slate-100 border-slate-400 text-slate-900' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                              <label className={`flex-1 flex items-center justify-center px-4 py-2 rounded-lg border cursor-pointer transition-all ${editRole === 'ADMIN' ? 'bg-slate-100 border-slate-400 text-slate-900' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                                   <input 
                                       type="radio" 
                                       name="role" 
@@ -306,6 +321,23 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
                       </div>
 
                       <div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Setor</label>
+                          <div className="relative">
+                              <select
+                                  value={editSector}
+                                  onChange={(e) => setEditSector(e.target.value)}
+                                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none text-sm bg-white appearance-none pr-8"
+                              >
+                                  <option value="">Sem setor definido</option>
+                                  {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
+                              </select>
+                              <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                              </div>
+                          </div>
+                      </div>
+
+                      <div>
                           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Status da Conta</label>
                           <label className="flex items-center cursor-pointer">
                               <div className="relative">
@@ -315,8 +347,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
                                     checked={editIsActive} 
                                     onChange={(e) => setEditIsActive(e.target.checked)} 
                                   />
-                                  <div className={`block w-12 h-6 rounded-none transition-colors ${editIsActive ? 'bg-green-500' : 'bg-slate-300'}`}></div>
-                                  <div className={`dot absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-none transition-transform ${editIsActive ? 'transform translate-x-6' : ''}`}></div>
+                                  <div className={`block w-12 h-6 rounded-lg transition-colors ${editIsActive ? 'bg-green-500' : 'bg-slate-300'}`}></div>
+                                  <div className={`dot absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-lg transition-transform ${editIsActive ? 'transform translate-x-6' : ''}`}></div>
                               </div>
                               <span className="ml-3 text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                                   {editIsActive ? 'Conta Ativa' : 'Conta Bloqueada'}
@@ -333,14 +365,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
                           <button 
                               type="button"
                               onClick={() => setIsEditModalOpen(false)}
-                              className="px-4 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-none text-[10px] font-bold uppercase tracking-wider transition-colors border border-slate-200"
+                              className="px-4 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors border border-slate-200"
                           >
                               Cancelar
                           </button>
                           <button 
                               type="submit"
                               disabled={isSaving}
-                              className="px-4 py-2 bg-primary-600 text-white hover:bg-primary-700 rounded-none text-[10px] font-bold uppercase tracking-wider shadow-sm flex items-center disabled:opacity-70 transition-colors"
+                              className="px-4 py-2 bg-primary-600 text-white hover:bg-primary-700 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-sm flex items-center disabled:opacity-70 transition-colors"
                           >
                               {isSaving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Save size={14} className="mr-2" />}
                               Salvar Alterações

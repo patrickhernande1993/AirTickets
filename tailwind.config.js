@@ -2,7 +2,11 @@
 export default {
   content: [
     "./index.html",
-    "./**/*.{js,ts,jsx,tsx}",
+    "./index.tsx",
+    "./App.tsx",
+    "./types.ts",
+    "./components/**/*.{ts,tsx}",
+    "./services/**/*.{ts,tsx}",
   ],
   theme: {
     extend: {
@@ -12,35 +16,32 @@ export default {
       },
       colors: {
         primary: {
-          50: '#f0f9ff', // Sky 50
-          100: '#e0f2fe', // Sky 100
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9', // Sky 500
-          600: '#0284c7', // Sky 600 (Cor principal da marca - Botões)
-          700: '#0369a1', // Sky 700 (Hover e Textos fortes)
-          800: '#075985',
-          900: '#0c4a6e',
+          50:  '#fff1f2',
+          100: '#ffe4e6',
+          200: '#fecdd3',
+          300: '#fda4af',
+          400: '#fb7185',
+          500: '#f43f5e',
+          600: '#e11d48',
+          700: '#be123c',
+          800: '#9f1239',
+          900: '#881337',
         }
       },
       animation: {
-        blob: "blob 7s infinite",
+        'fade-in': 'fadeIn 0.15s ease-out',
+        blob: 'blob 7s infinite',
       },
       keyframes: {
+        fadeIn: {
+          from: { opacity: '0' },
+          to:   { opacity: '1' },
+        },
         blob: {
-          "0%": {
-            transform: "translate(0px, 0px) scale(1)",
-          },
-          "33%": {
-            transform: "translate(30px, -50px) scale(1.1)",
-          },
-          "66%": {
-            transform: "translate(-20px, 20px) scale(0.9)",
-          },
-          "100%": {
-            transform: "translate(0px, 0px) scale(1)",
-          },
+          '0%':   { transform: 'translate(0px, 0px) scale(1)' },
+          '33%':  { transform: 'translate(30px, -50px) scale(1.1)' },
+          '66%':  { transform: 'translate(-20px, 20px) scale(0.9)' },
+          '100%': { transform: 'translate(0px, 0px) scale(1)' },
         },
       },
     },

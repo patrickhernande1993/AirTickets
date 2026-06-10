@@ -1,11 +1,15 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Ticket, TicketStatus, User, Comment, AuditLog } from '../types';
-import { ArrowLeft, CheckCircle, Clock, User as UserIcon, Calendar, Tag, Trash2, Edit, Send, MessageSquare, FileText, Paperclip, Loader2, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, User as UserIcon, Calendar, Tag, Trash2, Edit, Send, MessageSquare, FileText, Paperclip, Loader2, X, History, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { supabase } from '../services/supabase';
+import { fixEncoding } from '../services/encoding';
 import { ConfirmationModal } from './ConfirmationModal';
 import { ResolutionModal } from './ResolutionModal';
 import { v4 as uuidv4 } from 'uuid';
+import { SLABadge } from './SLABadge';
+import { TicketTimeline } from './TicketTimeline';
+import { CSATRating } from './CSATRating';
 
 interface TicketDetailProps {
   ticket: Ticket;
@@ -14,9 +18,11 @@ interface TicketDetailProps {
   onUpdateStatus: (id: string, status: TicketStatus, resolution?: string) => void;
   onDelete: (id: string) => void;
   onEdit: (ticket: Ticket) => void;
+  onCSATRating?: (ticketId: string, rating: 1 | 2 | 3) => Promise<void>;
 }
 
-export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser, onBack, onUpdateStatus, onDelete, onEdit }) => {
+export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser, onBack, onUpdateStatus, onDelete, onEdit, onCSATRating }) => {
+  const [showTimeline, setShowTimeline] = useState(false);
   // Comment State
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -38,9 +44,65 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
   const isAdmin = currentUser.role === 'ADMIN';
   const isOwner = currentUser.id === ticket.requesterId;
 
+  // Presence & typing state
+  const [viewers, setViewers] = useState<string[]>([]);
+  const [typingUser, setTypingUser] = useState<string | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const presenceChannelRef = useRef<any>(null);
+
+  // Comment reactions (stored in localStorage)
+  const [reactions, setReactions] = useState<Record<string, string[]>>(() => {
+    try {
+      const raw = localStorage.getItem(`reactions_${ticket.id}`);
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
+
+  const addReaction = (commentId: string, emoji: string) => {
+    setReactions(prev => {
+      const key = `${commentId}_${emoji}`;
+      const existing = prev[key] || [];
+      if (existing.includes(currentUser.id)) return prev; // already reacted
+      const updated = { ...prev, [key]: [...existing, currentUser.id] };
+      localStorage.setItem(`reactions_${ticket.id}`, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   useEffect(() => {
       fetchComments();
       fetchLogs();
+
+      // Presence channel
+      const presenceChannel = supabase.channel(`ticket-presence-${ticket.id}`, {
+        config: { presence: { key: currentUser.id } }
+      });
+
+      presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+          const state = presenceChannel.presenceState();
+          const names: string[] = [];
+          Object.values(state).forEach((presences: any) => {
+            presences.forEach((p: any) => {
+              if (p.user !== currentUser.name) names.push(p.user);
+            });
+          });
+          setViewers(names);
+        })
+        .on('broadcast', { event: 'typing' }, (payload: any) => {
+          if (payload.payload?.user !== currentUser.name) {
+            setTypingUser(payload.payload?.user);
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = setTimeout(() => setTypingUser(null), 2500);
+          }
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await presenceChannel.track({ user: currentUser.name });
+          }
+        });
+
+      presenceChannelRef.current = presenceChannel;
       
       // Subscribe to new comments
       const channel = supabase
@@ -61,6 +123,8 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       return () => {
           supabase.removeChannel(channel);
           supabase.removeChannel(logsChannel);
+          supabase.removeChannel(presenceChannel);
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       }
   }, [ticket.id]);
 
@@ -318,12 +382,12 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       </button>
 
       {/* Header Card */}
-      <div className="bg-white rounded-none border border-slate-200 shadow-sm p-6">
+      <div className="bg-white rounded-lg border border-slate-100 shadow-card p-6">
         <div className="flex justify-between items-start">
             <div>
                 <div className="flex items-center space-x-3 mb-2">
                     <span className="text-xs font-mono font-bold text-slate-400">#{ticket.ticketNumber}</span>
-                    <span className={`px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-widest border ${
+                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-widest border ${
                         ticket.priority === 'CRITICAL' ? 'bg-red-50 text-red-700 border-red-200' : 
                         ticket.priority === 'HIGH' ? 'bg-orange-50 text-orange-700 border-orange-200' :
                         ticket.priority === 'MEDIUM' ? 'bg-amber-50 text-amber-700 border-amber-200' :
@@ -332,14 +396,14 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                         {translatePriority(ticket.priority)}
                     </span>
                 </div>
-                <h1 className="text-2xl font-bold text-slate-900 uppercase tracking-tight">{ticket.title}</h1>
+                <h1 className="text-2xl font-bold text-slate-900 uppercase tracking-tight">{fixEncoding(ticket.title)}</h1>
             </div>
             
             <div className="flex items-center space-x-3">
                 {(isOwner || isAdmin) && (
                      <button 
                         onClick={() => onEdit(ticket)}
-                        className="p-2 text-slate-400 hover:text-primary-600 hover:bg-slate-50 rounded-none border border-transparent hover:border-slate-200 transition-colors"
+                        className="p-2 text-slate-400 hover:text-primary-600 hover:bg-slate-50 rounded-lg border border-transparent hover:border-slate-200 transition-colors"
                         title="Editar Chamado"
                      >
                          <Edit size={18} />
@@ -348,7 +412,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                 {(isOwner || isAdmin) && (
                     <button 
                         onClick={() => setIsDeleteModalOpen(true)}
-                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-none border border-transparent hover:border-red-100 transition-colors"
+                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg border border-transparent hover:border-red-100 transition-colors"
                         title="Excluir Chamado"
                     >
                         <Trash2 size={18} />
@@ -378,6 +442,11 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             ticketNumber={ticket.ticketNumber}
         />
 
+        {/* SLA Badge */}
+        <div className="mt-4">
+          <SLABadge ticket={ticket} />
+        </div>
+
         <div className="mt-6 flex flex-wrap gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
             <div className="flex items-center">
                 <UserIcon size={14} className="mr-2 text-slate-400" />
@@ -399,22 +468,27 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             <div className="flex items-center">
                 <Tag size={14} className="mr-2 text-slate-400" />
                 <span>Categoria:</span>
-                <span className="ml-1 bg-slate-100 px-2 py-0.5 rounded-none border border-slate-200 text-slate-900">{ticket.category}</span>
+                <span className="ml-1 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200 text-slate-900">{ticket.category}</span>
             </div>
         </div>
 
-        <div className="mt-6 p-4 bg-slate-50 rounded-none border border-slate-200">
+        <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
             <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Descrição do Problema</h3>
-            <p className="text-slate-700 whitespace-pre-wrap leading-relaxed text-sm font-medium">{ticket.description}</p>
+            <p className="text-slate-700 whitespace-pre-wrap leading-relaxed text-sm font-medium">{fixEncoding(ticket.description)}</p>
         </div>
 
         {ticket.resolution && (
-            <div className="mt-4 p-4 bg-green-50 rounded-none border border-green-200">
+            <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
                 <h3 className="text-[10px] font-bold text-green-700 uppercase tracking-widest mb-2 flex items-center">
                     <CheckCircle size={14} className="mr-1" /> Resolução do Chamado
                 </h3>
-                <p className="text-green-800 whitespace-pre-wrap leading-relaxed text-sm font-medium">{ticket.resolution}</p>
+                <p className="text-green-800 whitespace-pre-wrap leading-relaxed text-sm font-medium">{fixEncoding(ticket.resolution)}</p>
             </div>
+        )}
+
+        {/* CSAT Rating */}
+        {onCSATRating && (
+          <CSATRating ticket={ticket} currentUser={currentUser} onRate={onCSATRating} />
         )}
 
         {/* Attachments View */}
@@ -431,7 +505,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                             href={url} 
                             target="_blank" 
                             rel="noreferrer"
-                            className="flex items-center space-x-2 px-3 py-2 bg-white border border-slate-200 rounded-none shadow-sm hover:bg-slate-50 hover:border-primary-300 transition-colors group"
+                            className="flex items-center space-x-2 px-3 py-2 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 hover:border-primary-300 transition-colors group"
                         >
                             <FileText size={14} className="text-slate-400 group-hover:text-primary-600" />
                             <span className="text-[10px] font-bold text-slate-700 group-hover:text-primary-700 uppercase tracking-tight">Anexo {index + 1}</span>
@@ -444,7 +518,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
         {isAdmin && (
             <div className="mt-6 flex items-center justify-end space-x-4 pt-4 border-t border-slate-100">
                 <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Atualizar Status:</span>
-                <div className="flex bg-slate-100 p-1 rounded-none border border-slate-200">
+                <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
                     {[TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED].map((status) => (
                         <button
                             key={status}
@@ -455,9 +529,9 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                                     onUpdateStatus(ticket.id, status);
                                 }
                             }}
-                            className={`px-3 py-1.5 rounded-none text-[10px] font-bold uppercase tracking-widest transition-all ${
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
                                 ticket.status === status 
-                                ? 'bg-white text-primary-600 border border-slate-200 shadow-sm' 
+                                ? 'bg-white text-primary-600 border border-slate-100 shadow-card' 
                                 : 'text-slate-500 hover:text-slate-900'
                             }`}
                         >
@@ -473,14 +547,27 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             {/* Comments / Interactions */}
-            <div className="bg-white rounded-none border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
+            <div className="bg-white rounded-lg border border-slate-100 shadow-card overflow-hidden flex flex-col h-[600px]">
                 <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
                     <h3 className="font-bold text-slate-900 flex items-center uppercase tracking-tight text-sm">
                         <MessageSquare size={18} className="mr-2 text-primary-600" />
                         Interações do Sistema
                     </h3>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{comments.length} mensagens</span>
+                    <div className="flex items-center gap-3">
+                      {viewers.length > 0 && (
+                        <span className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
+                          <Eye size={10} className="text-green-500" />
+                          {viewers.join(', ')} está vendo
+                        </span>
+                      )}
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{comments.length} mensagens</span>
+                    </div>
                 </div>
+                {typingUser && (
+                  <div className="px-4 py-1 bg-white border-b border-slate-100 text-[10px] text-slate-400 font-mono italic">
+                    {typingUser} está digitando...
+                  </div>
+                )}
                 
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/30">
                     {comments.length === 0 ? (
@@ -497,7 +584,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                                     <div className={`max-w-[80%] ${isMe ? 'order-1' : 'order-2'}`}>
                                         <div className={`flex items-center text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-widest ${isMe ? 'justify-end' : 'justify-start'}`}>
                                             <span className="mr-2">{comment.userName}</span>
-                                            {isStaff && <span className="bg-primary-100 text-primary-700 px-1.5 py-0.5 rounded-none text-[8px] mr-2 border border-primary-200">STAFF</span>}
+                                            {isStaff && <span className="bg-primary-100 text-primary-700 px-1.5 py-0.5 rounded-lg text-[8px] mr-2 border border-primary-200">STAFF</span>}
                                             <span className="font-mono mr-2">{comment.createdAt.toLocaleString('pt-BR')}</span>
                                             {isAdmin && (
                                                 <button 
@@ -509,12 +596,12 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                                                 </button>
                                             )}
                                         </div>
-                                        <div className={`p-3 rounded-none text-sm font-medium ${
+                                        <div className={`p-3 rounded-lg text-sm font-medium ${
                                             isMe 
                                             ? 'bg-primary-600 text-white border border-primary-700' 
                                             : 'bg-white border border-slate-200 text-slate-800 shadow-sm'
                                         }`}>
-                                            {comment.content}
+                                            {fixEncoding(comment.content)}
                                             {comment.attachments && comment.attachments.length > 0 && (
                                                 <div className="mt-2 space-y-1">
                                                     {comment.attachments.map((url, idx) => (
@@ -523,7 +610,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                                                             href={url} 
                                                             target="_blank" 
                                                             rel="noreferrer"
-                                                            className={`flex items-center space-x-2 px-2 py-1 border rounded-none text-[10px] uppercase font-bold tracking-tight transition-colors ${
+                                                            className={`flex items-center space-x-2 px-2 py-1 border rounded-lg text-[10px] uppercase font-bold tracking-tight transition-colors ${
                                                                 isMe 
                                                                 ? 'bg-primary-700 border-primary-500 text-white hover:bg-primary-800' 
                                                                 : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
@@ -536,10 +623,26 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                                                 </div>
                                             )}
                                         </div>
+                                        {/* Emoji reactions */}
+                                        <div className={`flex gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                          {['👍', '✅', '🔄'].map(emoji => {
+                                            const key = `${comment.id}_${emoji}`;
+                                            const count = (reactions[key] || []).length;
+                                            return (
+                                              <button
+                                                key={emoji}
+                                                onClick={() => addReaction(comment.id, emoji)}
+                                                className={`text-xs px-1.5 py-0.5 rounded-lg border transition-all ${count > 0 ? 'bg-primary-50 border-primary-200 text-primary-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-400'}`}
+                                              >
+                                                {emoji}{count > 0 ? ` ${count}` : ''}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
                                     </div>
-                                    <div className={`w-8 h-8 rounded-none flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-5 border ${
-                                        isMe 
-                                        ? 'bg-primary-500 border-primary-600 order-2 ml-2' 
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-5 border ${
+                                        isMe
+                                        ? 'bg-primary-500 border-primary-600 order-2 ml-2'
                                         : 'bg-slate-500 border-slate-600 order-1 mr-2'
                                     }`}>
                                         {comment.userName.charAt(0).toUpperCase()}
@@ -556,7 +659,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                     {commentAttachments.length > 0 && (
                         <div className="mb-3 flex flex-wrap gap-2">
                             {commentAttachments.map((url, index) => (
-                                <div key={index} className="flex items-center bg-slate-50 border border-slate-200 px-2 py-1 rounded-none group">
+                                <div key={index} className="flex items-center bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg group">
                                     <FileText size={12} className="text-slate-400 mr-2" />
                                     <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tight mr-2">Anexo {index + 1}</span>
                                     <button 
@@ -576,10 +679,16 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                             <input
                                 type="text"
                                 value={newComment}
-                                onChange={(e) => setNewComment(e.target.value)}
+                                onChange={(e) => {
+                                  setNewComment(e.target.value);
+                                  // Broadcast typing event
+                                  if (presenceChannelRef.current) {
+                                    presenceChannelRef.current.send({ type: 'broadcast', event: 'typing', payload: { user: currentUser.name } }).catch(() => {});
+                                  }
+                                }}
                                 onPaste={handlePaste}
                                 placeholder="Escreva uma mensagem técnica (ou cole um print)..."
-                                className="w-full px-4 py-2 border border-slate-300 rounded-none focus:ring-1 focus:ring-primary-500 outline-none text-sm font-medium"
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none text-sm font-medium"
                                 disabled={isUploading}
                             />
                             {isUploading && (
@@ -603,7 +712,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
                         <button 
                             type="submit" 
                             disabled={!newComment.trim() || isUploading}
-                            className="px-4 py-2 bg-primary-600 text-white rounded-none hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             <Send size={18} />
                         </button>
@@ -613,46 +722,23 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
           </div>
 
           <div className="space-y-6">
-             {/* Real Audit History */}
-             <div className="bg-white rounded-none border border-slate-200 shadow-sm p-6">
-                 <h3 className="font-bold text-slate-900 mb-4 text-xs uppercase tracking-widest">Log de Auditoria</h3>
-                 <div className="space-y-6">
-                    {logs.length === 0 ? (
-                         <div className="flex items-center space-x-3 opacity-50">
-                             <div className="h-2 w-2 rounded-none bg-slate-400"></div>
-                             <div>
-                                 <p className="text-xs font-bold text-slate-900 uppercase tracking-tight">Chamado Criado</p>
-                                 <p className="text-[10px] font-mono text-slate-500">{ticket.createdAt.toLocaleString('pt-BR')}</p>
-                             </div>
-                         </div>
-                    ) : (
-                        logs.map((log, index) => (
-                            <div key={log.id} className="relative flex gap-3">
-                                {/* Timeline line connector */}
-                                {index !== logs.length - 1 && (
-                                    <div className="absolute top-6 left-[5px] h-full w-[1px] bg-slate-100"></div>
-                                )}
-                                
-                                <div className="mt-1 flex-shrink-0">
-                                    <div className="bg-white relative z-10">
-                                        {getLogIcon(log.action)}
-                                    </div>
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-slate-900 uppercase tracking-tight">{translateLogAction(log.action)}</p>
-                                    <p className="text-[10px] text-slate-500 mb-1 uppercase tracking-widest">
-                                        por <span className="font-bold text-slate-700">{log.actorName}</span> • <span className="font-mono">{log.createdAt.toLocaleString('pt-BR')}</span>
-                                    </p>
-                                    {log.details && (
-                                        <p className="text-[10px] font-medium text-slate-600 bg-slate-50 p-2 rounded-none border border-slate-100 inline-block mt-1">
-                                            {log.details}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        ))
-                    )}
-                 </div>
+             {/* Timeline / Histórico */}
+             <div className="bg-white rounded-lg border border-slate-100 shadow-card overflow-hidden">
+                 <button
+                   onClick={() => setShowTimeline(v => !v)}
+                   className="w-full flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors"
+                 >
+                   <h3 className="font-bold text-slate-900 text-xs uppercase tracking-widest flex items-center gap-2">
+                     <History size={16} className="text-primary-600" />
+                     Histórico do Chamado
+                   </h3>
+                   {showTimeline ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
+                 </button>
+                 {showTimeline && (
+                   <div className="p-4">
+                     <TicketTimeline ticketId={ticket.id} ticketNumber={ticket.ticketNumber} />
+                   </div>
+                 )}
              </div>
           </div>
       </div>

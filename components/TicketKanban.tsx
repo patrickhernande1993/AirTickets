@@ -64,14 +64,14 @@ export const TicketKanban: React.FC<TicketKanbanProps> = ({ tickets, onSelectTic
       {COLUMNS.map(col => (
         <div 
           key={col.id} 
-          className="flex-1 min-w-[280px] bg-slate-50/50 rounded-none border border-slate-200 flex flex-col max-w-xs"
+          className="flex-1 min-w-[280px] bg-slate-50/50 rounded-lg border border-slate-200 flex flex-col max-w-xs"
           onDragOver={handleDragOver}
           onDrop={(e) => handleDrop(e, col.id)}
         >
           {/* Column Header */}
-          <div className={`p-3 border-b border-slate-200 flex justify-between items-center rounded-none ${col.id === TicketStatus.OPEN ? 'bg-amber-50/30' : col.id === TicketStatus.IN_PROGRESS ? 'bg-sky-50/30' : col.id === TicketStatus.RESOLVED ? 'bg-green-50/30' : 'bg-slate-50'}`}>
+          <div className={`p-3 border-b border-slate-200 flex justify-between items-center rounded-lg ${col.id === TicketStatus.OPEN ? 'bg-amber-50/30' : col.id === TicketStatus.IN_PROGRESS ? 'bg-sky-50/30' : col.id === TicketStatus.RESOLVED ? 'bg-green-50/30' : 'bg-slate-50'}`}>
             <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded-none text-[10px] font-bold border ${col.color}`}>
+              <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${col.color}`}>
                 {columns[col.id]?.length || 0}
               </span>
               <span className="font-bold text-slate-700 text-[10px] uppercase tracking-wider">{col.label}</span>
@@ -86,7 +86,7 @@ export const TicketKanban: React.FC<TicketKanbanProps> = ({ tickets, onSelectTic
                 draggable
                 onDragStart={(e) => handleDragStart(e, ticket.id)}
                 onClick={() => onSelectTicket(ticket)}
-                className={`bg-white p-3 rounded-none shadow-sm border border-slate-200 cursor-move hover:shadow-md transition-shadow group relative ${getPriorityColor(ticket.priority)}`}
+                className={`bg-white p-3 rounded-lg shadow-sm border border-slate-200 cursor-move hover:shadow-md transition-shadow group relative ${getPriorityColor(ticket.priority)}`}
               >
                 <div className="flex justify-between items-start mb-2">
                   <span className="text-[10px] font-bold text-slate-400 font-mono">#{ticket.ticketNumber}</span>
@@ -98,13 +98,13 @@ export const TicketKanban: React.FC<TicketKanbanProps> = ({ tickets, onSelectTic
                 
                 <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
                     <div className="flex items-center gap-1.5">
-                        <div className="w-5 h-5 rounded-none bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">
+                        <div className="w-5 h-5 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">
                             {ticket.requester.charAt(0).toUpperCase()}
                         </div>
                         <span className="text-[10px] text-slate-500 truncate max-w-[80px] font-medium">{ticket.requester}</span>
                     </div>
                     
-                    <div className="px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded-none text-[10px] text-slate-600 font-bold uppercase tracking-tighter truncate max-w-[80px]">
+                    <div className="px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] text-slate-600 font-bold uppercase tracking-tighter truncate max-w-[80px]">
                         {ticket.category}
                     </div>
                 </div>
@@ -112,7 +112,7 @@ export const TicketKanban: React.FC<TicketKanbanProps> = ({ tickets, onSelectTic
             ))}
             
             {(columns[col.id]?.length || 0) === 0 && (
-                <div className="h-24 border-2 border-dashed border-slate-200 rounded-none flex items-center justify-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                <div className="h-24 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">
                     Arraste aqui
                 </div>
             )}

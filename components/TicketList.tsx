@@ -2,6 +2,9 @@
 import React, { useState, useMemo } from 'react';
 import { Ticket, TicketPriority, TicketStatus } from '../types';
 import { AlertCircle, CheckCircle, Clock, Search, Plus, Filter, ArrowUpDown, FileSpreadsheet, LayoutList, KanbanSquare } from 'lucide-react';
+import { SectorFilter } from './SectorFilter';
+import { fixEncoding } from '../services/encoding';
+import { SLABadge } from './SLABadge';
 import * as XLSX from 'xlsx';
 import { TicketKanban } from './TicketKanban';
 import { ResolutionModal } from './ResolutionModal';
@@ -33,6 +36,7 @@ export const TicketList: React.FC<TicketListProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter);
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [requesterFilter, setRequesterFilter] = useState<string>('ALL');
+  const [sectorFilter, setSectorFilter] = useState<string>('ALL');
   
   // Date Filters
   const [dateType, setDateType] = useState<'created' | 'resolved' | 'updated'>('created');
@@ -62,6 +66,9 @@ export const TicketList: React.FC<TicketListProps> = ({
       // 4. Filtro de Solicitante (Usuário)
       const matchesRequester = requesterFilter === 'ALL' || ticket.requester === requesterFilter;
 
+      // 4b. Filtro de Setor
+      const matchesSector = sectorFilter === 'ALL' || (ticket.sector || '') === sectorFilter;
+
       // 5. Filtro de Data (Com correção de Fuso Horário Local)
       let matchesDate = true;
       if (dateValue) {
@@ -85,7 +92,7 @@ export const TicketList: React.FC<TicketListProps> = ({
         }
       }
 
-      return matchesText && matchesStatus && matchesCategory && matchesRequester && matchesDate;
+      return matchesText && matchesStatus && matchesCategory && matchesRequester && matchesDate && matchesSector;
     }).sort((a, b) => {
         // Lógica de Ordenação
         const valA = a[sortField];
@@ -98,13 +105,14 @@ export const TicketList: React.FC<TicketListProps> = ({
         if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
         return 0;
     });
-  }, [tickets, searchText, statusFilter, categoryFilter, requesterFilter, dateType, dateValue, sortField, sortDirection]);
+  }, [tickets, searchText, statusFilter, categoryFilter, requesterFilter, sectorFilter, dateType, dateValue, sortField, sortDirection]);
 
   const clearFilters = () => {
       setSearchText('');
       setStatusFilter('ALL');
       setCategoryFilter('ALL');
       setRequesterFilter('ALL');
+      setSectorFilter('ALL');
       setDateValue('');
       setDateType('created');
   };
@@ -192,19 +200,19 @@ export const TicketList: React.FC<TicketListProps> = ({
     switch(s) {
       case TicketStatus.RESOLVED: 
           return (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-bold bg-green-50 text-green-700 border border-green-200 uppercase tracking-tight whitespace-nowrap">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-green-50 text-green-700 border border-green-200 uppercase tracking-tight whitespace-nowrap">
                 <CheckCircle size={10} className="mr-1" /> Resolvido
             </span>
           );
       case TicketStatus.IN_PROGRESS: 
           return (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 uppercase tracking-tight whitespace-nowrap">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 uppercase tracking-tight whitespace-nowrap">
                 <Clock size={10} className="mr-1" /> Em Progresso
             </span>
           );
       default: 
           return (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-tight whitespace-nowrap">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-tight whitespace-nowrap">
                 <AlertCircle size={10} className="mr-1" /> Aberto
             </span>
           );
@@ -221,7 +229,7 @@ export const TicketList: React.FC<TicketListProps> = ({
         case TicketPriority.CRITICAL: colorClass = 'bg-red-50 text-red-700 border-red-200'; label = 'Crítica'; break;
         default: colorClass = 'bg-slate-50 text-slate-700'; label = p;
     }
-    return <span className={`px-1.5 py-0.5 rounded-none border text-[10px] font-bold uppercase tracking-tighter ${colorClass}`}>{label}</span>;
+    return <span className={`px-1.5 py-0.5 rounded-lg border text-[10px] font-bold uppercase tracking-tighter ${colorClass}`}>{label}</span>;
   };
 
   const formatDate = (date?: Date) => {
@@ -235,11 +243,12 @@ export const TicketList: React.FC<TicketListProps> = ({
   // Listas únicas para os dropdowns
   const uniqueCategories = Array.from(new Set(tickets.map(t => t.category))).sort();
   const uniqueRequesters = Array.from(new Set(tickets.map(t => t.requester))).sort();
+  const uniqueSectors = Array.from(new Set(tickets.map(t => t.sector).filter(Boolean) as string[])).sort();
 
   return (
     <div className="space-y-6">
       {/* Header Actions & Filters */}
-      <div className="bg-white p-4 rounded-none border border-slate-200 space-y-4">
+      <div className="bg-white p-4 rounded-lg border border-slate-200 space-y-4">
           <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
              <div className="relative flex-1 w-full">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -248,23 +257,23 @@ export const TicketList: React.FC<TicketListProps> = ({
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
                     placeholder="Buscar por ID, assunto ou descrição..." 
-                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-none text-sm focus:ring-1 focus:ring-primary-500 outline-none"
+                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-1 focus:ring-primary-500 outline-none"
                 />
              </div>
              
              <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
                  {/* View Toggle */}
-                 <div className="flex bg-slate-100 p-1 rounded-none border border-slate-200">
+                 <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
                     <button
                         onClick={() => setViewMode('list')}
-                        className={`p-1.5 rounded-none transition-all ${viewMode === 'list' ? 'bg-white border border-slate-200 shadow-sm text-primary-600' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white border border-slate-100 shadow-card text-primary-600' : 'text-slate-500 hover:text-slate-700'}`}
                         title="Visualização em Lista"
                     >
                         <LayoutList size={18} />
                     </button>
                     <button
                         onClick={() => setViewMode('kanban')}
-                        className={`p-1.5 rounded-none transition-all ${viewMode === 'kanban' ? 'bg-white border border-slate-200 shadow-sm text-primary-600' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`p-1.5 rounded-lg transition-all ${viewMode === 'kanban' ? 'bg-white border border-slate-100 shadow-card text-primary-600' : 'text-slate-500 hover:text-slate-700'}`}
                         title="Visualização em Kanban"
                     >
                         <KanbanSquare size={18} />
@@ -273,7 +282,7 @@ export const TicketList: React.FC<TicketListProps> = ({
 
                  <button 
                     onClick={handleExportXLSX}
-                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-none hover:bg-slate-50 transition-colors text-sm font-medium whitespace-nowrap"
+                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium whitespace-nowrap"
                     title="Exportar dados filtrados para Excel"
                  >
                     <FileSpreadsheet size={18} />
@@ -281,7 +290,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                  </button>
                  <button 
                     onClick={onCreateTicket}
-                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-5 py-2 bg-primary-600 text-white rounded-none hover:bg-primary-700 transition-colors text-sm font-medium whitespace-nowrap"
+                    className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-5 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium whitespace-nowrap"
                 >
                     <Plus size={18} />
                     <span>Novo Chamado</span>
@@ -301,7 +310,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                 <select 
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-none text-xs text-slate-600 outline-none bg-white focus:border-primary-500 font-medium"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs text-slate-600 outline-none bg-white focus:border-primary-500 font-medium"
                 >
                     <option value="ALL">TODOS OS STATUS</option>
                     <option value="OPEN">ABERTO</option>
@@ -313,7 +322,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                 <select 
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-none text-xs text-slate-600 outline-none bg-white focus:border-primary-500 font-medium"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs text-slate-600 outline-none bg-white focus:border-primary-500 font-medium"
                 >
                     <option value="ALL">TODAS CATEGORIAS</option>
                     {uniqueCategories.map(cat => (
@@ -325,7 +334,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                 <select 
                     value={requesterFilter}
                     onChange={(e) => setRequesterFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-none text-xs text-slate-600 outline-none bg-white focus:border-primary-500 font-medium"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs text-slate-600 outline-none bg-white focus:border-primary-500 font-medium"
                 >
                     <option value="ALL">TODOS SOLICITANTES</option>
                     {uniqueRequesters.map(req => (
@@ -334,7 +343,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                 </select>
 
                 {/* Date Filter Group */}
-                <div className="flex items-center gap-0 border border-slate-200 rounded-none overflow-hidden w-full">
+                <div className="flex items-center gap-0 border border-slate-200 rounded-lg overflow-hidden w-full">
                      <select
                         value={dateType}
                         onChange={(e) => setDateType(e.target.value as any)}
@@ -353,7 +362,10 @@ export const TicketList: React.FC<TicketListProps> = ({
                 </div>
              </div>
              
-             {(searchText || statusFilter !== 'ALL' || categoryFilter !== 'ALL' || requesterFilter !== 'ALL' || dateValue) && (
+             {uniqueSectors.length > 0 && (
+               <SectorFilter sectors={uniqueSectors} value={sectorFilter} onChange={setSectorFilter} />
+             )}
+             {(searchText || statusFilter !== 'ALL' || categoryFilter !== 'ALL' || requesterFilter !== 'ALL' || sectorFilter !== 'ALL' || dateValue) && (
                  <button 
                     onClick={clearFilters}
                     className="text-[10px] text-red-500 font-bold hover:underline whitespace-nowrap px-2 uppercase tracking-wider"
@@ -382,7 +394,7 @@ export const TicketList: React.FC<TicketListProps> = ({
             }}
           />
       ) : (
-        <div className="bg-white rounded-none border border-slate-200 overflow-hidden shadow-sm">
+        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] font-bold tracking-widest">
@@ -411,6 +423,9 @@ export const TicketList: React.FC<TicketListProps> = ({
                             <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('updatedAt')}>
                                 <div className="flex items-center">Última At. <SortIcon field="updatedAt" /></div>
                             </th>
+                            <th className="px-4 py-3 border-r border-slate-100">
+                                SLA
+                            </th>
                             <th className="px-4 py-3 cursor-pointer hover:bg-slate-100 text-right transition-colors" onClick={() => handleSort('status')}>
                                 <div className="flex items-center justify-end">Status <SortIcon field="status" /></div>
                             </th>
@@ -428,15 +443,15 @@ export const TicketList: React.FC<TicketListProps> = ({
                                 </td>
                                 <td className="px-4 py-3 border-r border-slate-50">
                                     <div>
-                                        <p className="text-sm font-bold text-slate-800 group-hover:text-primary-600 transition-colors uppercase tracking-tight">{ticket.title}</p>
-                                        <p className="text-xs text-slate-500 truncate max-w-[150px] md:max-w-[300px] leading-relaxed">{ticket.description}</p>
+                                        <p className="text-sm font-bold text-slate-800 group-hover:text-primary-600 transition-colors uppercase tracking-tight">{fixEncoding(ticket.title)}</p>
+                                        <p className="text-xs text-slate-500 truncate max-w-[150px] md:max-w-[300px] leading-relaxed">{fixEncoding(ticket.description)}</p>
                                     </div>
                                 </td>
                                 <td className="px-4 py-3 text-[10px] text-slate-600 font-bold uppercase tracking-tight border-r border-slate-50">
                                     {ticket.requester}
                                 </td>
                                 <td className="px-4 py-3 border-r border-slate-50">
-                                    <span className="px-1.5 py-0.5 bg-slate-50 rounded-none text-[10px] font-bold text-slate-500 border border-slate-200 uppercase tracking-tighter">
+                                    <span className="px-1.5 py-0.5 bg-slate-50 rounded-lg text-[10px] font-bold text-slate-500 border border-slate-200 uppercase tracking-tighter">
                                         {ticket.category}
                                     </span>
                                 </td>
@@ -452,6 +467,9 @@ export const TicketList: React.FC<TicketListProps> = ({
                                 <td className="px-4 py-3 text-[10px] font-bold font-mono text-slate-500 whitespace-nowrap border-r border-slate-50">
                                     {formatDate(ticket.updatedAt)}
                                 </td>
+                                <td className="px-4 py-3 border-r border-slate-50 whitespace-nowrap">
+                                    <SLABadge ticket={ticket} compact />
+                                </td>
                                 <td className="px-4 py-3 text-right">
                                     {getStatusBadge(ticket.status)}
                                 </td>
@@ -462,7 +480,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                 
                 {filteredTickets.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-20 text-center">
-                        <div className="bg-slate-50 p-4 rounded-none border border-slate-100 mb-4">
+                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4">
                             <Search size={32} className="text-slate-300" />
                         </div>
                         <p className="text-slate-900 font-bold uppercase tracking-wider text-sm">Nenhum chamado encontrado</p>

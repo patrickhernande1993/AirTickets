@@ -21,6 +21,7 @@ export interface User {
   role: UserRole;
   avatar?: string;
   isActive?: boolean; // Campo para controlar se o usuário está ativo ou bloqueado
+  sector?: string;
 }
 
 export interface Ticket {
@@ -28,8 +29,8 @@ export interface Ticket {
   ticketNumber: number; // ID Sequencial (1, 2, 3...)
   title: string;
   description: string;
-  requester: string; 
-  requesterId: string; 
+  requester: string;
+  requesterId: string;
   priority: TicketPriority;
   status: TicketStatus;
   category: string;
@@ -39,6 +40,8 @@ export interface Ticket {
   attachments?: string[]; // URLs dos arquivos anexados
   scheduledDate?: Date; // Data agendada para atendimento
   resolution?: string; // Texto da resolução do chamado
+  csatRating?: 1 | 2 | 3; // 1=ruim, 2=regular, 3=ótimo
+  sector?: string;
 }
 
 export interface Comment {
@@ -80,4 +83,4 @@ export interface ITicketStats {
   resolved: number;
 }
 
-export type ViewState = 'DASHBOARD' | 'CREATE_TICKET' | 'TICKET_DETAIL' | 'MY_TICKETS' | 'ALL_TICKETS' | 'USERS' | 'EDIT_TICKET' | 'NOTIFICATIONS' | 'AGENDA';
+export type ViewState = 'DASHBOARD' | 'CREATE_TICKET' | 'TICKET_DETAIL' | 'MY_TICKETS' | 'ALL_TICKETS' | 'USERS' | 'EDIT_TICKET' | 'NOTIFICATIONS' | 'AGENDA' | 'KNOWLEDGE_BASE' | 'KIOSK' | 'RECURRING' | 'ESCALATION' | 'AUDIT_LOG';
