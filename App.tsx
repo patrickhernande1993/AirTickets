@@ -352,7 +352,9 @@ const App: React.FC = () => {
                             cc: ccEmailString,
                             ticketNumber: newTicket.ticket_number,
                             title: newTicketData.title,
-                            requesterName: profile.name || newTicketData.requester
+                            requesterName: profile.name || newTicketData.requester,
+                            description: newTicketData.description,
+                            attachments: newTicketData.attachments
                         });
                     }
                 } catch (emailError) {

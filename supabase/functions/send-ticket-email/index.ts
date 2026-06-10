@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { to, cc, ticketNumber, title, requesterName, type = 'opened', resolution } = await req.json()
+    const { to, cc, ticketNumber, title, requesterName, type = 'opened', resolution, description, attachments } = await req.json()
 
     // Credenciais do Azure AD vinda dos Secrets
     const AZURE_TENANT_ID = Deno.env.get('AZURE_TENANT_ID')
@@ -68,11 +68,27 @@ serve(async (req) => {
               <p>Olá <strong>${requesterName}</strong>,</p>
               <p>${messageText}</p>
               <div style="background-color: #f8fafc; padding: 15px; border-left: 4px solid ${headerColor}; margin: 20px 0;">
-                <p style="margin: 0; font-size: 14px; color: #64748b;">Número:</p>
+                <p style="margin: 0; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Número:</p>
                 <p style="margin: 5px 0 0 0; font-size: 18px; font-weight: bold; color: #1e293b;">#${ticketNumber}</p>
-                <p style="margin: 15px 0 0 0; font-size: 14px; color: #64748b;">Assunto:</p>
+                <p style="margin: 15px 0 0 0; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Assunto:</p>
                 <p style="margin: 5px 0 0 0; font-size: 16px; color: #1e293b;">${title}</p>
+                ${!isResolved && description ? `
+                <p style="margin: 15px 0 0 0; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Descrição:</p>
+                <p style="margin: 5px 0 0 0; font-size: 14px; color: #1e293b; line-height: 1.6; white-space: pre-wrap;">${description}</p>
+                ` : ''}
               </div>
+              ${!isResolved && attachments && attachments.length > 0 ? `
+              <div style="background-color: #f8fafc; padding: 15px; border-left: 4px solid ${headerColor}; margin: 20px 0;">
+                <p style="margin: 0; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Anexos (${attachments.length}):</p>
+                <ul style="margin: 8px 0 0 0; padding-left: 18px;">
+                  ${attachments.map((url: string, i: number) => `
+                    <li style="margin: 4px 0;">
+                      <a href="${url}" style="font-size: 13px; color: #0078d4; text-decoration: none;">Anexo ${i + 1}</a>
+                    </li>
+                  `).join('')}
+                </ul>
+              </div>
+              ` : ''}
               ${isResolved && resolution ? `
               <div style="background-color: #f0fdf4; padding: 15px; border-left: 4px solid #10b981; margin: 20px 0;">
                 <p style="margin: 0; font-size: 12px; font-weight: bold; color: #15803d; text-transform: uppercase; letter-spacing: 0.05em;">Resolução:</p>
