@@ -513,22 +513,31 @@ const App: React.FC = () => {
         // EMAIL NOTIFICATION LOGIC: Notify if Resolved (Moved outside for all views)
         if (status === TicketStatus.RESOLVED) {
             try {
-                // Fetch requester email and ticket details
+                // Busca ticket e perfil separadamente para evitar falha silenciosa do join por RLS
                 const { data: ticketData } = await supabase
                     .from('tickets')
-                    .select('title, ticket_number, requester_id, profiles:requester_id(email, name)')
+                    .select('title, ticket_number, requester_id')
                     .eq('id', id)
                     .single();
-                
-                if (ticketData && (ticketData as any).profiles?.email) {
-                    const prof = (ticketData as any).profiles;
-                    await sendTicketResolvedEmail({
-                        to: prof.email,
-                        ticketNumber: ticketData.ticket_number,
-                        title: ticketData.title,
-                        requesterName: prof.name || 'Usuário',
-                        resolution: resolution
-                    });
+
+                if (ticketData?.requester_id) {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('email, name')
+                        .eq('id', ticketData.requester_id)
+                        .single();
+
+                    if (profile?.email) {
+                        await sendTicketResolvedEmail({
+                            to: profile.email,
+                            ticketNumber: ticketData.ticket_number,
+                            title: ticketData.title,
+                            requesterName: profile.name || 'Usuário',
+                            resolution: resolution
+                        });
+                    } else {
+                        console.warn('E-mail do solicitante não encontrado para o chamado', id);
+                    }
                 }
             } catch (emailError) {
                 console.error("Falha ao enviar e-mail de resolução:", emailError);
