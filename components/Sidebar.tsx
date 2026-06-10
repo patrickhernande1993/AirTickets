@@ -1,0 +1,175 @@
+
+import React, { useEffect, useState } from 'react';
+import { LayoutDashboard, Users, Ticket as TicketIcon, List, Bell, X } from 'lucide-react';
+import { ViewState, User } from '../types';
+import { supabase } from '../services/supabase';
+import { Logo } from './Logo';
+
+interface SidebarProps {
+  currentView: ViewState;
+  onChangeView: (view: ViewState) => void;
+  currentUser: User;
+  isOpen: boolean; // Novo prop para controle mobile
+  onClose: () => void; // Novo prop para fechar no mobile
+  isVisible: boolean; // Novo prop para controle desktop
+}
+
+interface NavItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  badge?: number;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, currentUser, isOpen, onClose, isVisible }) => {
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    fetchUnreadNotifications();
+    
+    // Realtime subscription for notifications
+    const channel = supabase
+      .channel('public:notifications')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'notifications', 
+        filter: `user_id=eq.${currentUser.id}` 
+      }, () => {
+        fetchUnreadNotifications();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    }
+  }, [currentUser.id]);
+
+  const fetchUnreadNotifications = async () => {
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .eq('is_read', false);
+    
+    setUnreadCount(count || 0);
+  };
+
+  const getNavItems = (): NavItem[] => {
+    // Common items for everyone (Notifications)
+    // Dashboard label changes based on role
+    const commonItems: NavItem[] = [
+      { id: 'NOTIFICATIONS', label: 'Notificações', icon: Bell, badge: unreadCount },
+    ];
+
+    if (currentUser.role === 'USER') {
+      return [
+        { id: 'DASHBOARD', label: 'Visão Geral', icon: LayoutDashboard }, // User Dashboard
+        ...commonItems,
+        { id: 'MY_TICKETS', label: 'Meus Chamados', icon: List },
+      ];
+    }
+
+    // DEV / ADMIN Items
+    return [
+      { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutDashboard }, // Admin Dashboard (Graphs)
+      ...commonItems,
+      { id: 'ALL_TICKETS', label: 'Todos os Chamados', icon: TicketIcon }, // Admin Ticket List
+      { id: 'USERS', label: 'Gestão de Usuários', icon: Users },
+    ];
+  };
+
+  const navItems = getNavItems();
+
+  const handleItemClick = (view: ViewState) => {
+      onChangeView(view);
+      onClose(); // Fecha o menu ao clicar em um item (no mobile)
+  };
+
+  return (
+    <>
+        {/* Sidebar Container */}
+        <div className={`
+            fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col h-screen
+            transform transition-transform duration-300 ease-in-out
+            ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
+            ${isVisible ? 'md:translate-x-0' : 'md:-translate-x-full'}
+        `}>
+        <div className="p-6 flex items-center justify-between border-b border-slate-100 h-20">
+            {/* LOGO COMPONENT */}
+            <div className="flex items-center space-x-2">
+                <Logo className="h-10 w-auto" />
+                <span className="text-xl font-bold text-gray-800 tracking-tight">AirService</span>
+            </div>
+            {/* Mobile Close Button */}
+            <button onClick={onClose} className="md:hidden text-gray-500 hover:text-gray-700">
+                <X size={24} />
+            </button>
+        </div>
+
+        <div className="px-6 py-4">
+            <div className="bg-slate-50 rounded-none p-3 flex items-center space-x-3 border border-slate-200">
+                <div className="h-8 w-8 rounded-none bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-xs border border-primary-200">
+                    {currentUser.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="overflow-hidden">
+                    <p className="text-sm font-medium text-gray-900 truncate">{currentUser.name}</p>
+                    <p className="text-xs text-gray-500 truncate capitalize">{currentUser.role === 'ADMIN' ? 'Desenvolvedor/Admin' : 'Usuário'}</p>
+                </div>
+            </div>
+        </div>
+
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            {navItems.map((item) => {
+                const Icon = item.icon;
+                
+                // Determine if this item is active
+                let isActive = currentView === item.id;
+
+                // Handle logic for Detail/Create/Edit views which are sub-views of the main lists
+                if (['TICKET_DETAIL', 'CREATE_TICKET', 'EDIT_TICKET'].includes(currentView)) {
+                    // For Admins, ticket details usually fall under "Todos os Chamados" context
+                    if (currentUser.role === 'ADMIN' && item.id === 'ALL_TICKETS') {
+                        isActive = true;
+                    }
+                    // For Users, ticket details fall under "Meus Chamados" context
+                    if (currentUser.role === 'USER' && item.id === 'MY_TICKETS') {
+                        isActive = true;
+                    }
+                }
+                
+                return (
+                    <button
+                    key={item.id + item.label}
+                    onClick={() => handleItemClick(item.id as ViewState)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-none text-sm font-medium transition-colors duration-200 ${
+                        isActive
+                        ? 'bg-slate-100 text-primary-700 border-r-4 border-primary-600'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                    >
+                    <div className="flex items-center space-x-3">
+                        <Icon size={20} />
+                        <span>{item.label}</span>
+                    </div>
+                    {item.badge ? (
+                        <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        {item.badge}
+                        </span>
+                    ) : null}
+                    </button>
+                );
+            })}
+        </nav>
+        </div>
+        
+        {/* Mobile Overlay */}
+        {isOpen && (
+            <div 
+                className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+                onClick={onClose}
+            ></div>
+        )}
+    </>
+  );
+};
