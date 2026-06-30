@@ -477,6 +477,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
       </div>
 
       {/* Analysis Patterns Section */}
+      {currentUser.role === 'ADMIN' && (
       <div className="bg-white rounded-lg border border-slate-100 shadow-card p-6">
         <div className="flex items-center gap-2 mb-6">
           <BarChart2 size={20} className="text-primary-600" />
@@ -487,6 +488,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
         </div>
         <HeatMap tickets={tickets} />
       </div>
+      )}
     </div>
   );
 };

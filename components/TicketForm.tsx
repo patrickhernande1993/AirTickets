@@ -78,16 +78,16 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TicketPriority>(TicketPriority.LOW);
-  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [category, setCategory] = useState('');
   
   // Date states
   const nowStr = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   const [createdAtStr, setCreatedAtStr] = useState(nowStr);
   const [resolvedAtStr, setResolvedAtStr] = useState('');
-  const [sector, setSector] = useState('');
+  const [sector, setSector] = useState(currentUser.sector || '');
   
   // Requester State for Admins
-  const [users, setUsers] = useState<{id: string, name: string}[]>([]);
+  const [users, setUsers] = useState<{id: string, name: string, sector?: string}[]>([]);
   const [selectedRequesterId, setSelectedRequesterId] = useState(currentUser.id);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
@@ -95,7 +95,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
     if (currentUser.role === 'ADMIN') {
         const fetchUsers = async () => {
             setIsLoadingUsers(true);
-            const { data, error } = await supabase.from('profiles').select('id, name').order('name');
+            const { data, error } = await supabase.from('profiles').select('id, name, sector').eq('is_active', true).order('name');
             if (!error && data) {
                 setUsers(data);
             }
@@ -104,6 +104,18 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
         fetchUsers();
     }
   }, [currentUser.role]);
+
+  // Atualiza o setor automaticamente quando o solicitante muda
+  useEffect(() => {
+    if (!initialData) {
+      if (selectedRequesterId === currentUser.id) {
+        setSector(currentUser.sector || '');
+      } else {
+        const selectedUser = users.find(u => u.id === selectedRequesterId);
+        setSector(selectedUser?.sector || '');
+      }
+    }
+  }, [selectedRequesterId, users]);
   
   // Attachments State
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -230,8 +242,22 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!category) {
+      showToast('Selecione uma categoria antes de continuar.', 'error');
+      return;
+    }
+    if (!title.trim()) {
+      showToast('Preencha o campo Assunto.', 'error');
+      return;
+    }
+    if (!description.trim()) {
+      showToast('Preencha a Descrição Detalhada.', 'error');
+      return;
+    }
+
     setIsSaving(true);
-    
+
     const selectedUser = users.find(u => u.id === selectedRequesterId);
     const requesterName = selectedUser ? selectedUser.name : currentUser.name;
 
@@ -290,31 +316,28 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
   ];
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <button onClick={onCancel} className="flex items-center text-slate-500 hover:text-slate-700 mb-6 transition-colors font-bold text-xs uppercase tracking-widest">
-        <ArrowLeft size={14} className="mr-2" />
+    <div className="w-full">
+      <button onClick={onCancel} className="flex items-center text-slate-500 hover:text-slate-700 mb-3 transition-colors font-bold text-xs uppercase tracking-widest">
+        <ArrowLeft size={13} className="mr-1.5" />
         Voltar para lista
       </button>
 
       <div className="bg-white rounded-lg border border-slate-100 shadow-card overflow-hidden">
         {/* Cabeçalho Visual */}
-        <div className="p-6 border-b border-slate-200 bg-slate-50 text-slate-900">
-          <div className="flex justify-between items-center">
-             <div>
-                <h2 className="text-xl font-bold uppercase tracking-tight">{initialData ? 'Editar Chamado' : 'Abrir Novo Chamado'}</h2>
-                <p className="text-slate-500 text-sm mt-1">Preencha os detalhes técnicos para abertura do ticket.</p>
-             </div>
-             <div className="hidden md:block bg-white p-3 rounded-lg border border-slate-100 shadow-card">
-                <FileText size={24} className="text-primary-600" />
-             </div>
+        <div className="px-5 py-3 border-b border-slate-200 bg-slate-50 text-slate-900 flex justify-between items-center">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-tight">{initialData ? 'Editar Chamado' : 'Abrir Novo Chamado'}</h2>
+            <p className="text-slate-500 text-xs mt-0.5">Preencha os detalhes técnicos para abertura do ticket.</p>
           </div>
+          <FileText size={18} className="text-primary-600 hidden md:block" />
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-8">
-          
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+
           {/* Seção 1: Informações Básicas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <div className="space-y-4">
+          <div className="space-y-3">
+            {/* Linha 1: Solicitante | Setor */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Solicitante</label>
                     {currentUser.role === 'ADMIN' ? (
@@ -322,7 +345,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
                            <select
                                value={selectedRequesterId}
                                onChange={(e) => setSelectedRequesterId(e.target.value)}
-                               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none bg-white appearance-none cursor-pointer hover:border-primary-400 transition-colors text-sm font-medium"
+                               className="w-full px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none bg-white appearance-none cursor-pointer hover:border-primary-400 transition-colors text-sm"
                                disabled={isLoadingUsers}
                            >
                                {isLoadingUsers ? (
@@ -339,7 +362,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
                                )}
                            </select>
                            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                               <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                               <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                            </div>
                        </div>
                     ) : (
@@ -347,70 +370,41 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
                             type="text"
                             value={currentUser.name}
                             disabled
-                            className="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 cursor-not-allowed font-mono text-sm"
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 cursor-not-allowed text-sm"
                         />
                     )}
                 </div>
+                <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Setor</label>
+                    <input
+                        type="text"
+                        value={sector || 'Não informado'}
+                        disabled
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 cursor-not-allowed text-sm"
+                    />
+                </div>
+            </div>
+
+            {/* Linha 2: Categoria | Assunto */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Categoria</label>
                     <div className="relative">
                         <select
                             value={category}
                             onChange={(e) => setCategory(e.target.value)}
-                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none bg-white appearance-none cursor-pointer hover:border-primary-400 transition-colors text-sm font-medium"
+                            className="w-full px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none bg-white appearance-none cursor-pointer hover:border-primary-400 transition-colors text-sm"
                         >
+                            <option value="">Selecione a categoria...</option>
                             {CATEGORIES.map(cat => (
                                 <option key={cat} value={cat}>{cat}</option>
                             ))}
                         </select>
                         <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                            <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                         </div>
                     </div>
                 </div>
-                <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Setor (Opcional)</label>
-                    <div className="relative">
-                    <select
-                        value={sector}
-                        onChange={(e) => setSector(e.target.value)}
-                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none bg-white transition-colors text-sm font-medium appearance-none pr-8"
-                    >
-                        <option value="">Selecione o setor...</option>
-                        {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                        <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </div>
-                    </div>
-                </div>
-                {currentUser.role === 'ADMIN' && (
-                  <>
-                    <div>
-                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Abertura</label>
-                         <input
-                             type="datetime-local"
-                             required
-                             value={createdAtStr}
-                             onChange={(e) => setCreatedAtStr(e.target.value)}
-                             className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none bg-white transition-colors text-sm font-medium"
-                         />
-                    </div>
-                    <div>
-                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 text-slate-400">Fechamento (Opcional)</label>
-                         <input
-                             type="datetime-local"
-                             value={resolvedAtStr}
-                             onChange={(e) => setResolvedAtStr(e.target.value)}
-                             className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none bg-white transition-colors text-sm font-medium"
-                             placeholder="Apenas se Resolvido"
-                         />
-                    </div>
-                  </>
-                )}
-             </div>
-
-             <div className="space-y-4">
                 <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Assunto</label>
                     <input
@@ -418,29 +412,55 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
                         required
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-slate-400 text-sm font-medium"
+                        className="w-full px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-slate-400 text-sm"
                         placeholder="Ex: Erro ao acessar o ERP"
                     />
                 </div>
+            </div>
+            <div className="space-y-3">
+                {currentUser.role === 'ADMIN' && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Abertura</label>
+                         <input
+                             type="datetime-local"
+                             required
+                             value={createdAtStr}
+                             onChange={(e) => setCreatedAtStr(e.target.value)}
+                             className="w-full px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none bg-white transition-colors text-sm"
+                         />
+                    </div>
+                    <div>
+                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Fechamento</label>
+                         <input
+                             type="datetime-local"
+                             value={resolvedAtStr}
+                             onChange={(e) => setResolvedAtStr(e.target.value)}
+                             className="w-full px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none bg-white transition-colors text-sm"
+                         />
+                    </div>
+                  </div>
+                )}
              </div>
+
           </div>
 
-          <div className="border-t border-slate-100 my-2"></div>
+          <div className="border-t border-slate-100"></div>
 
           {/* Seção 2: Detalhes e Prioridade */}
-          <div className="space-y-6">
+          <div className="space-y-4">
              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Descrição Detalhada</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Descrição Detalhada</label>
                 <div className="relative">
                     <textarea
                         required
-                        rows={6}
+                        rows={4}
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all resize-none leading-relaxed text-sm font-medium"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all resize-none leading-relaxed text-sm"
                         placeholder="Descreva o que aconteceu, quais passos você seguiu e se apareceu alguma mensagem de erro..."
                     />
-                    <div className="absolute bottom-3 right-3 text-[10px] font-bold text-slate-400 uppercase tracking-tight pointer-events-none">
+                    <div className="absolute bottom-2 right-3 text-[10px] font-bold text-slate-400 uppercase tracking-tight pointer-events-none">
                         Seja específico e técnico.
                     </div>
                 </div>
@@ -516,119 +536,75 @@ export const TicketForm: React.FC<TicketFormProps> = ({ onSave, onCancel, initia
              )}
 
              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Defina a Prioridade</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Defina a Prioridade</label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     {PRIORITY_OPTIONS.map((option) => (
                         <button
                             key={option.id}
                             type="button"
                             onClick={() => setPriority(option.id)}
-                            className={`
-                                relative flex flex-col items-start p-3 rounded-lg border transition-all duration-200 text-left
+                            className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-all text-left text-xs
                                 ${priority === option.id ? option.selectedClass : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'}
                             `}
                         >
-                            <div className="flex items-center justify-between w-full mb-1">
-                                <span className="font-bold text-xs uppercase tracking-tight">{option.label}</span>
-                                {priority === option.id && <Check size={14} className="text-current" />}
+                            <div>
+                                <span className="font-bold uppercase tracking-tight block">{option.label}</span>
+                                <span className="text-[10px] opacity-70 leading-tight">{option.desc}</span>
                             </div>
-                            <span className="text-[10px] opacity-80 leading-tight">{option.desc}</span>
+                            {priority === option.id && <Check size={12} className="text-current ml-1 shrink-0" />}
                         </button>
                     ))}
                 </div>
              </div>
 
-             {/* Attachments Section Modernized */}
-             <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                      <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Anexos (Opcional)</label>
-                          <p className="text-xs text-slate-500 mt-1">Adicione evidências técnicas (logs, prints).</p>
-                      </div>
-                      
-                      {/* Upload Button or Progress Bar */}
-                      <label className={`
-                          flex flex-col md:flex-row items-center justify-center space-x-0 md:space-x-2 px-4 py-2 rounded-lg transition-all shadow-sm w-full md:w-auto min-w-[160px] relative overflow-hidden
-                          ${isUploading 
-                            ? 'bg-slate-50 border border-slate-200 cursor-not-allowed h-12' 
-                            : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 cursor-pointer h-10'}
-                      `}>
-                          {isUploading ? (
-                              <div className="w-full px-2 flex flex-col justify-center h-full">
-                                  <div className="flex justify-between items-center mb-1 w-full">
-                                      <span className="text-[10px] font-bold text-primary-700 flex items-center uppercase tracking-widest">
-                                          <Loader2 size={10} className="animate-spin mr-1" />
-                                          Enviando...
-                                      </span>
-                                      <span className="text-[10px] font-bold text-primary-700">{uploadProgress}%</span>
-                                  </div>
-                                  <div className="w-full bg-slate-200 rounded-lg h-1 overflow-hidden">
-                                      <div 
-                                        className="bg-primary-600 h-1 rounded-lg transition-all duration-300 ease-out" 
-                                        style={{ width: `${uploadProgress}%` }}
-                                      ></div>
-                                  </div>
-                              </div>
-                          ) : (
-                              <>
-                                <Paperclip size={16} />
-                                <span className="text-xs font-bold uppercase tracking-widest">Selecionar Arquivo</span>
-                                <input 
-                                    type="file" 
-                                    className="hidden" 
-                                    onChange={handleFileUpload} 
-                                    disabled={isUploading}
-                                />
-                              </>
-                          )}
-                      </label>
+             {/* Anexos */}
+             <div className="bg-slate-50 rounded-lg px-3 py-2.5 border border-slate-200 flex items-center justify-between gap-3">
+                  <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Anexos (Opcional)</label>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Logs, prints, evidências.</p>
                   </div>
-                  
-                  {attachments.length > 0 && (
-                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {attachments.map((url, index) => (
-                              <div key={index} className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-card">
-                                  <div className="flex items-center space-x-2 overflow-hidden">
-                                      <div className="bg-slate-50 p-1.5 rounded-lg text-slate-500 border border-slate-100">
-                                        <FileText size={14} />
-                                      </div>
-                                      <a href={url} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-slate-700 hover:text-primary-600 hover:underline truncate max-w-[150px] uppercase tracking-tight">
-                                          Anexo {index + 1}
-                                      </a>
-                                  </div>
-                                  <button 
-                                    type="button" 
-                                    onClick={() => removeAttachment(url)}
-                                    className="text-slate-400 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition-colors"
-                                  >
-                                      <X size={14} />
-                                  </button>
-                              </div>
-                          ))}
-                      </div>
-                  )}
+                  <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold uppercase tracking-widest transition-all shrink-0
+                      ${isUploading ? 'bg-slate-100 border-slate-200 cursor-not-allowed text-slate-400' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100 cursor-pointer'}`}>
+                      {isUploading ? <><Loader2 size={12} className="animate-spin" />{uploadProgress}%</> : <><Paperclip size={12} />Selecionar</>}
+                      <input type="file" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
+                  </label>
              </div>
+             {attachments.length > 0 && (
+                 <div className="grid grid-cols-2 gap-1.5">
+                     {attachments.map((url, index) => (
+                         <div key={index} className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded-lg border border-slate-100">
+                             <div className="flex items-center gap-1.5 overflow-hidden">
+                                 <FileText size={12} className="text-slate-400 shrink-0" />
+                                 <a href={url} target="_blank" rel="noreferrer" className="text-[11px] font-medium text-slate-600 hover:text-primary-600 truncate">
+                                     Anexo {index + 1}
+                                 </a>
+                             </div>
+                             <button type="button" onClick={() => removeAttachment(url)} className="text-slate-300 hover:text-red-500 transition-colors ml-1 shrink-0">
+                                 <X size={12} />
+                             </button>
+                         </div>
+                     ))}
+                 </div>
+             )}
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-6 flex flex-col-reverse md:flex-row justify-end gap-3 md:gap-4 border-t border-slate-100">
+          <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-bold text-xs uppercase tracking-widest transition-colors w-full md:w-auto text-center"
+              className="px-4 py-1.5 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase tracking-widest transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isUploading || isSaving}
-              className={`px-8 py-2 text-white rounded-lg font-bold text-xs uppercase tracking-widest shadow-sm transition-all w-full md:w-auto text-center flex justify-center items-center
-                ${(isUploading || isSaving)
-                    ? 'bg-slate-400 cursor-not-allowed' 
-                    : 'bg-primary-600 hover:bg-primary-700'}
+              className={`px-5 py-1.5 text-white rounded-lg font-bold text-xs uppercase tracking-widest transition-all flex items-center gap-1.5
+                ${(isUploading || isSaving) ? 'bg-slate-400 cursor-not-allowed' : 'bg-primary-600 hover:bg-primary-700'}
               `}
             >
-              {(isUploading || isSaving) && <Loader2 size={14} className="animate-spin mr-2" />}
+              {(isUploading || isSaving) && <Loader2 size={12} className="animate-spin" />}
               {isSaving ? 'Salvando...' : (initialData ? 'Salvar Alterações' : 'Criar Chamado')}
             </button>
           </div>
