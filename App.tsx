@@ -311,6 +311,7 @@ const App: React.FC = () => {
                     if (profile && profile.email) {
                         await sendTicketResolvedEmail({
                             to: profile.email,
+                            cc: 'ti@grupoairslaid.com.br',
                             ticketNumber: ticketToEdit.ticketNumber,
                             title: newTicketData.title,
                             requesterName: profile.name || newTicketData.requester,
@@ -571,6 +572,7 @@ const App: React.FC = () => {
                     if (profile?.email) {
                         await sendTicketResolvedEmail({
                             to: profile.email,
+                            cc: 'ti@grupoairslaid.com.br',
                             ticketNumber: ticketData.ticket_number,
                             title: ticketData.title,
                             requesterName: profile.name || 'Usuário',
