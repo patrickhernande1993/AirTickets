@@ -15,7 +15,7 @@ interface DashboardProps {
 type TimeRange = 'WEEK' | 'MONTH' | 'YEAR';
 
 export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCreateTicket }) => {
-  const [timeRange, setTimeRange] = useState<TimeRange>('WEEK');
+  const [timeRange, setTimeRange] = useState<TimeRange>('MONTH');
   const [showExportModal, setShowExportModal] = useState(false);
 
   const handleExportExcel = () => {
