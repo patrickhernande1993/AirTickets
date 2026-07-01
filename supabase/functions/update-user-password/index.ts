@@ -47,26 +47,30 @@ Deno.serve(async (req: Request) => {
       throw new Error('Apenas administradores podem realizar esta ação.')
     }
 
-    // 3. Executa a alteração de senha
-    const { userId, newPassword } = await req.json()
+    // 3. Executa a alteração de senha e/ou e-mail
+    const { userId, newPassword, newEmail } = await req.json()
 
-    if (!userId || !newPassword) {
-      throw new Error('O ID do usuário e a nova senha são obrigatórios.')
+    if (!userId || (!newPassword && !newEmail)) {
+      throw new Error('O ID do usuário e ao menos uma alteração (senha ou e-mail) são obrigatórios.')
     }
+
+    const updates: any = {}
+    if (newPassword) updates.password = newPassword
+    if (newEmail) updates.email = newEmail
 
     const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
       userId,
-      { password: newPassword }
+      updates
     )
 
     if (updateError) {
       console.error('Erro no Supabase Auth Admin:', updateError)
-      throw new Error(`Falha ao alterar senha: ${updateError.message}`)
+      throw new Error(`Falha ao atualizar usuário: ${updateError.message}`)
     }
 
     return new Response(
-      JSON.stringify({ 
-        message: 'Senha atualizada com sucesso',
+      JSON.stringify({
+        message: 'Usuário atualizado com sucesso',
         userId: updatedUser.user.id
       }),
       {

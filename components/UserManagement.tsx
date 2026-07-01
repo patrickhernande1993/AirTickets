@@ -19,6 +19,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [editPassword, setEditPassword] = useState('');
   const [editRole, setEditRole] = useState<UserRole>('USER');
   const [editIsActive, setEditIsActive] = useState(true);
@@ -53,6 +54,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
   const handleEditClick = (user: User) => {
       setSelectedUser(user);
       setEditName(user.name);
+      setEditEmail(user.email);
       setEditRole(user.role);
       setEditIsActive(user.isActive !== false);
       setEditPassword('');
@@ -78,28 +80,35 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
 
       setIsSaving(true);
       try {
-          if (editPassword) {
-              const { data: sessionData } = await supabase.auth.getSession();
-              const token = sessionData.session?.access_token;
-              
-              if (!token) throw new Error("Não foi possível obter o token de sessão.");
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData.session?.access_token;
+          if (!token) throw new Error("Não foi possível obter o token de sessão.");
 
+          if (editPassword) {
               const response = await fetch(`${supabaseUrl}/functions/v1/update-user-password`, {
                   method: 'POST',
-                  headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${token}`
-                  },
-                  body: JSON.stringify({
-                      userId: selectedUser.id,
-                      newPassword: editPassword
-                  })
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                  body: JSON.stringify({ userId: selectedUser.id, newPassword: editPassword })
               });
-
               if (!response.ok) {
                   const errorData = await response.json();
                   throw new Error(errorData.error || "Erro ao alterar a senha.");
               }
+          }
+
+          // Atualiza e-mail se foi alterado
+          if (editEmail.trim() && editEmail.trim() !== selectedUser.email) {
+              const response = await fetch(`${supabaseUrl}/functions/v1/update-user-password`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                  body: JSON.stringify({ userId: selectedUser.id, newEmail: editEmail.trim() })
+              });
+              if (!response.ok) {
+                  const errorData = await response.json();
+                  throw new Error(errorData.error || "Erro ao alterar o e-mail.");
+              }
+              // Atualiza também na tabela profiles
+              await supabase.from('profiles').update({ email: editEmail.trim() }).eq('id', selectedUser.id);
           }
 
           const { error } = await supabase
@@ -259,11 +268,11 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, sho
                   <form onSubmit={handleSaveUser} className="p-6 space-y-5">
                       <div>
                           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Email</label>
-                          <input 
-                              type="text" 
-                              value={selectedUser.email} 
-                              disabled 
-                              className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-xs font-mono"
+                          <input
+                              type="email"
+                              value={editEmail}
+                              onChange={(e) => setEditEmail(e.target.value)}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none text-xs font-mono"
                           />
                       </div>
 
