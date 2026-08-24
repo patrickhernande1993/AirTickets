@@ -1,9 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Ticket, TicketStatus, TicketPriority, User } from '../types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Activity, CheckCircle, Clock, Plus, TrendingUp, AlertTriangle, CalendarRange, BarChart2, Download } from 'lucide-react';
-import { HeatMap } from './HeatMap';
+import { Activity, CheckCircle, Clock, Plus, TrendingUp, AlertTriangle, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface DashboardProps {
@@ -384,111 +382,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
         );
       })()}
 
-      {/* Interactive Chart Section */}
-      <div className="bg-white p-6 rounded-lg border border-slate-100 shadow-card">
-            <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                <div>
-                    <h3 className="text-lg font-bold text-slate-900 flex items-center uppercase tracking-tight">
-                        <CalendarRange className="mr-2 text-primary-600" size={20} />
-                        Tendência de Chamados
-                    </h3>
-                    <p className="text-sm text-slate-500 mt-1">Comparativo de abertura (Data Criação) vs Resolução (Data Fechamento).</p>
-                </div>
-                
-                {/* Time Range Selector */}
-                <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
-                    <button
-                        onClick={() => setTimeRange('WEEK')}
-                        className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
-                            timeRange === 'WEEK' 
-                            ? 'bg-white text-primary-600 border border-slate-100 shadow-card' 
-                            : 'text-slate-500 hover:text-slate-900'
-                        }`}
-                    >
-                        7 Dias
-                    </button>
-                    <button
-                        onClick={() => setTimeRange('MONTH')}
-                        className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
-                            timeRange === 'MONTH' 
-                            ? 'bg-white text-primary-600 border border-slate-100 shadow-card' 
-                            : 'text-slate-500 hover:text-slate-900'
-                        }`}
-                    >
-                        30 Dias
-                    </button>
-                    <button
-                        onClick={() => setTimeRange('YEAR')}
-                        className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
-                            timeRange === 'YEAR' 
-                            ? 'bg-white text-primary-600 border border-slate-100 shadow-card' 
-                            : 'text-slate-500 hover:text-slate-900'
-                        }`}
-                    >
-                        12 Meses
-                    </button>
-                </div>
-            </div>
-
-            <div className="h-[350px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barGap={4}>
-                        <CartesianGrid strokeDasharray="0" vertical={true} stroke="#f1f5f9" />
-                        <XAxis 
-                            dataKey="name" 
-                            axisLine={{ stroke: '#e2e8f0' }} 
-                            tickLine={false} 
-                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }} 
-                            dy={10}
-                        />
-                        <YAxis 
-                            axisLine={{ stroke: '#e2e8f0' }} 
-                            tickLine={false} 
-                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }} 
-                        />
-                        <Tooltip 
-                            cursor={{ fill: '#f8fafc' }}
-                            contentStyle={{ 
-                                borderRadius: '0px', 
-                                border: '1px solid #e2e8f0', 
-                                boxShadow: 'none',
-                                fontSize: '12px'
-                            }}
-                            labelStyle={{ color: '#0f172a', fontWeight: 'bold', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}
-                        />
-                        <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }} />
-                        <Bar 
-                            name="Criados" 
-                            dataKey="Abertos" 
-                            fill="#0ea5e9" 
-                            radius={[0, 0, 0, 0]} 
-                            maxBarSize={40} 
-                        />
-                        <Bar 
-                            name="Resolvidos" 
-                            dataKey="Resolvidos" 
-                            fill="#10b981" 
-                            radius={[0, 0, 0, 0]} 
-                            maxBarSize={40} 
-                        />
-                    </BarChart>
-                </ResponsiveContainer>
-            </div>
-      </div>
-
-      {/* Analysis Patterns Section */}
-      {currentUser.role === 'ADMIN' && (
-      <div className="bg-white rounded-lg border border-slate-100 shadow-card p-6">
-        <div className="flex items-center gap-2 mb-6">
-          <BarChart2 size={20} className="text-primary-600" />
-          <div>
-            <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">📊 Análise de Padrões</h3>
-            <p className="text-sm text-slate-500 mt-0.5">Mapa de calor, categorias e solicitantes</p>
-          </div>
-        </div>
-        <HeatMap tickets={tickets} />
-      </div>
-      )}
     </div>
   );
 };
