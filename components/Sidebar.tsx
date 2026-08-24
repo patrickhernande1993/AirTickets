@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
 import {
-  LayoutDashboard, Users, Ticket as TicketIcon, List, Bell,
+  Users, Ticket as TicketIcon, List, Bell,
   X, LogOut, CalendarDays, BookOpen, Monitor, Repeat,
-  AlertTriangle, ChevronLeft, ChevronRight, Menu, Shield, Plus
+  AlertTriangle, ChevronLeft, ChevronRight, Menu, Shield, Plus, ClipboardList
 } from 'lucide-react';
 import { ViewState, User } from '../types';
 import { Logo } from './Logo';
@@ -25,7 +25,6 @@ interface NavItem {
 }
 
 const ALL_NAV_ITEMS: NavItem[] = [
-  { id: 'DASHBOARD',      label: 'Dashboard',            icon: LayoutDashboard },
   { id: 'MY_TICKETS',     label: 'Meus Chamados',        icon: List },
   { id: 'ALL_TICKETS',    label: 'Todos os Chamados',    icon: TicketIcon,    adminOnly: true },
   { id: 'AGENDA',         label: 'Agenda',               icon: CalendarDays,  adminOnly: true },
@@ -36,6 +35,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { id: 'AUDIT_LOG',      label: 'Auditoria',            icon: Shield,        adminOnly: true },
   { id: 'USERS',          label: 'Usuários',             icon: Users,         adminOnly: true, dividerBefore: true },
   { id: 'KIOSK',          label: 'Modo Quiosque',        icon: Monitor,       adminOnly: true },
+  { id: 'ORCAMENTOS',     label: 'Solicit. Orçamentos',  icon: ClipboardList, dividerBefore: true },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({
