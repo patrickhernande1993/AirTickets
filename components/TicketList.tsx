@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Ticket, TicketPriority, TicketStatus } from '../types';
-import { AlertCircle, CheckCircle, Clock, Search, Plus, Filter, ArrowUpDown, FileSpreadsheet, LayoutList, KanbanSquare } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Search, Plus, Filter, ArrowUpDown, FileSpreadsheet, LayoutList, KanbanSquare, Columns3 } from 'lucide-react';
 import { SectorFilter } from './SectorFilter';
 import { fixEncoding } from '../services/encoding';
 import { SLABadge } from './SLABadge';
@@ -27,9 +27,38 @@ export const TicketList: React.FC<TicketListProps> = ({
   // Modal State
   const [isResolutionModalOpen, setIsResolutionModalOpen] = useState(false);
   const [ticketToResolve, setTicketToResolve] = useState<Ticket | null>(null);
-  
+
   // View Mode
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+
+  // Column visibility
+  type ColKey = 'solicitante' | 'categoria' | 'prioridade' | 'abertura' | 'resolucao' | 'ultimaAt' | 'status';
+  const ALL_COLS: { key: ColKey; label: string }[] = [
+    { key: 'solicitante', label: 'Solicitante' },
+    { key: 'categoria',   label: 'Categoria' },
+    { key: 'prioridade',  label: 'Prioridade' },
+    { key: 'abertura',    label: 'Abertura' },
+    { key: 'resolucao',   label: 'Resolução' },
+    { key: 'ultimaAt',    label: 'Última At.' },
+    { key: 'status',      label: 'Status' },
+  ];
+  const loadCols = (): Record<ColKey, boolean> => {
+    try {
+      const saved = localStorage.getItem('ticketlist_cols');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { solicitante: true, categoria: true, prioridade: true, abertura: true, resolucao: true, ultimaAt: true, status: true };
+  };
+  const [visibleCols, setVisibleCols] = useState<Record<ColKey, boolean>>(loadCols);
+  const [showColMenu, setShowColMenu] = useState(false);
+
+  const toggleCol = (key: ColKey) => {
+    setVisibleCols(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      localStorage.setItem('ticketlist_cols', JSON.stringify(next));
+      return next;
+    });
+  };
 
   // Filtros States
   const [searchText, setSearchText] = useState('');
@@ -280,7 +309,38 @@ export const TicketList: React.FC<TicketListProps> = ({
                     </button>
                  </div>
 
-                 <button 
+                 {/* Column Picker */}
+                 <div className="relative">
+                   <button
+                     onClick={() => setShowColMenu(p => !p)}
+                     className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium whitespace-nowrap"
+                     title="Mostrar/ocultar colunas"
+                   >
+                     <Columns3 size={16} />
+                     <span className="hidden sm:inline">Colunas</span>
+                   </button>
+                   {showColMenu && (
+                     <>
+                       <div className="fixed inset-0 z-10" onClick={() => setShowColMenu(false)} />
+                       <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-slate-200 rounded-lg shadow-lg py-2 min-w-[160px]">
+                         <p className="px-3 pb-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Exibir colunas</p>
+                         {ALL_COLS.map(col => (
+                           <label key={col.key} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-sm text-slate-700">
+                             <input
+                               type="checkbox"
+                               checked={visibleCols[col.key]}
+                               onChange={() => toggleCol(col.key)}
+                               className="accent-primary-600"
+                             />
+                             {col.label}
+                           </label>
+                         ))}
+                       </div>
+                     </>
+                   )}
+                 </div>
+
+                 <button
                     onClick={handleExportXLSX}
                     className="flex-1 lg:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium whitespace-nowrap"
                     title="Exportar dados filtrados para Excel"
@@ -405,27 +465,13 @@ export const TicketList: React.FC<TicketListProps> = ({
                             <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('title')}>
                                 <div className="flex items-center">Assunto <SortIcon field="title" /></div>
                             </th>
-                            <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('requester')}>
-                                <div className="flex items-center">Solicitante <SortIcon field="requester" /></div>
-                            </th>
-                            <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('category')}>
-                                <div className="flex items-center">Categoria <SortIcon field="category" /></div>
-                            </th>
-                            <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('priority')}>
-                                <div className="flex items-center">Prioridade <SortIcon field="priority" /></div>
-                            </th>
-                            <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('createdAt')}>
-                                <div className="flex items-center">Abertura <SortIcon field="createdAt" /></div>
-                            </th>
-                            <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('resolvedAt')}>
-                                <div className="flex items-center">Resolução <SortIcon field="resolvedAt" /></div>
-                            </th>
-                            <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('updatedAt')}>
-                                <div className="flex items-center">Última At. <SortIcon field="updatedAt" /></div>
-                            </th>
-                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-100 text-right transition-colors" onClick={() => handleSort('status')}>
-                                <div className="flex items-center justify-end">Status <SortIcon field="status" /></div>
-                            </th>
+                            {visibleCols.solicitante && <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('requester')}><div className="flex items-center">Solicitante <SortIcon field="requester" /></div></th>}
+                            {visibleCols.categoria && <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('category')}><div className="flex items-center">Categoria <SortIcon field="category" /></div></th>}
+                            {visibleCols.prioridade && <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('priority')}><div className="flex items-center">Prioridade <SortIcon field="priority" /></div></th>}
+                            {visibleCols.abertura && <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('createdAt')}><div className="flex items-center">Abertura <SortIcon field="createdAt" /></div></th>}
+                            {visibleCols.resolucao && <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('resolvedAt')}><div className="flex items-center">Resolução <SortIcon field="resolvedAt" /></div></th>}
+                            {visibleCols.ultimaAt && <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('updatedAt')}><div className="flex items-center">Última At. <SortIcon field="updatedAt" /></div></th>}
+                            {visibleCols.status && <th className="px-4 py-3 cursor-pointer hover:bg-slate-100 text-right transition-colors" onClick={() => handleSort('status')}><div className="flex items-center justify-end">Status <SortIcon field="status" /></div></th>}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -444,29 +490,13 @@ export const TicketList: React.FC<TicketListProps> = ({
                                         <p className="text-xs text-slate-500 truncate max-w-[150px] md:max-w-[300px] leading-relaxed">{fixEncoding(ticket.description)}</p>
                                     </div>
                                 </td>
-                                <td className="px-4 py-3 text-[10px] text-slate-600 font-bold uppercase tracking-tight border-r border-slate-50">
-                                    {ticket.requester}
-                                </td>
-                                <td className="px-4 py-3 border-r border-slate-50">
-                                    <span className="px-1.5 py-0.5 bg-slate-50 rounded-lg text-[10px] font-bold text-slate-500 border border-slate-200 uppercase tracking-tighter">
-                                        {ticket.category}
-                                    </span>
-                                </td>
-                                <td className="px-4 py-3 border-r border-slate-50">
-                                    {getPriorityBadge(ticket.priority)}
-                                </td>
-                                <td className="px-4 py-3 text-[10px] font-bold font-mono text-slate-500 whitespace-nowrap border-r border-slate-50">
-                                    {formatDate(ticket.createdAt)}
-                                </td>
-                                <td className="px-4 py-3 text-[10px] font-bold font-mono text-slate-500 whitespace-nowrap border-r border-slate-50">
-                                    {formatDate(ticket.resolvedAt)}
-                                </td>
-                                <td className="px-4 py-3 text-[10px] font-bold font-mono text-slate-500 whitespace-nowrap border-r border-slate-50">
-                                    {formatDate(ticket.updatedAt)}
-                                </td>
-                                <td className="px-4 py-3 text-right">
-                                    {getStatusBadge(ticket.status)}
-                                </td>
+                                {visibleCols.solicitante && <td className="px-4 py-3 text-[10px] text-slate-600 font-bold uppercase tracking-tight border-r border-slate-50">{ticket.requester}</td>}
+                                {visibleCols.categoria && <td className="px-4 py-3 border-r border-slate-50"><span className="px-1.5 py-0.5 bg-slate-50 rounded-lg text-[10px] font-bold text-slate-500 border border-slate-200 uppercase tracking-tighter">{ticket.category}</span></td>}
+                                {visibleCols.prioridade && <td className="px-4 py-3 border-r border-slate-50">{getPriorityBadge(ticket.priority)}</td>}
+                                {visibleCols.abertura && <td className="px-4 py-3 text-[10px] font-bold font-mono text-slate-500 whitespace-nowrap border-r border-slate-50">{formatDate(ticket.createdAt)}</td>}
+                                {visibleCols.resolucao && <td className="px-4 py-3 text-[10px] font-bold font-mono text-slate-500 whitespace-nowrap border-r border-slate-50">{formatDate(ticket.resolvedAt)}</td>}
+                                {visibleCols.ultimaAt && <td className="px-4 py-3 text-[10px] font-bold font-mono text-slate-500 whitespace-nowrap border-r border-slate-50">{formatDate(ticket.updatedAt)}</td>}
+                                {visibleCols.status && <td className="px-4 py-3 text-right">{getStatusBadge(ticket.status)}</td>}
                             </tr>
                         ))}
                     </tbody>
