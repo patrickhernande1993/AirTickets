@@ -423,9 +423,6 @@ export const TicketList: React.FC<TicketListProps> = ({
                             <th className="px-4 py-3 border-r border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('updatedAt')}>
                                 <div className="flex items-center">Última At. <SortIcon field="updatedAt" /></div>
                             </th>
-                            <th className="px-4 py-3 border-r border-slate-100">
-                                SLA
-                            </th>
                             <th className="px-4 py-3 cursor-pointer hover:bg-slate-100 text-right transition-colors" onClick={() => handleSort('status')}>
                                 <div className="flex items-center justify-end">Status <SortIcon field="status" /></div>
                             </th>
@@ -466,9 +463,6 @@ export const TicketList: React.FC<TicketListProps> = ({
                                 </td>
                                 <td className="px-4 py-3 text-[10px] font-bold font-mono text-slate-500 whitespace-nowrap border-r border-slate-50">
                                     {formatDate(ticket.updatedAt)}
-                                </td>
-                                <td className="px-4 py-3 border-r border-slate-50 whitespace-nowrap">
-                                    <SLABadge ticket={ticket} compact />
                                 </td>
                                 <td className="px-4 py-3 text-right">
                                     {getStatusBadge(ticket.status)}

@@ -442,10 +442,6 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, currentUser,
             ticketNumber={ticket.ticketNumber}
         />
 
-        {/* SLA Badge */}
-        <div className="mt-4">
-          <SLABadge ticket={ticket} />
-        </div>
 
         <div className="mt-6 flex flex-wrap gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
             <div className="flex items-center">
