@@ -83,4 +83,21 @@ export interface ITicketStats {
   resolved: number;
 }
 
-export type ViewState = 'DASHBOARD' | 'CREATE_TICKET' | 'TICKET_DETAIL' | 'MY_TICKETS' | 'ALL_TICKETS' | 'USERS' | 'EDIT_TICKET' | 'NOTIFICATIONS' | 'AGENDA' | 'KNOWLEDGE_BASE' | 'KIOSK' | 'RECURRING' | 'ESCALATION' | 'AUDIT_LOG';
+export type ViewState = 'DASHBOARD' | 'CREATE_TICKET' | 'TICKET_DETAIL' | 'MY_TICKETS' | 'ALL_TICKETS' | 'USERS' | 'EDIT_TICKET' | 'NOTIFICATIONS' | 'AGENDA' | 'KNOWLEDGE_BASE' | 'KIOSK' | 'RECURRING' | 'ESCALATION' | 'AUDIT_LOG' | 'ORCAMENTOS';
+
+export interface OrcamentoRequest {
+  id: string;
+  cliente: string;
+  tipo_solicitacao: 'Orçamento' | 'Amostra';
+  prioridade: 'Crítico' | 'Normal';
+  observacao?: string;
+  status_produto: 'NOVO' | 'RECORRENTE';
+  arquivos?: string[];
+  status: 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'CANCELADO';
+  finalizado: boolean;
+  numero_ov?: string;       // Número do OV ou PD no ERP
+  requester_id: string;
+  requester_name: string;
+  created_at: string;
+  updated_at?: string;
+}
