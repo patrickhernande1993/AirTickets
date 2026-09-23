@@ -1,7 +1,7 @@
-
+﻿
 import React, { useState } from 'react';
 import {
-  Users, Ticket as TicketIcon, List, Bell,
+  LayoutDashboard, Users, Ticket as TicketIcon, List, Bell,
   X, LogOut, CalendarDays, BookOpen, Monitor, Repeat,
   AlertTriangle, ChevronLeft, ChevronRight, Menu, Shield, Plus, ClipboardList
 } from 'lucide-react';
@@ -25,6 +25,7 @@ interface NavItem {
 }
 
 const ALL_NAV_ITEMS: NavItem[] = [
+  { id: 'DASHBOARD',      label: 'Dashboard',            icon: LayoutDashboard },
   { id: 'MY_TICKETS',     label: 'Meus Chamados',        icon: List },
   { id: 'ALL_TICKETS',    label: 'Todos os Chamados',    icon: TicketIcon,    adminOnly: true },
   { id: 'AGENDA',         label: 'Agenda',               icon: CalendarDays,  adminOnly: true },

@@ -1,7 +1,9 @@
-
-import React, { useMemo, useState } from 'react'; // useState still used for showExportModal
+﻿
+import React, { useMemo, useState } from 'react';
 import { Ticket, TicketStatus, TicketPriority, User } from '../types';
-import { Activity, CheckCircle, Clock, Plus, TrendingUp, AlertTriangle, Download } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { Activity, CheckCircle, Clock, Plus, TrendingUp, AlertTriangle, CalendarRange, BarChart2, Download } from 'lucide-react';
+import { HeatMap } from './HeatMap';
 import * as XLSX from 'xlsx';
 
 interface DashboardProps {
@@ -10,7 +12,10 @@ interface DashboardProps {
   onCreateTicket: () => void;
 }
 
+type TimeRange = 'WEEK' | 'MONTH' | 'YEAR';
+
 export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCreateTicket }) => {
+  const [timeRange, setTimeRange] = useState<TimeRange>('MONTH');
   const [showExportModal, setShowExportModal] = useState(false);
 
   const handleExportExcel = () => {
@@ -77,16 +82,138 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
   };
   
   const stats = useMemo(() => {
-    const total = tickets.length;
-    const open = tickets.filter(t => t.status === TicketStatus.OPEN || t.status === TicketStatus.IN_PROGRESS).length;
-    const resolved = tickets.filter(t => t.status === TicketStatus.RESOLVED).length;
-    const criticalActive = tickets.filter(t =>
-      t.priority === TicketPriority.CRITICAL && t.status !== TicketStatus.RESOLVED
-    ).length;
-    const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
-    return { total, open, resolved, criticalActive, resolutionRate };
-  }, [tickets]);
+    const now = new Date();
+    let startDate = new Date();
+    
+    if (timeRange === 'WEEK') {
+      startDate.setDate(now.getDate() - 7);
+    } else if (timeRange === 'MONTH') {
+      startDate.setDate(now.getDate() - 30);
+    } else {
+      startDate.setFullYear(now.getFullYear() - 1);
+    }
 
+    // Tickets criados no período
+    const createdInPeriod = tickets.filter(t => t.createdAt >= startDate);
+    const total = createdInPeriod.length;
+    
+    // Chamados atualmente abertos (geral, não apenas no período, para manter visibilidade do backlog)
+    // Mas se o usuário quiser TUDO filtrado, podemos filtrar aqui também. 
+    // No entanto, "Open" costuma ser o estado atual. 
+    // Vamos filtrar APENAS para o cálculo da taxa e do total exibido nos cards para ser coerente com o gráfico.
+    const openInPeriod = createdInPeriod.filter(t => t.status === TicketStatus.OPEN).length;
+    
+    // Tickets RESOLVIDOS no período (independente de quando foram criados)
+    const resolvedInPeriod = tickets.filter(t => {
+      if (t.status !== TicketStatus.RESOLVED) return false;
+      const dateReference = t.resolvedAt || t.updatedAt;
+      return dateReference && dateReference >= startDate;
+    }).length;
+
+    const criticalActiveInPeriod = createdInPeriod.filter(t => 
+        t.priority === TicketPriority.CRITICAL && 
+        t.status !== TicketStatus.RESOLVED
+    ).length;
+
+    // Taxa de Resolução = (Resolvidos no período / Criados no período)
+    // Capped at 100% for a cleaner UI, or just let it reflect productivity (>100% means backlog is shrinking)
+    let resolutionRate = total > 0 ? Math.round((resolvedInPeriod / total) * 100) : 0;
+    
+    return {
+      total,
+      open: openInPeriod,
+      resolved: resolvedInPeriod,
+      criticalActive: criticalActiveInPeriod,
+      resolutionRate: resolutionRate
+    };
+  }, [tickets, timeRange]);
+
+  const chartData = useMemo(() => {
+      // Helpers para chaves de data consistentes (Local Time)
+      const getDailyKey = (date: Date) => {
+          const y = date.getFullYear();
+          const m = String(date.getMonth() + 1).padStart(2, '0');
+          const d = String(date.getDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+      };
+
+      const getMonthlyKey = (date: Date) => {
+          return `${date.getFullYear()}-${date.getMonth()}`; // Month index 0-11
+      };
+
+      // 1. Criar o esqueleto da linha do tempo (Buckets vazios)
+      // Usamos Map para acesso rápido O(1)
+      const timeline = new Map<string, { name: string; Abertos: number; Resolvidos: number }>();
+      const now = new Date();
+
+      if (timeRange === 'YEAR') {
+          // Lógica Mensal (Últimos 12 meses)
+          const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+          
+          for (let i = 11; i >= 0; i--) {
+              const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+              const key = getMonthlyKey(d);
+              timeline.set(key, {
+                  name: `${months[d.getMonth()]}`,
+                  Abertos: 0,
+                  Resolvidos: 0
+              });
+          }
+      } else {
+          // Lógica Diária (7 dias ou 30 dias)
+          const daysToLookBack = timeRange === 'WEEK' ? 7 : 30;
+          
+          for (let i = daysToLookBack - 1; i >= 0; i--) {
+              const d = new Date();
+              d.setDate(now.getDate() - i);
+              const key = getDailyKey(d);
+              timeline.set(key, {
+                  name: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+                  Abertos: 0,
+                  Resolvidos: 0
+              });
+          }
+      }
+
+      // 2. Preencher Dados
+      tickets.forEach(t => {
+          // --- Contagem de ABERTURA (Usa createdAt) ---
+          let createdKey = '';
+          if (timeRange === 'YEAR') {
+              createdKey = getMonthlyKey(t.createdAt);
+          } else {
+              createdKey = getDailyKey(t.createdAt);
+          }
+
+          // Se a data de criação cair dentro do período do gráfico, incrementa Abertos
+          if (timeline.has(createdKey)) {
+              timeline.get(createdKey)!.Abertos += 1;
+          }
+
+          // --- Contagem de RESOLUÇÃO (Usa resolvedAt) ---
+          if (t.status === TicketStatus.RESOLVED) {
+              // Usa resolvedAt (preferencial) ou updatedAt como fallback para dados antigos
+              const dateReference = t.resolvedAt || t.updatedAt;
+
+              if (dateReference) {
+                  let resolvedKey = '';
+                  if (timeRange === 'YEAR') {
+                      resolvedKey = getMonthlyKey(dateReference);
+                  } else {
+                      resolvedKey = getDailyKey(dateReference);
+                  }
+
+                  // Se a data de resolução cair dentro do período do gráfico, incrementa Resolvidos
+                  // Independente de quando foi criado
+                  if (timeline.has(resolvedKey)) {
+                      timeline.get(resolvedKey)!.Resolvidos += 1;
+                  }
+              }
+          }
+      });
+
+      return Array.from(timeline.values());
+  }, [tickets, timeRange]);
 
   return (
     <div className="space-y-6">
@@ -172,66 +299,61 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* KPI Cards Row — compacto */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {/* Total */}
-        <div className="bg-white px-6 py-6 rounded-xl border border-slate-100 shadow-sm flex flex-col gap-4 hover:border-slate-300 transition-colors">
-            <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total</p>
-                <div className="h-10 w-10 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center">
-                    <Activity size={20} />
-                </div>
+        <div className="bg-white px-4 py-3 rounded-lg border border-slate-100 shadow-sm flex items-center justify-between hover:border-slate-300 transition-colors">
+            <div>
+                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Total</p>
+                <h3 className="text-2xl font-mono font-bold text-slate-900 mt-0.5">{stats.total}</h3>
             </div>
-            <h3 className="text-5xl font-mono font-bold text-slate-900">{stats.total}</h3>
-            <p className="text-xs text-slate-400">todos os chamados</p>
+            <div className="h-8 w-8 rounded-lg bg-slate-50 text-slate-400 flex items-center justify-center">
+                <Activity size={16} />
+            </div>
         </div>
 
         {/* Abertos */}
-        <div className="bg-white px-6 py-6 rounded-xl border border-slate-100 shadow-sm flex flex-col gap-4 hover:border-amber-200 transition-colors">
-            <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Abertos</p>
-                <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center">
-                    <Clock size={20} />
-                </div>
+        <div className="bg-white px-4 py-3 rounded-lg border border-slate-100 shadow-sm flex items-center justify-between hover:border-amber-200 transition-colors">
+            <div>
+                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Abertos</p>
+                <h3 className="text-2xl font-mono font-bold text-slate-900 mt-0.5">{stats.open}</h3>
             </div>
-            <h3 className="text-5xl font-mono font-bold text-amber-500">{stats.open}</h3>
-            <p className="text-xs text-slate-400">em aberto / em progresso</p>
+            <div className="h-8 w-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center">
+                <Clock size={16} />
+            </div>
         </div>
 
         {/* Resolvidos */}
-        <div className="bg-white px-6 py-6 rounded-xl border border-slate-100 shadow-sm flex flex-col gap-4 hover:border-green-200 transition-colors">
-            <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Resolvidos</p>
-                <div className="h-10 w-10 rounded-xl bg-green-50 text-green-500 flex items-center justify-center">
-                    <CheckCircle size={20} />
-                </div>
+        <div className="bg-white px-4 py-3 rounded-lg border border-slate-100 shadow-sm flex items-center justify-between hover:border-green-200 transition-colors">
+            <div>
+                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Resolvidos</p>
+                <h3 className="text-2xl font-mono font-bold text-slate-900 mt-0.5">{stats.resolved}</h3>
             </div>
-            <h3 className="text-5xl font-mono font-bold text-green-600">{stats.resolved}</h3>
-            <p className="text-xs text-slate-400">chamados encerrados</p>
+            <div className="h-8 w-8 rounded-lg bg-green-50 text-green-500 flex items-center justify-center">
+                <CheckCircle size={16} />
+            </div>
         </div>
 
         {/* Críticos Ativos */}
-        <div className="bg-white px-6 py-6 rounded-xl border border-slate-100 shadow-sm flex flex-col gap-4 hover:border-red-200 transition-colors">
-            <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Críticos</p>
-                <div className="h-10 w-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center">
-                    <AlertTriangle size={20} />
-                </div>
+        <div className="bg-white px-4 py-3 rounded-lg border border-slate-100 shadow-sm flex items-center justify-between hover:border-red-200 transition-colors">
+            <div>
+                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Críticos</p>
+                <h3 className="text-2xl font-mono font-bold text-slate-900 mt-0.5">{stats.criticalActive}</h3>
             </div>
-            <h3 className="text-5xl font-mono font-bold text-red-500">{stats.criticalActive}</h3>
-            <p className="text-xs text-slate-400">prioridade crítica ativos</p>
+            <div className="h-8 w-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center">
+                <AlertTriangle size={16} />
+            </div>
         </div>
 
         {/* Resolução */}
-        <div className="bg-white px-6 py-6 rounded-xl border border-slate-100 shadow-sm flex flex-col gap-4 hover:border-primary-200 transition-colors">
-            <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Resolução</p>
-                <div className="h-10 w-10 rounded-xl bg-primary-50 text-primary-500 flex items-center justify-center">
-                    <TrendingUp size={20} />
-                </div>
+        <div className="bg-white px-4 py-3 rounded-lg border border-slate-100 shadow-sm flex items-center justify-between hover:border-primary-200 transition-colors">
+            <div>
+                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Resolução</p>
+                <h3 className="text-2xl font-mono font-bold text-slate-900 mt-0.5">{stats.resolutionRate}%</h3>
             </div>
-            <h3 className="text-5xl font-mono font-bold text-primary-600">{stats.resolutionRate}%</h3>
-            <p className="text-xs text-slate-400">taxa de encerramento</p>
+            <div className="h-8 w-8 rounded-lg bg-primary-50 text-primary-500 flex items-center justify-center">
+                <TrendingUp size={16} />
+            </div>
         </div>
       </div>
 
@@ -262,6 +384,111 @@ export const Dashboard: React.FC<DashboardProps> = ({ tickets, currentUser, onCr
         );
       })()}
 
+      {/* Interactive Chart Section */}
+      <div className="bg-white p-6 rounded-lg border border-slate-100 shadow-card">
+            <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                <div>
+                    <h3 className="text-lg font-bold text-slate-900 flex items-center uppercase tracking-tight">
+                        <CalendarRange className="mr-2 text-primary-600" size={20} />
+                        Tendência de Chamados
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-1">Comparativo de abertura (Data Criação) vs Resolução (Data Fechamento).</p>
+                </div>
+                
+                {/* Time Range Selector */}
+                <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                    <button
+                        onClick={() => setTimeRange('WEEK')}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                            timeRange === 'WEEK' 
+                            ? 'bg-white text-primary-600 border border-slate-100 shadow-card' 
+                            : 'text-slate-500 hover:text-slate-900'
+                        }`}
+                    >
+                        7 Dias
+                    </button>
+                    <button
+                        onClick={() => setTimeRange('MONTH')}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                            timeRange === 'MONTH' 
+                            ? 'bg-white text-primary-600 border border-slate-100 shadow-card' 
+                            : 'text-slate-500 hover:text-slate-900'
+                        }`}
+                    >
+                        30 Dias
+                    </button>
+                    <button
+                        onClick={() => setTimeRange('YEAR')}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                            timeRange === 'YEAR' 
+                            ? 'bg-white text-primary-600 border border-slate-100 shadow-card' 
+                            : 'text-slate-500 hover:text-slate-900'
+                        }`}
+                    >
+                        12 Meses
+                    </button>
+                </div>
+            </div>
+
+            <div className="h-[350px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barGap={4}>
+                        <CartesianGrid strokeDasharray="0" vertical={true} stroke="#f1f5f9" />
+                        <XAxis 
+                            dataKey="name" 
+                            axisLine={{ stroke: '#e2e8f0' }} 
+                            tickLine={false} 
+                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }} 
+                            dy={10}
+                        />
+                        <YAxis 
+                            axisLine={{ stroke: '#e2e8f0' }} 
+                            tickLine={false} 
+                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }} 
+                        />
+                        <Tooltip 
+                            cursor={{ fill: '#f8fafc' }}
+                            contentStyle={{ 
+                                borderRadius: '0px', 
+                                border: '1px solid #e2e8f0', 
+                                boxShadow: 'none',
+                                fontSize: '12px'
+                            }}
+                            labelStyle={{ color: '#0f172a', fontWeight: 'bold', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                        />
+                        <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }} />
+                        <Bar 
+                            name="Criados" 
+                            dataKey="Abertos" 
+                            fill="#0ea5e9" 
+                            radius={[0, 0, 0, 0]} 
+                            maxBarSize={40} 
+                        />
+                        <Bar 
+                            name="Resolvidos" 
+                            dataKey="Resolvidos" 
+                            fill="#10b981" 
+                            radius={[0, 0, 0, 0]} 
+                            maxBarSize={40} 
+                        />
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
+      </div>
+
+      {/* Analysis Patterns Section */}
+      {currentUser.role === 'ADMIN' && (
+      <div className="bg-white rounded-lg border border-slate-100 shadow-card p-6">
+        <div className="flex items-center gap-2 mb-6">
+          <BarChart2 size={20} className="text-primary-600" />
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">📊 Análise de Padrões</h3>
+            <p className="text-sm text-slate-500 mt-0.5">Mapa de calor, categorias e solicitantes</p>
+          </div>
+        </div>
+        <HeatMap tickets={tickets} />
+      </div>
+      )}
     </div>
   );
 };
