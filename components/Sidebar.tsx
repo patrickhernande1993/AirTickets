@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import {
   LayoutDashboard, Users, Ticket as TicketIcon, List, Bell,
   X, LogOut, CalendarDays, BookOpen, Monitor, Repeat,
-  AlertTriangle, ChevronLeft, ChevronRight, Menu, Shield, Plus, ClipboardList
+  AlertTriangle, ChevronLeft, ChevronRight, Menu, Shield, Plus
 } from 'lucide-react';
 import { ViewState, User } from '../types';
 import { Logo } from './Logo';
@@ -36,7 +36,6 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { id: 'AUDIT_LOG',      label: 'Auditoria',            icon: Shield,        adminOnly: true },
   { id: 'USERS',          label: 'Usuários',             icon: Users,         adminOnly: true, dividerBefore: true },
   { id: 'KIOSK',          label: 'Modo Quiosque',        icon: Monitor,       adminOnly: true },
-  { id: 'ORCAMENTOS',     label: 'Solicit. Orçamentos',  icon: ClipboardList, dividerBefore: true },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({
